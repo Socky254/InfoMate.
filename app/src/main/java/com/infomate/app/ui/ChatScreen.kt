@@ -401,7 +401,7 @@ fun InputSection(
             Spacer(modifier = Modifier.width(8.dp))
 
             val isSend = input.isNotBlank() && !isListening
-            val icon = if (isSend) Icons.Filled.Send else if (isListening) Icons.Filled.Stop else Icons.Filled.Mic
+            val icon = if (isSend) Icons.AutoMirrored.Filled.Send else if (isListening) Icons.Filled.Stop else Icons.Filled.Mic
             
             IconButton(
                 onClick = {
