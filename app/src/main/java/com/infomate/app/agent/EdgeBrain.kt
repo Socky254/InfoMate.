@@ -12,16 +12,21 @@ import java.util.*
 object EdgeBrain {
 
     fun processLocally(query: String, context: Context): String? {
-        val q = query.lowercase()
+        // Strip out the injected system context and patterns to avoid false triggers
+        val userQuery = if (query.contains("[SYSTEM_CONTEXT:")) {
+            query.substringBefore("[SYSTEM_CONTEXT:").lowercase()
+        } else {
+            query.lowercase()
+        }
 
         return when {
-            q.contains("battery") || q.contains("power") -> getBatteryStatus(context)
-            q.contains("time") || q.contains("date") -> getTimeStatus()
-            q.contains("who are you") || q.contains("identity") -> 
+            userQuery.contains("battery") || userQuery.contains("power") -> getBatteryStatus(context)
+            userQuery.contains("time") || userQuery.contains("date") -> getTimeStatus()
+            userQuery.contains("who are you") || userQuery.contains("identity") -> 
                 "I am InfoMate v9, your Transcendent Iris. My high-level neural link is currently offline, but my core edge-processing is active."
-            q.contains("creator") || q.contains("socrates") ->
+            userQuery.contains("creator") || userQuery.contains("socrates") ->
                 "My architect is Socrates Kipruto. I am currently operating in Edge Mode."
-            q.contains("status") || q.contains("health") ->
+            userQuery.contains("status") || userQuery.contains("health") ->
                 "Primary Neural Link: OFFLINE. Edge Processor: ACTIVE. All local systems operational."
             else -> null // Signal that we can't handle this locally
         }
