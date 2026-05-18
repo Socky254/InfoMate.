@@ -273,16 +273,17 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     }
 
     fun speak(text: String) {
-        if (!_state.value.isVoiceOutputEnabled) return // RESPECT THE SILENCE TOGGLE
+        if (!_state.value.isVoiceOutputEnabled) return 
 
         val params = Bundle()
         params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "INFOMATE_SPEECH")
         
+        // Realistic speech modulation: Slight pitch and rate variations
         if (_state.value.isMaleVoice) {
-            tts?.setPitch(0.8f)
-            tts?.setSpeechRate(0.9f)
+            tts?.setPitch(0.85f)
+            tts?.setSpeechRate(0.95f)
         } else {
-            tts?.setPitch(1.2f)
+            tts?.setPitch(1.05f)
             tts?.setSpeechRate(1.0f)
         }
         
@@ -339,7 +340,9 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         var currentText = ""
         val words = fullText.split(" ")
         for (index in words.indices) {
-            currentText += words[index] + (if (index < words.size - 1) " " else "")
+            val word = words[index]
+            currentText += word + (if (index < words.size - 1) " " else "")
+            
             _state.update { state ->
                 val newMessages = state.messages.toMutableList()
                 if (newMessages.isNotEmpty()) {
@@ -350,10 +353,13 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                 }
                 state.copy(messages = newMessages)
             }
+            
+            // Human-like rhythm: longer pauses for punctuation and deep thought
             val delayMs = when {
-                words[index].endsWith(".") || words[index].endsWith("?") || words[index].endsWith("!") -> 200L
-                words[index].endsWith(",") || words[index].endsWith(";") -> 100L
-                else -> 35L
+                word.endsWith(".") || word.endsWith("?") || word.endsWith("!") -> 400L
+                word.endsWith(",") || word.endsWith(";") || word.endsWith(":") -> 180L
+                word.length > 8 -> 65L // Longer words take more effort to "speak"
+                else -> 45L
             }
             delay(delayMs)
         }
