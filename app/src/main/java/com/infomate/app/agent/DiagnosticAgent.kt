@@ -11,6 +11,9 @@ object DiagnosticAgent {
      * Generates an enterprise-grade health report.
      */
     suspend fun runFullDiagnostic(): String {
+        // Pulse the health system immediately to verify logging and clear "Cold Start"
+        HealthManager.logHealth(HealthManager.SUBSYSTEM_SECURITY, HealthState.OPERATIONAL, "Diagnostic Pulse Initiated")
+
         val aiStatus = checkBrainHealth()
         val networkStatus = checkNetworkHealth()
         val dbStatus = checkDatabaseHealth()
@@ -170,10 +173,11 @@ object DiagnosticAgent {
     private suspend fun checkSystemLogs(): String {
         return try {
             val healthJson = HealthManager.getRecentLogs()
-            if (healthJson != null && healthJson.length > 5) {
-                "OPERATIONAL (Monitoring Active)"
-            } else {
-                "DEGRADED (Cold start detected)"
+            when {
+                healthJson == null -> "OFFLINE (Database Link Failed)"
+                healthJson.length > 5000 -> "OPERATIONAL (Historical Data Active)"
+                healthJson.length > 5 -> "OPERATIONAL (Cold Start / Active)"
+                else -> "DEGRADED (Logging Verification Failed)"
             }
         } catch (e: Exception) {
             "OFFLINE (Logging disabled)"

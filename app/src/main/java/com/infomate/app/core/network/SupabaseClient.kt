@@ -98,7 +98,16 @@ object SupabaseClient {
         if (cooldownMessage != null) return@withContext cooldownMessage
 
         val json = gson.toJson(params)
-// ...
+        val body = json.toRequestBody(mediaType)
+        
+        val request = Request.Builder()
+            .url("${Config.SUPABASE_URL}/functions/v1/$name")
+            .addHeader("apikey", Config.SUPABASE_KEY)
+            .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
+            .addHeader("Connection", "keep-alive")
+            .post(body)
+            .build()
+
         // Implement jittered exponential backoff for neural stability
         var lastError = ""
         for (i in 1..4) { // Increased attempts to 4
