@@ -107,13 +107,20 @@ object DiagnosticAgent {
 
     private suspend fun checkDatabaseHealth(): String {
         return try {
+            // Test primary table access
             val response = SupabaseClient.select("messages", "id", order = "timestamp.desc")
             if (response != null) {
                 HealthManager.logHealth(HealthManager.CAT_DATABASE, HealthState.ONLINE, "RDBMS Link Established", HealthSeverity.STABLE)
                 "ONLINE (STABLE)"
             } else {
-                HealthManager.logHealth(HealthManager.CAT_DATABASE, HealthState.DEGRADED, "RPC/REST Query Degradation", HealthSeverity.WARNING)
-                "DEGRADED (Query Failed)"
+                // Try a simpler query if ordering fails (e.g. if table is empty or column differs)
+                val simpleResponse = SupabaseClient.select("messages", "id", order = "id.asc")
+                if (simpleResponse != null) {
+                    "ONLINE (STABLE - ALT_SCHEMA)"
+                } else {
+                    HealthManager.logHealth(HealthManager.CAT_DATABASE, HealthState.DEGRADED, "Database Query Failed (Table might be missing or RLS issue)", HealthSeverity.WARNING)
+                    "DEGRADED (Query Failed)"
+                }
             }
         } catch (e: Exception) {
             HealthManager.logHealth(HealthManager.CAT_DATABASE, HealthState.OFFLINE, e.message ?: "Unknown Connection Error", HealthSeverity.CRITICAL)
@@ -198,12 +205,17 @@ object DiagnosticAgent {
     private suspend fun checkSystemLogs(): String {
         return try {
             val healthJson = HealthManager.getRecentLogs()
-            if (healthJson != null && healthJson.length > 5) {
-                HealthManager.logHealth(HealthManager.CAT_LOGGING, HealthState.ONLINE, "Telemetry Queue Flushed", HealthSeverity.STABLE)
-                "ONLINE (STABLE)"
+            if (healthJson != null) {
+                // Even an empty array "[]" (length 2) means the table is accessible
+                if (healthJson.length >= 2) {
+                    HealthManager.logHealth(HealthManager.CAT_LOGGING, HealthState.ONLINE, "Telemetry Queue Active", HealthSeverity.STABLE)
+                    "ONLINE (STABLE)"
+                } else {
+                    "DEGRADED (COLD_START)"
+                }
             } else {
                 HealthManager.logHealth(HealthManager.CAT_LOGGING, HealthState.DEGRADED, "Log Buffer Initialization Pending", HealthSeverity.WARNING)
-                "DEGRADED (COLD_START)"
+                "DEGRADED (LOG_FETCH_FAIL)"
             }
         } catch (e: Exception) {
             "OFFLINE"

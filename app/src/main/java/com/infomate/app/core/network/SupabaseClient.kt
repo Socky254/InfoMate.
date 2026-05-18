@@ -182,9 +182,16 @@ object SupabaseClient {
 
         try {
             client.newCall(request).execute().use { response ->
-                if (response.isSuccessful) response.body?.string() else null
+                val body = response.body?.string()
+                if (response.isSuccessful) {
+                    body
+                } else {
+                    Log.e("SUPABASE_SELECT", "Failed: ${response.code} - $body")
+                    null
+                }
             }
         } catch (e: Exception) {
+            Log.e("SUPABASE_SELECT", "Exception: ${e.message}")
             null
         }
     }
