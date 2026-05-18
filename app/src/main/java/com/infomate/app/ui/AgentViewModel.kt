@@ -265,6 +265,46 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         _state.update { it.copy(input = text) }
     }
 
+    fun performSearch(query: String) {
+        if (query.isBlank()) return
+        
+        _state.update { it.copy(
+            status = "SCANNING GLOBAL ARCHIVES...",
+            brainState = InfomateState.THINKING,
+            input = "" 
+        ) }
+
+        viewModelScope.launch {
+            try {
+                // Specialized search query for the AI
+                val searchPrompt = "SEARCH_REQUEST: $query. Search global knowledge and your archives. Provide a comprehensive summary."
+                
+                launch {
+                    reasoningEngine.streamReasoning("Global Search: $query").collect { step ->
+                        _state.update { s -> s.copy(cognitiveSteps = s.cognitiveSteps + step) }
+                    }
+                }
+
+                val response = orchestrator.execute(searchPrompt)
+                
+                val searchMessage = ChatMessage(
+                    content = "SEARCH RESULTS FOR: \"$query\"\n\n$response",
+                    sender = "INFOMATE"
+                )
+
+                _state.update { it.copy(
+                    messages = it.messages + searchMessage,
+                    status = "CORE: ACTIVE",
+                    brainState = InfomateState.RESPONDING
+                ) }
+                
+                speak(response)
+            } catch (e: Exception) {
+                _state.update { it.copy(status = "SEARCH_ERROR: ${e.message}") }
+            }
+        }
+    }
+
     fun send(trigger: String? = null) {
         val userInput = _state.value.input
         if (userInput.isBlank()) return

@@ -304,11 +304,27 @@ fun HeaderSection(
                     focusedTextColor = SilverText,
                     unfocusedIndicatorColor = CyberCyan.copy(alpha = 0.3f)
                 ),
-                singleLine = true
+                singleLine = true,
+                keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions(
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Search
+                ),
+                keyboardActions = androidx.compose.ui.text.input.KeyboardActions(
+                    onSearch = { 
+                        vm.performSearch(searchQuery)
+                        onSearchToggle() // Close bar after search
+                    }
+                )
             )
         }
         
-        IconButton(onClick = onSearchToggle) {
+        IconButton(onClick = {
+            if (searchActive && searchQuery.isNotBlank()) {
+                vm.performSearch(searchQuery)
+                onSearchToggle()
+            } else {
+                onSearchToggle()
+            }
+        }) {
             Icon(
                 imageVector = if (searchActive) Icons.Filled.Close else Icons.Filled.Search,
                 contentDescription = "Search",

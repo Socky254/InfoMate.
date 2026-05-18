@@ -8,16 +8,22 @@ object LLMClient {
         val params = mapOf("prompt" to prompt)
         val response = SupabaseClient.callFunction("infomate-brain", params)
         
-        return try {
-            if (!response.isNullOrBlank()) {
+        return if (!response.isNullOrBlank()) {
+            try {
                 val json = JSONObject(response)
-                // v9 refinement: Ensure we capture the 'output' field from the brain's JSON response
-                json.optString("output", "INTELLIGENCE_LINK: Active. No immediate output payload.")
-            } else {
-                "INTELLIGENCE_LINK: Active. Synchronizing neural clusters..."
+                val output = json.optString("output", "")
+                if (output.isNotBlank()) {
+                    output
+                } else {
+                    // Fallback if 'output' is empty but JSON exists
+                    json.optString("text", json.optString("response", "Intelligence link established, but no payload was returned."))
+                }
+            } catch (e: Exception) {
+                // If it's not JSON, return the raw response string (often the AI just returns text)
+                response
             }
-        } catch (e: Exception) {
-            "NEURAL_ERROR: Link frequency unstable. Retrying link..."
+        } else {
+            "NEURAL_LINK: Signal lost. Checking global search nodes..."
         }
     }
 }
