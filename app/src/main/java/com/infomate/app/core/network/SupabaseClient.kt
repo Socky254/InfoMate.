@@ -53,7 +53,6 @@ object SupabaseClient {
             .addHeader("Connection", "keep-alive") // Signal to keep link open
             .post(body)
             .build()
-// ... existing try/catch block ...
 
         try {
             client.newCall(request).execute().use { response ->

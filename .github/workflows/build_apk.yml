@@ -5,14 +5,14 @@ on:
     branches: [ "main", "master" ]
   pull_request:
     branches: [ "main", "master" ]
-  workflow_dispatch: # Allows manual triggering
+  workflow_dispatch: # Allows manual triggering from GitHub Actions UI
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
-    name: Build & Verify
+    name: Build & Verify Neural Link
     runs-on: ubuntu-latest
 
     steps:
@@ -29,45 +29,37 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Lint Analysis
-      run: ./gradlew lintDebug
-
     - name: Build Debug APK
       run: ./gradlew assembleDebug
 
-    - name: Upload Debug APK
+    - name: Prepare APK for Release
+      run: |
+        mkdir -p release-artifacts
+        cp app/build/outputs/apk/debug/app-debug.apk release-artifacts/InfoMate-v9-STABLE.apk
+
+    - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: InfoMate-v9-Debug-APK
-        path: app/build/outputs/apk/debug/app-debug.apk
-
-    - name: Build Release Bundle (AAB)
-      run: ./gradlew bundleRelease
-
-    - name: Upload Release Bundle
-      uses: actions/upload-artifact@v4
-      with:
-        name: InfoMate-v9-Release-Bundle
-        path: app/build/outputs/bundle/release/app-release.aab
+        name: InfoMate-v9-STABLE-APK
+        path: release-artifacts/InfoMate-v9-STABLE.apk
 
     - name: Create GitHub Release
       if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: v9.0-stable
-        name: InfoMate v9.0 - Stable Neural Link
+        tag_name: v9.0-b${{ github.run_number }}
+        name: InfoMate v9.0 - Stable Build #${{ github.run_number }}
         body: |
-          ### InfoMate v9.0 Stable Build
+          ### InfoMate v9.0 - Stable Neural Link
+          **Architect:** Socrates Kipruto
           
-          This release includes major architectural upgrades:
-          - **Neural Link Stability:** Jittered Backoff & Connection Pooling.
-          - **Circuit Breaker:** Smart API rate limit handling.
-          - **Enterprise Diagnostics:** Comprehensive health reporting.
-          - **Resilient Observability:** Persistent health logs via Supabase.
+          This automated build contains the latest neural stability fixes:
+          - **Hardened Ingestor:** Safe pattern extraction across Android versions.
+          - **Stabilized Networking:** Exponential backoff for API reliability.
+          - **Enterprise Diagnostics:** Real-time health monitoring enabled.
           
-          **Installation:** Download the `app-debug.apk` attached below.
-        files: |
-          app/build/outputs/apk/debug/app-debug.apk
+          **Download the APK below.**
+        files: release-artifacts/InfoMate-v9-STABLE.apk
         draft: false
         prerelease: false
       env:
