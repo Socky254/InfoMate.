@@ -64,12 +64,12 @@ fun BrainVisualizer(state: InfomateState, modifier: Modifier = Modifier) {
 
     Box(
         contentAlignment = Alignment.Center,
-        modifier = modifier.size(340.dp).graphicsLayer()
+        modifier = modifier.graphicsLayer()
     ) {
         // Limbic Energy Glow (Depth)
         Box(
             modifier = Modifier
-                .size(260.dp)
+                .fillMaxSize(0.8f)
                 .scale(pulse * vocalAmplify)
                 .blur(70.dp)
                 .background(Brush.radialGradient(listOf(color.copy(alpha = 0.25f), Color.Transparent)), CircleShape)
@@ -77,7 +77,7 @@ fun BrainVisualizer(state: InfomateState, modifier: Modifier = Modifier) {
 
         Canvas(
             modifier = Modifier
-                .size(300.dp)
+                .fillMaxSize()
                 .drawWithCache {
                     onDrawBehind {
                         val center = size.center
