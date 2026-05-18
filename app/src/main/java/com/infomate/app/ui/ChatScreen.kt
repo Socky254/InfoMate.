@@ -321,6 +321,15 @@ fun HeaderSection(
                             modifier = Modifier.size(16.dp)
                         )
                     }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(onClick = vm::toggleVoiceOutput, modifier = Modifier.size(24.dp)) {
+                        Icon(
+                            imageVector = if (state.isVoiceOutputEnabled) Icons.Filled.VolumeUp else Icons.Filled.VolumeOff,
+                            contentDescription = "Toggle Speech Output",
+                            tint = if (state.isVoiceOutputEnabled) CyberCyan else SilverText.copy(alpha = 0.3f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
         } else {

@@ -24,5 +24,6 @@ data class UIState(
     val isSpeaking: Boolean = false, // AI speaking
     val isListening: Boolean = false, // App listening to user
     val isMaleVoice: Boolean = false,
-    val voiceAmplitudes: List<Float> = List(20) { 0.1f }
+    val voiceAmplitudes: List<Float> = List(20) { 0.1f },
+    val isVoiceOutputEnabled: Boolean = true // NEW: Master switch for AI Voice
 )

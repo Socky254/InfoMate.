@@ -229,6 +229,12 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         }
     }
 
+    fun toggleVoiceOutput() {
+        val newState = !_state.value.isVoiceOutputEnabled
+        _state.update { it.copy(isVoiceOutputEnabled = newState) }
+        if (!newState) tts?.stop() // Stop immediate speech if disabled
+    }
+
     private fun startSpectrumAnimation() {
         spectrumJob?.cancel()
         spectrumJob = viewModelScope.launch {
@@ -247,6 +253,8 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     }
 
     fun speak(text: String) {
+        if (!_state.value.isVoiceOutputEnabled) return // RESPECT THE SILENCE TOGGLE
+
         val params = Bundle()
         params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "INFOMATE_SPEECH")
         
