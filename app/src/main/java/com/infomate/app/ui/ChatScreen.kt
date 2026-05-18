@@ -151,22 +151,28 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                     contentPadding = PaddingValues(bottom = 24.dp)
                 ) {
                     item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(300.dp),
-                            contentAlignment = Alignment.Center
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            VisualHub(
-                                brainState = state.brainState,
-                                isActive = state.isSpeaking || state.isListening,
-                                amplitudes = state.voiceAmplitudes
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(280.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                VisualHub(
+                                    brainState = state.brainState,
+                                    isActive = state.isSpeaking || state.isListening,
+                                    amplitudes = state.voiceAmplitudes
+                                )
+                            }
+                            
+                            // Cognitive process bar moved up towards the iris
+                            NeuralProcessMonitor(steps = state.cognitiveSteps)
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
                         }
-                    }
-
-                    item {
-                        NeuralProcessMonitor(steps = state.cognitiveSteps)
                     }
 
                     val filteredMessages = if (searchQuery.isBlank()) state.messages 

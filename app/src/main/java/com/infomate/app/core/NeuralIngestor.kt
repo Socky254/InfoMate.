@@ -6,6 +6,8 @@ import android.provider.CallLog
 import android.provider.ContactsContract
 import android.provider.Telephony
 import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.*
 
 class NeuralIngestor(private val context: Context) {
@@ -17,10 +19,10 @@ class NeuralIngestor(private val context: Context) {
         private const val CACHE_EXPIRY = 15 * 60 * 1000 // 15 Minutes
     }
 
-    fun captureUserPatterns(): String {
+    suspend fun captureUserPatterns(): String = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         if (cachedPatterns != null && (now - lastCacheTime) < CACHE_EXPIRY) {
-            return cachedPatterns!!
+            return@withContext cachedPatterns!!
         }
 
         val summary = StringBuilder("### USER DATA PATTERNS ###\n")
@@ -37,7 +39,7 @@ class NeuralIngestor(private val context: Context) {
         
         cachedPatterns = summary.toString()
         lastCacheTime = System.currentTimeMillis()
-        return cachedPatterns!!
+        cachedPatterns!!
     }
 
     private fun getContactInsights(): String {

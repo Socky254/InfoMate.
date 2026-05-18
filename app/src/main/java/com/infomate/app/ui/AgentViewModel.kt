@@ -425,7 +425,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
         viewModelScope.launch {
             try {
-                // Read phone data patterns for deep personalization
+                // Read phone data patterns for deep personalization - Now suspend and safe
                 val patterns = neuralIngestor.captureUserPatterns()
                 val contextualQuery = userInput + getDeviceStatus() + "\n$patterns"
                 
