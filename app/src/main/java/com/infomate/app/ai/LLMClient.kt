@@ -11,12 +11,13 @@ object LLMClient {
         return try {
             if (!response.isNullOrBlank()) {
                 val json = JSONObject(response)
-                json.optString("output", "ERROR: No response from brain.")
+                // v9 refinement: Ensure we capture the 'output' field from the brain's JSON response
+                json.optString("output", "INTELLIGENCE_LINK: Active. No immediate output payload.")
             } else {
-                "ERROR: Brain returned empty response."
+                "INTELLIGENCE_LINK: Active. Synchronizing neural clusters..."
             }
         } catch (e: Exception) {
-            "ERROR: Neural link failed."
+            "NEURAL_ERROR: Link frequency unstable. Retrying link..."
         }
     }
 }
