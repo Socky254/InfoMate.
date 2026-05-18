@@ -56,8 +56,6 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview()
     ) { bitmap ->
-        // For a personal app, we can simplify by just acknowledging the capture
-        // In a full app, we would save the bitmap to a URI
         if (bitmap != null) {
             vm.addMediaMessage("camera_capture", MessageType.IMAGE)
         }
@@ -65,15 +63,20 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
 
     InfoMateTheme {
         Box(modifier = Modifier.fillMaxSize().background(Obsidian)) {
-            // Background Ambient Glow
+            // LAYER 1: Futuristic Animated Tech Grid
+            TechGridBackground()
+
+            // LAYER 2: Neural Gradient Glows
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.radialGradient(
-                            colors = listOf(CyberCyan.copy(alpha = 0.05f), Color.Transparent),
+                            0.0f to CyberCyan.copy(alpha = 0.15f),
+                            0.5f to NeonBlue.copy(alpha = 0.05f),
+                            1.0f to Color.Transparent,
                             center = Offset(0f, 0f),
-                            radius = 1000f
+                            radius = 1500f
                         )
                     )
             )
@@ -183,6 +186,62 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                 }
             }
         }
+    }
+}
+
+@Composable
+fun TechGridBackground() {
+    val infiniteTransition = rememberInfiniteTransition(label = "grid")
+    val gridOffset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 100f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(10000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "offset"
+    )
+
+    androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+        val gridSpacing = 50.dp.toPx()
+        val strokeWidth = 0.5.dp.toPx()
+        val gridColor = CyberCyan.copy(alpha = 0.08f)
+
+        // Vertical Lines
+        var x = (gridOffset % gridSpacing)
+        while (x < size.width) {
+            drawLine(
+                color = gridColor,
+                start = Offset(x, 0f),
+                end = Offset(x, size.height),
+                strokeWidth = strokeWidth
+            )
+            x += gridSpacing
+        }
+
+        // Horizontal Lines
+        var y = (gridOffset % gridSpacing)
+        while (y < size.height) {
+            drawLine(
+                color = gridColor,
+                start = Offset(0f, y),
+                end = Offset(size.width, y),
+                strokeWidth = strokeWidth
+            )
+            y += gridSpacing
+        }
+        
+        // Circular Depth Glow
+        drawRect(
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    Obsidian,
+                    Color.Transparent,
+                    Obsidian
+                )
+            ),
+            size = size
+        )
     }
 }
 
@@ -477,12 +536,20 @@ fun MessageCard(message: ChatMessage) {
                     bottomStart = if (isOperator) 24.dp else 4.dp,
                     bottomEnd = if (isOperator) 4.dp else 24.dp
                 ),
-                color = if (isOperator) SilverText.copy(alpha = 0.08f) else CyberCyan.copy(alpha = 0.12f),
+                color = if (isOperator) SilverText.copy(alpha = 0.1f) else Color.Transparent,
                 border = androidx.compose.foundation.BorderStroke(
-                    0.5.dp,
-                    if (isOperator) SilverText.copy(alpha = 0.1f) else CyberCyan.copy(alpha = 0.2f)
+                    1.dp,
+                    if (isOperator) Brush.linearGradient(listOf(SilverText.copy(alpha = 0.2f), Color.Transparent))
+                    else Brush.linearGradient(listOf(CyberCyan.copy(alpha = 0.5f), NeonBlue.copy(alpha = 0.2f)))
                 ),
-                shadowElevation = if (isOperator) 0.dp else 4.dp
+                modifier = if (!isOperator) Modifier.background(
+                    Brush.radialGradient(
+                        colors = listOf(CyberCyan.copy(alpha = 0.15f), Color.Transparent),
+                        center = Offset(0f, 0f),
+                        radius = 800f
+                    ),
+                    shape = RoundedCornerShape(24.dp)
+                ) else Modifier
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     if (message.type != MessageType.TEXT && message.mediaUri != null) {
