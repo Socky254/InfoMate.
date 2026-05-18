@@ -13,14 +13,34 @@ import java.util.concurrent.TimeUnit
 
 object SupabaseClient {
 
+    // Optimized OkHttpClient with connection pooling and stabilization
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(90, TimeUnit.SECONDS) // Increased for complex reasoning
         .writeTimeout(30, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true) // Automatically handle simple connection drops
+        .connectionPool(okhttp3.ConnectionPool(5, 5, TimeUnit.MINUTES)) // Keep connections warm
         .build()
         
     private val gson = Gson()
     private val mediaType = "application/json; charset=utf-8".toMediaType()
+
+    // Circuit Breaker / Cooldown mechanism
+    private var cooldownUntil = 0L
+    private const val COOLDOWN_DURATION = 30_000L // 30 seconds
+
+    private fun checkCooldown(): String? {
+        val now = System.currentTimeMillis()
+        if (now < cooldownUntil) {
+            val remaining = (cooldownUntil - now) / 1000
+            return "{\"error\": \"System Cooling Down\", \"error_code\": \"RETRY_EXHAUSTED\", \"message\": \"Neural link is stabilizing. Please wait $remaining seconds.\"}"
+        }
+        return null
+    }
+
+    private fun triggerCooldown() {
+        cooldownUntil = System.currentTimeMillis() + COOLDOWN_DURATION
+    }
 
     suspend fun insert(table: String, data: Map<String, Any>) = withContext(Dispatchers.IO) {
         val json = gson.toJson(data)
@@ -30,8 +50,10 @@ object SupabaseClient {
             .url("${Config.SUPABASE_URL}/rest/v1/$table")
             .addHeader("apikey", Config.SUPABASE_KEY)
             .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
+            .addHeader("Connection", "keep-alive") // Signal to keep link open
             .post(body)
             .build()
+// ... existing try/catch block ...
 
         try {
             client.newCall(request).execute().use { response ->
@@ -72,39 +94,54 @@ object SupabaseClient {
     }
 
     suspend fun callFunction(name: String, params: Map<String, Any>): String? = withContext(Dispatchers.IO) {
-        val json = gson.toJson(params)
-        val body = json.toRequestBody(mediaType)
-        
-        val request = Request.Builder()
-            .url("${Config.SUPABASE_URL}/functions/v1/$name")
-            .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
-            .post(body)
-            .build()
+        val cooldownMessage = checkCooldown()
+        if (cooldownMessage != null) return@withContext cooldownMessage
 
-        // Implement retry logic (repeat 3 times)
+        val json = gson.toJson(params)
+// ...
+        // Implement jittered exponential backoff for neural stability
         var lastError = ""
-        for (i in 1..3) {
+        for (i in 1..4) { // Increased attempts to 4
             try {
                 client.newCall(request).execute().use { response ->
                     val responseBody = response.body?.string()
-                    Log.d("INFOMATE_RAW", "Function: $name, Attempt: $i, Response: $responseBody")
+                    
+                    // STEP 1: LOG RAW API RESPONSE (User requested tag)
+                    Log.d("AI_RAW_RESPONSE", responseBody ?: "NULL")
                     
                     if (response.isSuccessful) return@withContext responseBody
                     
                     if (response.code == 429) {
-                        return@withContext "{\"error\": \"AI quota exceeded. Please wait a moment before retrying.\"}"
+                        triggerCooldown()
+                        return@withContext "{\"error\": \"AI quota exceeded\", \"error_code\": \"RETRY_EXHAUSTED\", \"message\": \"API rate limits reached. Cooling down for 30s.\"}"
                     }
-                    
+
+                    // Log the failure to HealthManager
                     lastError = "HTTP ${response.code}: $responseBody"
+                    Log.w("SUPABASE_FUNC", "Attempt $i failed: $lastError")
+                    
+                    // If we get a 5xx error, it's a server issue, worth retrying
+                    // If we get a 4xx (other than 429), it's likely a client error, don't retry
+                    if (response.code in 400..499 && response.code != 429 && response.code != 408) {
+                        return@withContext "{\"error\": \"Client error\", \"error_code\": \"CLIENT_ERR\", \"message\": \"$lastError\"}"
+                    }
                 }
             } catch (e: Exception) {
                 lastError = e.message ?: "Unknown error"
-                Log.e("SUPABASE_FUNC", "Attempt $i failed: $lastError")
+                Log.e("SUPABASE_FUNC", "Attempt $i Exception: $lastError")
+                
+                // If it's a timeout or connection issue, we retry.
             }
-            if (i < 3) kotlinx.coroutines.delay(1000)
+            
+            if (i < 4) {
+                // Exponential backoff: 1s, 2s, 4s with jitter
+                val delayTime = (Math.pow(2.0, i.toDouble() - 1) * 1000).toLong() + (0..500).random()
+                kotlinx.coroutines.delay(delayTime)
+            }
         }
-        return@withContext "{\"error\": \"System timeout. Connection to neural link failed after 3 attempts. $lastError\"}"
+        
+        triggerCooldown() // Failure after 4 attempts triggers a cooldown
+        return@withContext "{\"error\": \"Neural link unstable\", \"error_code\": \"RETRY_EXHAUSTED\", \"message\": \"Communication failed after 4 attempts. $lastError\"}"
     }
 
     suspend fun select(table: String, query: String = "*", order: String = "timestamp.desc"): String? = withContext(Dispatchers.IO) {
@@ -112,6 +149,7 @@ object SupabaseClient {
             .url("${Config.SUPABASE_URL}/rest/v1/$table?select=$query&order=$order")
             .addHeader("apikey", Config.SUPABASE_KEY)
             .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
+            .addHeader("Connection", "keep-alive")
             .get()
             .build()
 

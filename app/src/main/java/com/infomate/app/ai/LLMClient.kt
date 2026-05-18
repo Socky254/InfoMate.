@@ -46,7 +46,7 @@ object LLMClient {
                 Log.e("INFOMATE_ERROR", "API reported error: $errorCode - $errorMsg")
                 
                 return when (errorCode) {
-                    "RETRY_EXHAUSTED" -> "INFOMATE: Connection unstable. API rate limits reached after multiple attempts. Please standby for 60s."
+                    "RETRY_EXHAUSTED" -> "INFOMATE: $errorMsg"
                     "SAFETY_BLOCK" -> "INFOMATE: Neural safeguard triggered. The directive contains restricted concepts. Please rephrase."
                     else -> if (errorMsg.isNotBlank()) "SYSTEM_ERROR: $errorMsg" else json.optString("output", "")
                 }
