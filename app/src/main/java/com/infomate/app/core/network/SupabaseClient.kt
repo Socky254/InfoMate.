@@ -9,9 +9,25 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+import android.util.Log
+import com.infomate.app.core.config.Config
+import com.google.gson.Gson
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.util.concurrent.TimeUnit
+
 object SupabaseClient {
 
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .build()
+        
     private val gson = Gson()
     private val mediaType = "application/json; charset=utf-8".toMediaType()
 
@@ -26,10 +42,14 @@ object SupabaseClient {
             .post(body)
             .build()
 
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                // Log error if necessary
+        try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    Log.e("SUPABASE_INSERT", "Failed: ${response.code} - ${response.body?.string()}")
+                }
             }
+        } catch (e: Exception) {
+            Log.e("SUPABASE_INSERT", "Exception: ${e.message}")
         }
     }
 
@@ -44,12 +64,19 @@ object SupabaseClient {
             .post(body)
             .build()
 
-        client.newCall(request).execute().use { response ->
-            if (response.isSuccessful) {
-                listOf(response.body?.string() ?: "")
-            } else {
-                emptyList()
+        try {
+            client.newCall(request).execute().use { response ->
+                val responseBody = response.body?.string()
+                Log.d("SUPABASE_RPC_RAW", "Table: $function, Response: $responseBody")
+                if (response.isSuccessful) {
+                    listOf(responseBody ?: "")
+                } else {
+                    emptyList()
+                }
             }
+        } catch (e: Exception) {
+            Log.e("SUPABASE_RPC", "Exception: ${e.message}")
+            emptyList()
         }
     }
 
@@ -64,9 +91,29 @@ object SupabaseClient {
             .post(body)
             .build()
 
-        client.newCall(request).execute().use { response ->
-            if (response.isSuccessful) response.body?.string() else null
+        // Implement retry logic (repeat 3 times)
+        var lastError = ""
+        for (i in 1..3) {
+            try {
+                client.newCall(request).execute().use { response ->
+                    val responseBody = response.body?.string()
+                    Log.d("INFOMATE_RAW", "Function: $name, Attempt: $i, Response: $responseBody")
+                    
+                    if (response.isSuccessful) return@withContext responseBody
+                    
+                    if (response.code == 429) {
+                        return@withContext "{\"error\": \"AI quota exceeded. Please wait a moment before retrying.\"}"
+                    }
+                    
+                    lastError = "HTTP ${response.code}: $responseBody"
+                }
+            } catch (e: Exception) {
+                lastError = e.message ?: "Unknown error"
+                Log.e("SUPABASE_FUNC", "Attempt $i failed: $lastError")
+            }
+            if (i < 3) kotlinx.coroutines.delay(1000)
         }
+        return@withContext "{\"error\": \"System timeout. Connection to neural link failed after 3 attempts. $lastError\"}"
     }
 
     suspend fun select(table: String, query: String = "*", order: String = "timestamp.desc"): String? = withContext(Dispatchers.IO) {
@@ -77,8 +124,12 @@ object SupabaseClient {
             .get()
             .build()
 
-        client.newCall(request).execute().use { response ->
-            if (response.isSuccessful) response.body?.string() else null
+        try {
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) response.body?.string() else null
+            }
+        } catch (e: Exception) {
+            null
         }
     }
 
@@ -94,10 +145,15 @@ object SupabaseClient {
             .post(body)
             .build()
 
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                // Log error
+        try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    Log.e("SUPABASE_UPSERT", "Failed: ${response.code}")
+                }
             }
+        } catch (e: Exception) {
+            Log.e("SUPABASE_UPSERT", "Exception: ${e.message}")
         }
     }
 }
+

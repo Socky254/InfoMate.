@@ -11,7 +11,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 1. MASTER ARCHIVE (Identity Layer)
 CREATE TABLE IF NOT EXISTS master_archive (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     fact_title TEXT NOT NULL,
     fact_content TEXT NOT NULL,
     category TEXT DEFAULT 'PERSONAL_IDENTITY',
@@ -24,7 +24,7 @@ ON CONFLICT DO NOTHING;
 
 -- 2. CHAT MESSAGES (The Flow)
 CREATE TABLE IF NOT EXISTS messages (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID DEFAULT auth.uid(),
     content TEXT NOT NULL,
     sender TEXT NOT NULL CHECK (sender IN ('OPERATOR', 'INFOMATE', 'SYSTEM')),
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS messages (
 
 -- 3. NEURAL MEMORY (RAG System)
 CREATE TABLE IF NOT EXISTS memory (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     content TEXT NOT NULL,
     embedding VECTOR(768), -- Gemini Standard
     metadata JSONB DEFAULT '{}',
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS memory (
 
 -- 4. COGNITIVE ENGINE LOGS (Transparency)
 CREATE TABLE IF NOT EXISTS cognitive_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     message_id UUID REFERENCES messages(id) ON DELETE CASCADE,
     step_title TEXT NOT NULL,
     step_content TEXT,
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS cognitive_logs (
 
 -- 5. USER PATTERNS & INSIGHTS (Machine Learning)
 CREATE TABLE IF NOT EXISTS user_patterns (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID DEFAULT auth.uid(),
     pattern_type TEXT NOT NULL,
     raw_data TEXT NOT NULL,
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS user_patterns (
 );
 
 CREATE TABLE IF NOT EXISTS neural_insights (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID DEFAULT auth.uid(),
     insight_label TEXT NOT NULL,
     insight_content TEXT NOT NULL,
@@ -95,11 +95,21 @@ BEGIN
   RETURN QUERY
   SELECT m.id, m.content, 1 - (m.embedding <=> query_embedding) AS similarity
   FROM memory m
+  WHERE 1 - (m.embedding <=> query_embedding) > match_threshold
   ORDER BY m.embedding <=> query_embedding
   LIMIT match_count;
 END; $$;
 
--- 8. UTILITIES
+-- 8. UTILITIES & DIAGNOSTICS
+CREATE TABLE IF NOT EXISTS public.system_health (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    api_connected BOOLEAN DEFAULT TRUE,
+    last_response_ms INT,
+    status_code TEXT,
+    error_log TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE OR REPLACE FUNCTION clear_chat_history()
 RETURNS void AS $$
 BEGIN

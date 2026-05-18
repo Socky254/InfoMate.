@@ -281,14 +281,14 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         
         _state.update { it.copy(
             status = "SCANNING GLOBAL ARCHIVES...",
-            brainState = InfomateState.THINKING,
+            brainState = com.infomate.core.ui.components.InfomateState.THINKING,
             input = "" 
         ) }
 
         viewModelScope.launch {
             try {
                 // Specialized search query for the AI
-                val searchPrompt = "SEARCH_REQUEST: $query. Search global knowledge and your archives. Provide a comprehensive summary."
+                val searchPrompt = "SEARCH_REQUEST: $query. Search global knowledge and your archives. Provide a comprehensive summary. If you find nothing, do not say 'no intelligent output', instead provide a helpful AI summary of what that topic usually entails."
                 
                 launch {
                     reasoningEngine.streamReasoning("Global Search: $query").collect { step ->
@@ -306,7 +306,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                 _state.update { it.copy(
                     messages = it.messages + searchMessage,
                     status = "CORE: ACTIVE",
-                    brainState = InfomateState.RESPONDING
+                    brainState = com.infomate.core.ui.components.InfomateState.RESPONDING
                 ) }
                 
                 speak(response)

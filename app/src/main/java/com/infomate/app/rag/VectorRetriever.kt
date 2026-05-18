@@ -12,7 +12,7 @@ object VectorRetriever {
             "match_vectors",
             mapOf(
                 "query_embedding" to embedding,
-                "match_threshold" to 0.75,
+                "match_threshold" to 0.3, // Lowered from 0.75 for better recall
                 "match_count" to 5
             )
         )

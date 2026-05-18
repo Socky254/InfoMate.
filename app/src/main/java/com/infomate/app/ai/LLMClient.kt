@@ -3,6 +3,10 @@ package com.infomate.app.ai
 import com.infomate.app.core.network.SupabaseClient
 import org.json.JSONObject
 
+import android.util.Log
+import com.infomate.app.core.network.SupabaseClient
+import org.json.JSONObject
+
 object LLMClient {
     /**
      * Highly resilient generator that handles various AI API structures.
@@ -12,55 +16,89 @@ object LLMClient {
         val params = mapOf("prompt" to prompt)
         val response = SupabaseClient.callFunction("infomate-brain", params)
         
+        // 1. RAW RESPONSE LOGGING (CRITICAL)
+        Log.d("INFOMATE_RAW", "Raw API Response: $response")
+
         if (response.isNullOrBlank()) {
-            return "ERROR: Neural Link frequency unstable. Verify API key, network connectivity, and quota."
+            return """
+                INFOMATE could not complete reasoning.
+                Possible causes:
+                - Network instability or timeout
+                - Neural Link (API) frequency unstable
+                - Neural Bridge (Supabase) disruption
+                
+                Please verify your connection and try again.
+            """.trimIndent()
         }
 
         val trimmedResponse = response.trim()
 
-        // STRATEGY 1: If it's not JSON, it's likely a raw text response (Fast-path)
+        // 2. SAFE RESPONSE PARSING
+        // If it's not JSON, it might be raw text from a simple endpoint
         if (!trimmedResponse.startsWith("{") && !trimmedResponse.startsWith("[")) {
-            return trimmedResponse
+            return validateOutput(trimmedResponse)
         }
 
         return try {
             val json = JSONObject(trimmedResponse)
 
-            // STRATEGY 2: Check for Custom Wrappers (output, text, response, message)
-            val commonFields = listOf("output", "text", "response", "message", "content")
-            for (field in commonFields) {
-                val value: String = json.optString(field, "") ?: ""
-                if (value.isNotBlank()) return value
+            // Check for explicit error from the Edge Function/Supabase
+            if (json.has("error")) {
+                val errorMsg = json.optString("error")
+                Log.e("INFOMATE_ERROR", "API reported error: $errorMsg")
+                return "SYSTEM_ERROR: $errorMsg"
             }
 
-            // STRATEGY 3: Gemini/Google Structure (candidates -> content -> parts -> text)
-            val candidates = json.optJSONArray("candidates")
-            val firstCandidate = candidates?.optJSONObject(0)
-            val contentObj = firstCandidate?.optJSONObject("content")
-            val parts = contentObj?.optJSONArray("parts")
-            val firstPart = parts?.optJSONObject(0)
-            val geminiText: String = firstPart?.optString("text") ?: ""
-            if (geminiText.isNotBlank()) return geminiText
+            // Strategy: Check most common AI response fields safely
+            val result = json.optString("output", "")
+                .ifBlank { json.optString("text", "") }
+                .ifBlank { json.optString("response", "") }
+                .ifBlank { json.optString("message", "") }
+                .ifBlank { json.optString("content", "") }
+                .ifBlank { 
+                    // Gemini/Google Structure (candidates -> content -> parts -> text)
+                    json.optJSONArray("candidates")?.optJSONObject(0)
+                        ?.optJSONObject("content")
+                        ?.optJSONArray("parts")?.optJSONObject(0)
+                        ?.optString("text", "") ?: ""
+                }
+                .ifBlank {
+                    // OpenAI Structure (choices -> message -> content)
+                    json.optJSONArray("choices")?.optJSONObject(0)
+                        ?.optJSONObject("message")
+                        ?.optString("content", "") ?: ""
+                }
 
-            // STRATEGY 4: OpenAI Structure (choices -> message -> content)
-            val choices = json.optJSONArray("choices")
-            val firstChoice = choices?.optJSONObject(0)
-            val msgObj = firstChoice?.optJSONObject("message")
-            val openAiText: String = msgObj?.optString("content") ?: ""
-            if (openAiText.isNotBlank()) return openAiText
-
-            // STRATEGY 5: Check for Error or Safety signals
-            val error: String = json.optJSONObject("error")?.optString("message") ?: ""
-            if (error.isNotBlank()) return "SYSTEM_ERROR: $error"
-
-            val promptFeedback = json.optJSONObject("promptFeedback")
-            if (promptFeedback != null) return "SAFETY_BLOCK: The request was restricted by AI safety filters."
-
-            // STRATEGY 6: Final Fallback - Return raw response if it's non-empty
-            trimmedResponse
+            if (result.isNotBlank()) {
+                validateOutput(result)
+            } else {
+                Log.w("INFOMATE_PARSING", "Could not extract text from JSON. Raw: $trimmedResponse")
+                """
+                    INFOMATE reasoning failed to synthesize.
+                    The neural output was malformed or empty.
+                    
+                    Diagnostic code: ERR_PARSE_NULL
+                """.trimIndent()
+            }
         } catch (e: Exception) {
-            // If parsing fails for any reason, return the raw response string
-            trimmedResponse
+            Log.e("INFOMATE_PARSING", "JSON Parsing Exception: ${e.message}")
+            // Fallback: Return raw response if it's reasonably short, else error
+            if (trimmedResponse.length < 500) validateOutput(trimmedResponse)
+            else "INFOMATE: Critical failure in neural decoding. (ERR_JSON_FAIL)"
+        }
+    }
+
+    private fun validateOutput(text: String): String {
+        return if (text.isNotBlank() && text.length > 5) {
+            text
+        } else {
+            """
+                INFOMATE: Neural output detected but insufficient for communication.
+                The generated response was too short or blank.
+                
+                Retrying or rephrasing the directive may help.
+            """.trimIndent()
         }
     }
 }
+

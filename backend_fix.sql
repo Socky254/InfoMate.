@@ -1,3 +1,7 @@
+-- 0. EXTENSIONS
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS vector;
+
 -- 1. CLEAR OLD FUNCTION
 DROP FUNCTION IF EXISTS match_vectors(vector, float, int);
 
@@ -36,6 +40,7 @@ BEGIN
   RETURN QUERY
   SELECT m.id, m.content, 1 - (m.embedding <=> query_embedding) AS similarity
   FROM memory m
+  WHERE 1 - (m.embedding <=> query_embedding) > match_threshold
   ORDER BY m.embedding <=> query_embedding
   LIMIT match_count;
 END; $$;
@@ -43,7 +48,7 @@ END; $$;
 -- 4. THE 10/10 UPGRADE: MASTER ARCHIVE
 -- This table is for "Static Wisdom" or "Permanent Facts" about Socrates.
 CREATE TABLE IF NOT EXISTS master_archive (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     fact_title TEXT NOT NULL,
     fact_content TEXT NOT NULL,
     category TEXT DEFAULT 'PERSONAL_IDENTITY',
