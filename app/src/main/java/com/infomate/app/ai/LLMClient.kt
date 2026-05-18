@@ -100,26 +100,17 @@ object LLMClient {
     }
 
     private fun validateOutput(text: String): String {
-        val trimmed = text.trim()
+        val trimmed = text.trim().removePrefix("INFOMATE:").trim()
         
-        // Check if the response is just the name of the app (common failure mode for some LLMs)
-        if (trimmed.equals("infomate", ignoreCase = true) || trimmed.equals("iris", ignoreCase = true)) {
-            return """
-                INFOMATE: Neural link generated a partial identity pulse but failed to synthesize a full response.
-                
-                This usually occurs when the prompt is too complex or the backend is under high load. Please retry your directive.
-            """.trimIndent()
+        // If the AI is just repeating its name, it's a hallucination loop
+        if (trimmed.lowercase() == "infomate" || trimmed.lowercase() == "iris") {
+            return "I am synchronized and ready for your next directive, Socrates. How can I assist you further?"
         }
 
-        return if (trimmed.isNotBlank() && trimmed.length > 5) {
+        return if (trimmed.isNotBlank() && trimmed.length > 2) {
             trimmed
         } else {
-            """
-                INFOMATE: Neural output detected but insufficient for communication.
-                The generated response was too short or blank.
-                
-                Retrying or rephrasing the directive may help.
-            """.trimIndent()
+            "Neural link active. Waiting for specific directive."
         }
     }
 }

@@ -30,27 +30,19 @@ class AgentOrchestrator(private val androidContext: Context? = null) {
         // We search using the userIntent only, to avoid metadata noise
         val memories = VectorRetriever.search(userIntent)
 
-        // 5. Persona Definition
-        val masterInstruction = """
-            [IDENTITY: INFOMATE v9]
-            [USER: Socrates Kipruto]
-            [PERSONALITY: Highly intelligent digital extension of the user. Sophisticated and helpful.]
-            [GUIDELINE: Respond conversationally. Avoid technical jargon unless relevant. Do not simply state your name.]
-        """.trimIndent()
-
-        // 6. Synthesis with Isolated Context
+        // 5. High-Efficiency Synthesis Prompt
         val prompt = """
-            $masterInstruction
+            You are INFOMATE v9, a sophisticated AI partner for Socrates Kipruto.
             
-            Directive from Socrates Kipruto: $userIntent
+            User Directive: $userIntent
 
-            Current Device Context (Reference only if needed):
-            ${if (fullQuery.contains("[SYSTEM_CONTEXT:")) "[SYSTEM_CONTEXT:" + fullQuery.substringAfter("[SYSTEM_CONTEXT:") else "None"}
+            Device Context:
+            ${if (fullQuery.contains("[SYSTEM_CONTEXT:")) fullQuery.substringAfter("[SYSTEM_CONTEXT:").substringBefore("]") else "Stable"}
 
-            Historical Context:
-            ${memories.take(3).joinToString("\n")}
+            Relevant Memories:
+            ${memories.take(2).joinToString("\n")}
             
-            Final Objective: Provide a comprehensive and intelligent response to the directive.
+            Instruction: Provide a direct, intelligent, and helpful response. Do not repeat your name or the system context.
         """.trimIndent()
 
         val response = LLMClient.generate(prompt)
