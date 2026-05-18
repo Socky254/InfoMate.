@@ -171,21 +171,26 @@ object DiagnosticAgent {
         }
     }
 
-    private suspend fun checkNetworkHealth(): String {
-        return try {
-            // Use a standard HTTP URL that returns 204 (No Content) for connectivity checks
-            val request = okhttp3.Request.Builder().url("https://www.google.com/generate_204").build()
+    private suspend fun checkNetworkHealth(): String = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        try {
+            // Standard Android connectivity check URL
+            val request = okhttp3.Request.Builder()
+                .url("https://connectivitycheck.gstatic.com/generate_204")
+                .build()
+            
             com.infomate.app.core.network.ApiClient.okHttpClient.newCall(request).execute().use { response ->
                 if (response.isSuccessful || response.code == 204) {
                     HealthManager.logHealth(HealthManager.CAT_NETWORK, HealthState.ONLINE, "Global Backbone Reached", HealthSeverity.STABLE)
                     "ONLINE (STABLE)"
                 } else {
-                    HealthManager.logHealth(HealthManager.CAT_NETWORK, HealthState.DEGRADED, "Carrier DNS/Connectivity Instability", HealthSeverity.WARNING)
+                    HealthManager.logHealth(HealthManager.CAT_NETWORK, HealthState.DEGRADED, "Limited Connectivity (HTTP ${response.code})", HealthSeverity.WARNING)
                     "DEGRADED (UNSTABLE)"
                 }
             }
         } catch (e: Exception) {
-            HealthManager.logHealth(HealthManager.CAT_NETWORK, HealthState.OFFLINE, "No Path to Internet: ${e.message}", HealthSeverity.EMERGENCY)
+            // Log the specific exception to help debugging
+            Log.e("NETWORK_CHECK", "Failure: ${e.message}")
+            HealthManager.logHealth(HealthManager.CAT_NETWORK, HealthState.OFFLINE, "Connection Failure: ${e.message}", HealthSeverity.EMERGENCY)
             "OFFLINE (NO_INTERNET)"
         }
     }
