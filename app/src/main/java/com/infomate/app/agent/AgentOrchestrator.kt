@@ -3,8 +3,9 @@ package com.infomate.app.agent
 import com.infomate.app.ai.LLMClient
 import com.infomate.app.rag.VectorRetriever
 import com.infomate.app.rag.MemorySync
+import android.content.Context
 
-class AgentOrchestrator {
+class AgentOrchestrator(private val context: Context? = null) {
 
     suspend fun execute(query: String): String {
         // 1. Authorization & Command Check
@@ -13,7 +14,13 @@ class AgentOrchestrator {
             return DiagnosticAgent.runFullDiagnostic() + "\n\nIris: I have completed the system scan as per your technical directive, Master Architect."
         }
 
-        // 1. Semantic Retrieval (RAG v2)
+        // 2. Edge Fallback (New v9.5)
+        context?.let {
+            val edgeResponse = EdgeBrain.processLocally(query, it)
+            if (edgeResponse != null) return edgeResponse
+        }
+
+        // 3. Semantic Retrieval (RAG v2)
         val context = VectorRetriever.search(query)
 
         // 2. Persona Definition (The Conversational Evolution)

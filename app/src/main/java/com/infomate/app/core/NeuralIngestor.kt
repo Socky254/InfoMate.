@@ -10,7 +10,19 @@ import java.util.*
 
 class NeuralIngestor(private val context: Context) {
 
+    private var cachedPatterns: String? = null
+    private var lastCacheTime: Long = 0
+
+    companion object {
+        private const val CACHE_EXPIRY = 15 * 60 * 1000 // 15 Minutes
+    }
+
     fun captureUserPatterns(): String {
+        val now = System.currentTimeMillis()
+        if (cachedPatterns != null && (now - lastCacheTime) < CACHE_EXPIRY) {
+            return cachedPatterns!!
+        }
+
         val summary = StringBuilder("### USER DATA PATTERNS ###\n")
         
         try {
@@ -23,7 +35,9 @@ class NeuralIngestor(private val context: Context) {
             summary.append("Data Ingestion Incomplete: ${e.message}\n")
         }
         
-        return summary.toString()
+        cachedPatterns = summary.toString()
+        lastCacheTime = System.currentTimeMillis()
+        return cachedPatterns!!
     }
 
     private fun getContactInsights(): String {

@@ -6,7 +6,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.infomate.app.ui.AgentViewModel
 import com.infomate.app.ui.ChatScreen
+import com.infomate.app.ui.PermissionOnboardingScreen
 
 class MainActivity : ComponentActivity() {
 
@@ -19,11 +24,18 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Request permissions on startup as requested
-        requestInitialPermissions()
-
         setContent {
-            ChatScreen()
+            val vm: AgentViewModel = viewModel()
+            val state by vm.state.collectAsState()
+
+            if (state.needsOnboarding) {
+                PermissionOnboardingScreen(onAuthorize = {
+                    vm.completeOnboarding()
+                    requestInitialPermissions()
+                })
+            } else {
+                ChatScreen(vm)
+            }
         }
     }
 

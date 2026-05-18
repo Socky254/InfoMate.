@@ -35,7 +35,7 @@ import kotlin.random.Random
 
 class AgentViewModel(application: Application) : AndroidViewModel(application), TextToSpeech.OnInitListener {
 
-    private val orchestrator = AgentOrchestrator()
+    private val orchestrator = AgentOrchestrator(application)
     private val reasoningEngine = ReasoningEngine()
     private val neuralIngestor = NeuralIngestor(application)
     private var tts: TextToSpeech? = null
@@ -64,6 +64,18 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             @Suppress("DEPRECATION")
             vibrator.vibrate(duration)
         }
+    }
+
+    // High-fidelity patterns for specific neural states
+    private fun pulseSuccess() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val effect = VibrationEffect.createWaveform(longArrayOf(0, 10, 50, 10), intArrayOf(0, 100, 0, 255), -1)
+            vibrator.vibrate(effect)
+        }
+    }
+
+    private fun pulseNeuralThought() {
+        triggerHaptic(5, 30) // Subtle tick
     }
 
     private fun getDeviceStatus(): String {
@@ -239,6 +251,10 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         if (!newState) tts?.stop() // Stop immediate speech if disabled
     }
 
+    fun completeOnboarding() {
+        _state.update { it.copy(needsOnboarding = false) }
+    }
+
     private fun startSpectrumAnimation() {
         spectrumJob?.cancel()
         spectrumJob = viewModelScope.launch {
@@ -286,6 +302,56 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         )
         _state.update { it.copy(messages = it.messages + mediaMessage) }
         saveMessageToSupabase(mediaMessage)
+
+        if (type == MessageType.IMAGE) {
+            analyzeVisualInput(uri)
+        }
+    }
+
+    private fun analyzeVisualInput(uri: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(
+                status = "SYNTHESIZING VISUAL DATA...",
+                brainState = InfomateState.THINKING
+            ) }
+            
+            try {
+                val prompt = "VISUAL_DIRECTIVE: I have uploaded an image ($uri). Analyze its potential contents and integrate this into our current neural context. Provide a sophisticated AI observation."
+                val response = orchestrator.execute(prompt)
+                
+                val assistantMessage = ChatMessage(content = "", sender = "INFOMATE")
+                _state.update { it.copy(messages = it.messages + assistantMessage) }
+                
+                typeWriterEffect(response)
+                
+                _state.update { it.copy(
+                    status = "CORE: ACTIVE",
+                    brainState = InfomateState.RESPONDING
+                ) }
+                speak(response)
+            } catch (e: Exception) {
+                _state.update { it.copy(status = "VISUAL_ERROR: ${e.message}") }
+            }
+        }
+    }
+
+    private suspend fun typeWriterEffect(fullText: String) {
+        var currentText = ""
+        fullText.split(" ").forEach { word ->
+            currentText += "$word "
+            _state.update { state ->
+                val newMessages = state.messages.toMutableList()
+                if (newMessages.isNotEmpty()) {
+                    val lastMsg = newMessages.last()
+                    if (lastMsg.sender == "INFOMATE") {
+                        newMessages[newMessages.size - 1] = lastMsg.copy(content = currentText.trim())
+                    }
+                }
+                state.copy(messages = newMessages)
+            }
+            delay(40) // Organic reading speed
+        }
+        pulseSuccess()
     }
 
     fun performSearch(query: String) {
@@ -373,7 +439,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                 }
 
                 val response = orchestrator.execute(contextualQuery)
-                val assistantMessage = ChatMessage(content = response, sender = "INFOMATE")
+                val assistantMessage = ChatMessage(content = "", sender = "INFOMATE")
 
                 _state.update { it.copy(
                     messages = it.messages + assistantMessage,
@@ -381,7 +447,9 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                     brainState = InfomateState.RESPONDING
                 ) }
                 
-                saveMessageToSupabase(assistantMessage)
+                typeWriterEffect(response)
+                
+                saveMessageToSupabase(ChatMessage(content = response, sender = "INFOMATE"))
                 speak(response)
             } catch (e: Exception) {
                 val errorMessage = ChatMessage(content = "SYSTEM: ERROR - ${e.message}", sender = "SYSTEM")
