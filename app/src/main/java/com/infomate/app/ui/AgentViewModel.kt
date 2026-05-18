@@ -464,6 +464,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                 typeWriterEffect(response)
                 
                 _state.update { it.copy(status = "CORE: ACTIVE") }
+                // Save the FINAL cleaned response to Supabase
                 saveMessageToSupabase(ChatMessage(content = response, sender = "INFOMATE"))
                 speak(response)
             } catch (e: Exception) {

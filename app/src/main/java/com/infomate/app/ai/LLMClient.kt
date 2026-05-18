@@ -100,17 +100,21 @@ object LLMClient {
     }
 
     private fun validateOutput(text: String): String {
-        val trimmed = text.trim().removePrefix("INFOMATE:").trim()
+        // 1. Remove common identity prefixes (Case Insensitive Regex)
+        val cleaned = text.replace(Regex("^(?i)(infomate|iris|system|assistant):\\s*"), "")
+            .trim()
         
-        // If the AI is just repeating its name, it's a hallucination loop
-        if (trimmed.lowercase() == "infomate" || trimmed.lowercase() == "iris") {
-            return "I am synchronized and ready for your next directive, Socrates. How can I assist you further?"
+        // 2. Detect and handle identity loops or empty responses
+        val lowerCleaned = cleaned.lowercase()
+        if (lowerCleaned == "infomate" || lowerCleaned == "iris" || cleaned.isBlank()) {
+            return "I am fully synchronized, Socrates. My neural link is stable and I am awaiting your next directive."
         }
 
-        return if (trimmed.isNotBlank() && trimmed.length > 2) {
-            trimmed
+        // 3. Ensure response has meaningful substance
+        return if (cleaned.length > 3) {
+            cleaned
         } else {
-            "Neural link active. Waiting for specific directive."
+            "Neural link active and stable. Please provide your directive, Socrates."
         }
     }
 }
