@@ -328,10 +328,21 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         }
     }
 
+    private var lastSendTime = 0L
+    private val MIN_NEURAL_COOLDOWN = 3000L // 3 seconds between directives
+
     fun send(trigger: String? = null) {
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastSendTime < MIN_NEURAL_COOLDOWN) {
+            _state.update { it.copy(status = "NEURAL BUFFER ACTIVE: SLOW DOWN") }
+            triggerHaptic(100, 255) // Warning pulse
+            return
+        }
+        
         val userInput = _state.value.input
         if (userInput.isBlank()) return
 
+        lastSendTime = currentTime
         val userMessage = ChatMessage(content = userInput, sender = "OPERATOR")
 
         _state.update { it.copy(
