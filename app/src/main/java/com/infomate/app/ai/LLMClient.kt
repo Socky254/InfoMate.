@@ -29,7 +29,7 @@ object LLMClient {
             // STRATEGY 2: Check for Custom Wrappers (output, text, response, message)
             val commonFields = listOf("output", "text", "response", "message", "content")
             for (field in commonFields) {
-                val value = json.optString(field, "") ?: ""
+                val value: String = json.optString(field, "") ?: ""
                 if (value.isNotBlank()) return value
             }
 
@@ -39,18 +39,18 @@ object LLMClient {
             val contentObj = firstCandidate?.optJSONObject("content")
             val parts = contentObj?.optJSONArray("parts")
             val firstPart = parts?.optJSONObject(0)
-            val geminiText = firstPart?.optString("text", "") ?: ""
+            val geminiText: String = firstPart?.optString("text") ?: ""
             if (geminiText.isNotBlank()) return geminiText
 
             // STRATEGY 4: OpenAI Structure (choices -> message -> content)
             val choices = json.optJSONArray("choices")
             val firstChoice = choices?.optJSONObject(0)
             val msgObj = firstChoice?.optJSONObject("message")
-            val openAiText = msgObj?.optString("content", "") ?: ""
+            val openAiText: String = msgObj?.optString("content") ?: ""
             if (openAiText.isNotBlank()) return openAiText
 
             // STRATEGY 5: Check for Error or Safety signals
-            val error = json.optJSONObject("error")?.optString("message", "") ?: ""
+            val error: String = json.optJSONObject("error")?.optString("message") ?: ""
             if (error.isNotBlank()) return "SYSTEM_ERROR: $error"
 
             val promptFeedback = json.optJSONObject("promptFeedback")
