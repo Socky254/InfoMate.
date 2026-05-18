@@ -39,6 +39,7 @@ import com.infomate.core.ui.theme.SilverText
 import com.infomate.core.ui.theme.InfoMateTheme
 import com.infomate.core.ui.theme.NeonBlue
 
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -53,7 +54,6 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
     var searchActive by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
-    val keyboardController = LocalSoftwareKeyboardController.current
 
     val mediaPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -106,7 +106,8 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                         onSearchQueryChange = { searchQuery = it },
                         isMaleVoice = state.isMaleVoice,
                         onVoiceToggle = vm::toggleVoice,
-                        vm = vm
+                        vm = vm,
+                        state = state // ADDED
                     )
                 },
                 bottomBar = {
@@ -198,9 +199,6 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                     }
                 }
             }
-        }
-    }
-}
         }
     }
 }
@@ -354,7 +352,8 @@ fun HeaderSection(
     onSearchQueryChange: (String) -> Unit,
     isMaleVoice: Boolean,
     onVoiceToggle: () -> Unit,
-    vm: AgentViewModel
+    vm: AgentViewModel,
+    state: UIState // ADDED
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
