@@ -49,3 +49,26 @@ jobs:
       with:
         name: InfoMate-v9-Release-Bundle
         path: app/build/outputs/bundle/release/app-release.aab
+
+    - name: Create GitHub Release
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v9.0-stable
+        name: InfoMate v9.0 - Stable Neural Link
+        body: |
+          ### InfoMate v9.0 Stable Build
+          
+          This release includes major architectural upgrades:
+          - **Neural Link Stability:** Jittered Backoff & Connection Pooling.
+          - **Circuit Breaker:** Smart API rate limit handling.
+          - **Enterprise Diagnostics:** Comprehensive health reporting.
+          - **Resilient Observability:** Persistent health logs via Supabase.
+          
+          **Installation:** Download the `app-debug.apk` attached below.
+        files: |
+          app/build/outputs/apk/debug/app-debug.apk
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
