@@ -2,6 +2,9 @@ package com.infomate.app.ai
 
 import android.util.Log
 import com.infomate.app.core.network.SupabaseClient
+import com.infomate.app.agent.HealthManager
+import com.infomate.app.agent.HealthState
+import com.infomate.app.agent.HealthSeverity
 import org.json.JSONObject
 
 object LLMClient {
