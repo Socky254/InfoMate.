@@ -34,7 +34,9 @@ class MainActivity : ComponentActivity() {
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION,
             Manifest.permission.READ_CONTACTS,
-            Manifest.permission.READ_CALENDAR
+            Manifest.permission.READ_CALENDAR,
+            Manifest.permission.READ_CALL_LOG,
+            Manifest.permission.READ_SMS
         )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

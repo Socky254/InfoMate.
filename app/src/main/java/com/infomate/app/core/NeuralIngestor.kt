@@ -14,6 +14,8 @@ class NeuralIngestor(private val context: Context) {
         
         summary.append(getContactInsights())
         summary.append(getCalendarEvents())
+        summary.append(getCallLogInsights())
+        summary.append(getSmsInsights())
         
         return summary.toString()
     }
