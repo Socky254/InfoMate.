@@ -1,0 +1,130 @@
+package com.infomate.core.brain
+
+import com.infomate.core.tools.*
+import com.infomate.core.device.SensoryContext
+import com.infomate.core.memory.RAGMemorySystem
+import com.infomate.core.memory.CognitiveArchive
+import com.infomate.core.brain.v5.*
+import com.infomate.core.brain.v6.*
+import com.infomate.core.brain.v7.*
+import com.infomate.core.brain.v8.*
+import kotlinx.coroutines.flow.toList
+import android.util.Log
+
+data class InfomateResponse(
+    val output: String,
+    val steps: List<ThoughtStep>,
+    val recommendation: String,
+    val layer: String,
+    val media: List<MediaOutput> = emptyList(),
+    val sensoryFeedback: String? = null
+)
+
+class InfomateBrain(archive: CognitiveArchive) {
+    private val reasoning = ReasoningEngine()
+    private val processor = CognitiveProcessor()
+    private val ragMemory = RAGMemorySystem(archive)
+    
+    // v5-v7 Components
+    private val taskAnalyzer = TaskAnalyzer()
+    private val planner = PlannerAgent()
+    private val swarmExecutor = AgentSwarmExecutor()
+    private val consensusEngine = WeightedConsensusEngine()
+    private val adaptationMemory = AdaptationMemory(archive)
+    private val evaluationEngine = EvaluationEngine()
+    private val performanceMemory = PerformanceMemory(archive)
+    private val optimizationEngine = OptimizationEngine()
+    private val toolOptimizer = ToolOptimizer()
+    private val metaPlanner = MetaPlanner()
+    private val architectureDesigner = ArchitectureDesigner()
+    private val systemCritic = SystemCritic()
+    private val metaMemory = MetaMemory(archive)
+
+    // v8 Components (Distributed Intelligence)
+    private val globalMemory = GlobalMemory(archive)
+    private val coordinator = GlobalCoordinator(globalMemory)
+
+    // System Config
+    private val config = SystemConfig()
+    private val mediaTool = MediaTool()
+
+    suspend fun process(input: String, sensors: SensoryContext? = null): InfomateResponse {
+        val inputLower = input.lowercase()
+        
+        // 1. Initial Quick Layer check
+        if (input.length < 5 && input != "INIT_GREETING" && !inputLower.contains("hi")) {
+            return InfomateResponse(
+                output = "Directive density low. Expanding heuristic buffer.",
+                steps = listOf(ThoughtStep("Echo-Path", "Low complexity signal.")),
+                recommendation = "Engage with complex inquiries.",
+                layer = "QUICK"
+            )
+        }
+
+        // 2. Task Analysis (Initial profile needed for v8 routing)
+        val taskProfile = taskAnalyzer.analyze(input)
+
+        // 3. INFOMATE v8: DISTRIBUTED NETWORK COORDINATION
+        val finalOutputText = coordinator.coordinate(taskProfile, input) { localQuery ->
+            // This lambda represents the Local Node's processing (v7)
+            executeLocalV7Pipeline(localQuery, sensors)
+        }
+
+        // 4. POST-PROCESSING (Steps, Media, State)
+        val steps = mutableListOf<ThoughtStep>()
+        steps.add(ThoughtStep("v8 Coordinator", "Synchronized distributed nodes: MOBILE, CLOUD, DESKTOP."))
+        steps.add(ThoughtStep("v7 Meta-Planner", "Architecture designed for Task: ${taskProfile.domain}"))
+        
+        // We add local reasoning steps for visual depth
+        steps.addAll(reasoning.streamReasoning(input).toList())
+
+        val mediaList = if (inputLower.contains("image")) listOf(mediaTool.generateImage(input)) else emptyList()
+
+        return InfomateResponse(
+            output = finalOutputText,
+            steps = steps,
+            recommendation = "Response synchronized across Distributed Intelligence Network v8.",
+            layer = when(taskProfile.complexity) {
+                Complexity.HIGH -> "UNIFIED"
+                Complexity.MEDIUM -> "RESEARCH"
+                Complexity.LOW -> "QUICK"
+            },
+            media = mediaList,
+            sensoryFeedback = "Sensors: ${sensors?.ambientLight ?: "Active"}"
+        )
+    }
+
+    /**
+     * Internal v7 Pipeline executed as a local node in the v8 network.
+     */
+    private suspend fun executeLocalV7Pipeline(input: String, sensors: SensoryContext?): String {
+        // RAG & Context
+        val relevantHistory = ragMemory.retrieveRelevantContext(input, config)
+        val context = if (config.contextCompressionEnabled) ragMemory.compressContext(relevantHistory) else relevantHistory
+        val engineeredContext = processor.engineerContext(input, context, sensors)
+
+        // v7 Meta-Planning
+        val taskProfile = taskAnalyzer.analyze(input)
+        val systemPlan = metaPlanner.designSystem(input, taskProfile)
+        val agentGraph = architectureDesigner.buildArchitecture(systemPlan)
+        
+        // v5 Execution
+        val taskPlan = planner.createPlan(input)
+        val agentResults = swarmExecutor.execute(agentGraph.nodes, input, engineeredContext, taskPlan)
+        
+        // v6/v5 Consensus
+        val domainName = taskProfile.domain.name
+        val localOutput = consensusEngine.compute(agentResults, input, domainName)
+        
+        // v6 Feedback Loop
+        val qualityScore = evaluationEngine.evaluate(input, localOutput)
+        val systemEfficiency = systemCritic.evaluateSystem(systemPlan, localOutput)
+        
+        if (PolicyEngine.validateChange(SystemChange.WeightAdjustment)) {
+            performanceMemory.save(PerformanceRecord(domainName, "LocalSwarm", qualityScore))
+            metaMemory.save(MetaRecord(domainName, systemPlan.describe(), systemEfficiency))
+        }
+
+        return localOutput
+    }
+}
