@@ -337,19 +337,25 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
     private suspend fun typeWriterEffect(fullText: String) {
         var currentText = ""
-        fullText.split(" ").forEach { word ->
-            currentText += "$word "
+        val words = fullText.split(" ")
+        for (index in words.indices) {
+            currentText += words[index] + (if (index < words.size - 1) " " else "")
             _state.update { state ->
                 val newMessages = state.messages.toMutableList()
                 if (newMessages.isNotEmpty()) {
                     val lastMsg = newMessages.last()
                     if (lastMsg.sender == "INFOMATE") {
-                        newMessages[newMessages.size - 1] = lastMsg.copy(content = currentText.trim())
+                        newMessages[newMessages.size - 1] = lastMsg.copy(content = currentText)
                     }
                 }
                 state.copy(messages = newMessages)
             }
-            delay(40) // Organic reading speed
+            val delayMs = when {
+                words[index].endsWith(".") || words[index].endsWith("?") || words[index].endsWith("!") -> 200L
+                words[index].endsWith(",") || words[index].endsWith(";") -> 100L
+                else -> 35L
+            }
+            delay(delayMs)
         }
         pulseSuccess()
     }
@@ -395,13 +401,13 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     }
 
     private var lastSendTime = 0L
-    private val MIN_NEURAL_COOLDOWN = 3000L // 3 seconds between directives
+    private val MIN_NEURAL_COOLDOWN = 1500L 
 
     fun send(trigger: String? = null) {
         val currentTime = System.currentTimeMillis()
         if (currentTime - lastSendTime < MIN_NEURAL_COOLDOWN) {
-            _state.update { it.copy(status = "NEURAL BUFFER ACTIVE: SLOW DOWN") }
-            triggerHaptic(100, 255) // Warning pulse
+            _state.update { it.copy(status = "NEURAL LINK STABILIZING...") }
+            triggerHaptic(40, 80)
             return
         }
         
@@ -412,26 +418,26 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         val userMessage = ChatMessage(content = userInput, sender = "OPERATOR")
 
         _state.update { it.copy(
-            status = "NEURAL LINK ESTABLISHED",
+            status = "CORE: ANALYZING...",
             brainState = InfomateState.THINKING,
             messages = it.messages + userMessage,
             input = "",
             cognitiveSteps = emptyList()
         ) }
         
-        triggerHaptic(30, 100) // Confirm send with haptic pulse
+        triggerHaptic(30, 100)
 
         saveMessageToSupabase(userMessage, trigger)
 
         viewModelScope.launch {
             try {
-                // Read phone data patterns for deep personalization - Now suspend and safe
+                // Background Context Gathering
                 val patterns = neuralIngestor.captureUserPatterns()
                 val contextualQuery = userInput + getDeviceStatus() + "\n$patterns"
                 
-                launch {
+                val thinkingJob = launch {
                     reasoningEngine.streamReasoning(userInput).collect { step ->
-                        triggerHaptic(5, 30) // Subtle pulse for each "thought"
+                        triggerHaptic(5, 30) 
                         _state.update { s ->
                             s.copy(cognitiveSteps = s.cognitiveSteps + step)
                         }
@@ -439,23 +445,26 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                 }
 
                 val response = orchestrator.execute(contextualQuery)
+                thinkingJob.cancel() 
+
                 val assistantMessage = ChatMessage(content = "", sender = "INFOMATE")
 
                 _state.update { it.copy(
                     messages = it.messages + assistantMessage,
-                    status = "CORE: ACTIVE",
+                    status = "CORE: RESPONDING",
                     brainState = InfomateState.RESPONDING
                 ) }
                 
                 typeWriterEffect(response)
                 
+                _state.update { it.copy(status = "CORE: ACTIVE") }
                 saveMessageToSupabase(ChatMessage(content = response, sender = "INFOMATE"))
                 speak(response)
             } catch (e: Exception) {
                 val errorMessage = ChatMessage(content = "SYSTEM: ERROR - ${e.message}", sender = "SYSTEM")
                 _state.update { it.copy(
                     messages = it.messages + errorMessage,
-                    status = "CORE: DEGRADED",
+                    status = "CORE: ERROR",
                     brainState = InfomateState.ERROR
                 ) }
             }

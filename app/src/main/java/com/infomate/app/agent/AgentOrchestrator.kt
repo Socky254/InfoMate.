@@ -5,54 +5,61 @@ import com.infomate.app.rag.VectorRetriever
 import com.infomate.app.rag.MemorySync
 import android.content.Context
 
-class AgentOrchestrator(private val context: Context? = null) {
+class AgentOrchestrator(private val androidContext: Context? = null) {
 
-    suspend fun execute(query: String): String {
-        // 1. Authorization & Command Check
-        if (query.uppercase().contains("RUN DIAGNOSTICS") || query.uppercase().contains("SYSTEM CHECK")) {
-            // Verify Authorisation (Static check for Master Architect)
+    suspend fun execute(fullQuery: String): String {
+        // 1. Separate User Intent from System Metadata
+        val userIntent = if (fullQuery.contains("[SYSTEM_CONTEXT:")) {
+            fullQuery.substringBefore("[SYSTEM_CONTEXT:").trim()
+        } else {
+            fullQuery.trim()
+        }
+
+        // 2. Command Check (Diagnostics)
+        if (userIntent.uppercase().contains("RUN DIAGNOSTICS") || userIntent.uppercase().contains("SYSTEM CHECK")) {
             return DiagnosticAgent.runFullDiagnostic() + "\n\nIris: I have completed the system scan as per your technical directive, Master Architect."
         }
 
-        // 2. Edge Fallback (New v9.5)
-        context?.let {
-            val edgeResponse = EdgeBrain.processLocally(query, it)
+        // 3. Edge Fallback (Local deterministic responses)
+        androidContext?.let { ctx ->
+            val edgeResponse = EdgeBrain.processLocally(fullQuery, ctx)
             if (edgeResponse != null) return edgeResponse
         }
 
-        // 3. Semantic Retrieval (RAG v2)
-        val context = VectorRetriever.search(query)
+        // 4. Optimized Semantic Retrieval (RAG)
+        // We search using the userIntent only, to avoid metadata noise
+        val memories = VectorRetriever.search(userIntent)
 
-        // 2. Persona Definition (The Conversational Evolution)
+        // 5. Persona Definition
         val masterInstruction = """
             [IDENTITY: INFOMATE v9]
             [USER: Socrates Kipruto]
             [PERSONALITY: Intelligent, sophisticated digital partner.]
-            [GUIDELINE: Professional tone. Avoid overusing "Master Architect". Use real-time device context.]
+            [GUIDELINE: Professional tone. Avoid overusing "Master Architect". Use real-time device context provided below.]
         """.trimIndent()
 
-        // 3. v7 Meta-Planning
-        val plan = Planner.createPlan(query)
-        
-        // 4. v8 Task Execution
-        val executionResults = TaskDispatcher.run(plan)
-
-        // 5. v9 Synthesis
+        // 6. Synthesis with Isolated Context
         val prompt = """
             $masterInstruction
             
-            Query: $query
+            Directive: $userIntent
 
-            Memory:
-            ${context.take(3).joinToString("\n")}
+            System Context:
+            ${if (fullQuery.contains("[SYSTEM_CONTEXT:")) "[SYSTEM_CONTEXT:" + fullQuery.substringAfter("[SYSTEM_CONTEXT:") else "None"}
+
+            Memory Archives:
+            ${memories.take(3).joinToString("\n")}
             
-            Synthesize a response as INFOMATE.
+            Synthesize a response as INFOMATE. Do not repeat the system context in your reply.
         """.trimIndent()
 
         val response = LLMClient.generate(prompt)
 
-        // 5. Global Memory Sync
-        MemorySync.save(query, response)
+        // 7. Global Memory Sync (Clean)
+        // Save the interaction without the system noise
+        if (response.length > 20 && !response.contains("SYSTEM_ERROR")) {
+            MemorySync.save(userIntent, response)
+        }
 
         return response
     }
