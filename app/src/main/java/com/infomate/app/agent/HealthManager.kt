@@ -21,6 +21,8 @@ object HealthManager {
     const val CAT_SECURITY = "SECURITY"
     const val CAT_LOGGING = "LOGGING"
     const val CAT_MEMORY = "MEMORY"
+    const val CAT_PARSER = "RESPONSE_PARSER"
+    const val CAT_INFERENCE = "INFERENCE_ENGINE"
 
     // Backward compatibility for old constants
     const val SUBSYSTEM_AI = CAT_AI_CORE

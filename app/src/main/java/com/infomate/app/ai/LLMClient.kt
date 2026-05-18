@@ -56,13 +56,16 @@ object LLMClient {
             val result = extractContent(json)
 
             if (result.isNotBlank()) {
+                HealthManager.logHealth(HealthManager.CAT_PARSER, HealthState.ONLINE, "Defensive Parsing Successful", HealthSeverity.STABLE)
                 validateOutput(result)
             } else {
                 Log.w("INFOMATE_PARSING", "Could not extract text from JSON. Raw: $trimmedResponse")
+                HealthManager.logHealth(HealthManager.CAT_PARSER, HealthState.DEGRADED, "ERR_PARSE_NULL: Content fields empty", HealthSeverity.CRITICAL)
                 "INFOMATE: The neural output was malformed. Diagnostic code: ERR_PARSE_NULL"
             }
         } catch (e: Exception) {
             Log.e("INFOMATE_PARSING", "JSON Parsing Exception: ${e.message}")
+            HealthManager.logHealth(HealthManager.CAT_PARSER, HealthState.DEGRADED, "ERR_JSON_FAIL: ${e.message}", HealthSeverity.CRITICAL)
             if (trimmedResponse.length < 500 && !trimmedResponse.contains("{")) validateOutput(trimmedResponse)
             else "INFOMATE: Critical failure in neural decoding. (ERR_JSON_FAIL)"
         }

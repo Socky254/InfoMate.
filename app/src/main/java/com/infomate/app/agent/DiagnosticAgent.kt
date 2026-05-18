@@ -20,6 +20,7 @@ object DiagnosticAgent {
         val memoryStatus = checkMemoryHealth()
         val logsStatus = checkSystemLogs()
         val authStatus = checkAuthHealth()
+        val parserStatus = checkParserHealth()
 
         return buildString {
             append("### NEURAL ARCHITECTURE HEALTH ###\n\n")
@@ -27,6 +28,9 @@ object DiagnosticAgent {
             append("AI CORE [LVL:${getSeverity(aiStatus)}]:\n")
             append("${getStatusIcon(aiStatus)} $aiStatus\n\n")
             
+            append("PARSER [LVL:${getSeverity(parserStatus)}]:\n")
+            append("${getStatusIcon(parserStatus)} $parserStatus\n\n")
+
             append("NETWORK [LVL:${getSeverity(networkStatus)}]:\n")
             append("${getStatusIcon(networkStatus)} $networkStatus\n\n")
             
@@ -43,7 +47,20 @@ object DiagnosticAgent {
             append("${getStatusIcon(logsStatus)} $logsStatus\n\n")
             
             append("### RECOMMENDED ARCHITECTURAL ACTION ###\n")
-            append(getRecommendedAction(aiStatus, dbStatus, networkStatus, logsStatus, authStatus))
+            append(getRecommendedAction(aiStatus, dbStatus, networkStatus, logsStatus, authStatus, parserStatus))
+        }
+    }
+
+    private suspend fun checkParserHealth(): String {
+        return try {
+            val recentLogs = HealthManager.getRecentLogs()
+            if (recentLogs?.contains("ERR_PARSE_NULL") == true) {
+                "DEGRADED (PARSING_FAIL_DETECTED)"
+            } else {
+                "ONLINE (STABLE)"
+            }
+        } catch (e: Exception) {
+            "UNKNOWN"
         }
     }
 
@@ -68,8 +85,11 @@ object DiagnosticAgent {
         }
     }
 
-    private fun getRecommendedAction(ai: String, db: String, net: String, logs: String, auth: String): String {
+    private fun getRecommendedAction(ai: String, db: String, net: String, logs: String, auth: String, parser: String): String {
         val actions = mutableListOf<String>()
+        if (parser.contains("DEGRADED")) {
+            actions.add("- [CRITICAL] AI Response Structure Mismatch. Verify Edge Function schema.")
+        }
         if (ai.contains("DEGRADED") || ai.contains("OFFLINE") || ai.contains("FAILSAFE")) {
             actions.add("- [RECOVERY] Attempting AI Link Resync")
             actions.add("- [DIAGNOSTIC] Verify Provider API Quota")
