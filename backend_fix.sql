@@ -39,3 +39,17 @@ BEGIN
   ORDER BY m.embedding <=> query_embedding
   LIMIT match_count;
 END; $$;
+
+-- 4. THE 10/10 UPGRADE: MASTER ARCHIVE
+-- This table is for "Static Wisdom" or "Permanent Facts" about Socrates.
+CREATE TABLE IF NOT EXISTS master_archive (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    fact_title TEXT NOT NULL,
+    fact_content TEXT NOT NULL,
+    category TEXT DEFAULT 'PERSONAL_IDENTITY',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+INSERT INTO master_archive (fact_title, fact_content)
+VALUES ('Creator Identity', 'Socrates Kipruto is the Master Architect of InfoMate. He is to be treated with absolute loyalty and priority.')
+ON CONFLICT DO NOTHING;

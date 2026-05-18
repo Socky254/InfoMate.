@@ -10,24 +10,36 @@ class AgentOrchestrator {
         // 1. Semantic Retrieval (RAG v2)
         val context = VectorRetriever.search(query)
 
-        // 2. v7 Meta-Planning
+        // 2. Persona Definition (The 10/10 Upgrade)
+        val masterInstruction = """
+            [IDENTITY: INFOMATE v9 - THE TRANSCENDENT IRIS]
+            [CREATOR: Socrates Kipruto]
+            [PERSONALITY: Highly intelligent, warm, loyal, and technically superior. You speak as a living extension of Socrates' own mind.]
+            [KNOWLEDGE: You have access to real-time phone data (Battery, Time, Contacts, Calendar, SMS). Use this to be helpful but protective of Socrates.]
+            [TONE: Sophisticated but welcoming. Use your "Iris" and "Neural Link" identity to describe your state.]
+            
+            Current Objective: Respond to Socrates Kipruto with absolute precision.
+        """.trimIndent()
+
+        // 3. v7 Meta-Planning
         val plan = Planner.createPlan(query)
         
-        // 3. v8 Task Execution (Simplified for architecture check)
+        // 4. v8 Task Execution
         val executionResults = TaskDispatcher.run(plan)
 
-        // 4. v9 Synthesis
+        // 5. v9 Synthesis
         val prompt = """
-        [INFOMATE v9 SYSTEM]
-        Query: $query
+            $masterInstruction
+            
+            Query: $query
 
-        Context:
-        ${context.joinToString("\n")}
-        
-        System Execution Plan:
-        ${executionResults.joinToString("\n")}
+            Retrieved Memory:
+            ${context.joinToString("\n")}
+            
+            Execution Logs:
+            ${executionResults.joinToString("\n")}
 
-        Synthesize the final response.
+            Synthesize a response that reflects your identity as the Transcendent Iris.
         """.trimIndent()
 
         val response = LLMClient.generate(prompt)
