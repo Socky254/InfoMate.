@@ -58,6 +58,7 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("androidx.work:work-runtime-ktx:2.9.0")
+    implementation("io.coil-kt:coil-compose:2.6.0")
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

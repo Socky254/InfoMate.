@@ -265,6 +265,17 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         _state.update { it.copy(input = text) }
     }
 
+    fun addMediaMessage(uri: String, type: MessageType) {
+        val mediaMessage = ChatMessage(
+            content = "Shared a ${type.name.lowercase()}",
+            sender = "OPERATOR",
+            type = type,
+            mediaUri = uri
+        )
+        _state.update { it.copy(messages = it.messages + mediaMessage) }
+        saveMessageToSupabase(mediaMessage)
+    }
+
     fun performSearch(query: String) {
         if (query.isBlank()) return
         

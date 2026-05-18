@@ -1,5 +1,8 @@
 package com.infomate.app.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -27,6 +30,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.infomate.core.ui.components.BrainVisualizer
 import com.infomate.core.ui.components.LiveThinkingView
 import com.infomate.core.ui.theme.CyberCyan
@@ -40,6 +44,24 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
     val state by vm.state.collectAsState()
     var searchActive by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+
+    val mediaPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        uri?.let {
+            vm.addMediaMessage(it.toString(), MessageType.IMAGE)
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap ->
+        // For a personal app, we can simplify by just acknowledging the capture
+        // In a full app, we would save the bitmap to a URI
+        if (bitmap != null) {
+            vm.addMediaMessage("camera_capture", MessageType.IMAGE)
+        }
+    }
 
     InfoMateTheme {
         Box(modifier = Modifier.fillMaxSize().background(Obsidian)) {
@@ -76,8 +98,12 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                         isListening = state.isListening,
                         onInputChange = vm::updateInput,
                         onSend = vm::send,
-                        onMediaClick = { /* Handle media picking */ },
-                        onCameraClick = { /* Handle camera */ },
+                        onMediaClick = { 
+                            mediaPickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
+                            )
+                        },
+                        onCameraClick = { cameraLauncher.launch(null) },
                         onMicToggle = {
                             if (state.isListening) vm.stopListening() else vm.startListening()
                         }
@@ -450,7 +476,18 @@ fun MessageCard(message: ChatMessage) {
                 shadowElevation = if (isOperator) 0.dp else 4.dp
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    if (message.type != MessageType.TEXT) {
+                    if (message.type != MessageType.TEXT && message.mediaUri != null) {
+                        AsyncImage(
+                            model = message.mediaUri,
+                            contentDescription = "Shared Media",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .clip(RoundedCornerShape(12.dp)),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    } else if (message.type != MessageType.TEXT) {
                         MediaPlaceholder(message.type)
                         Spacer(modifier = Modifier.height(12.dp))
                     }
