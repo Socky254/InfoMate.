@@ -40,10 +40,16 @@ object LLMClient {
             val json = JSONObject(trimmedResponse)
 
             // Check for explicit error from the Edge Function/Supabase
-            if (json.has("error")) {
-                val errorMsg = json.optString("error")
-                Log.e("INFOMATE_ERROR", "API reported error: $errorMsg")
-                return "SYSTEM_ERROR: $errorMsg"
+            if (json.has("error") || json.has("error_code")) {
+                val errorMsg = json.optString("message", json.optString("error", ""))
+                val errorCode = json.optString("error_code", "")
+                Log.e("INFOMATE_ERROR", "API reported error: $errorCode - $errorMsg")
+                
+                return when (errorCode) {
+                    "RETRY_EXHAUSTED" -> "INFOMATE: Connection unstable. API rate limits reached after multiple attempts. Please standby for 60s."
+                    "SAFETY_BLOCK" -> "INFOMATE: Neural safeguard triggered. The directive contains restricted concepts. Please rephrase."
+                    else -> if (errorMsg.isNotBlank()) "SYSTEM_ERROR: $errorMsg" else json.optString("output", "")
+                }
             }
 
             // Strategy: Check most common AI response fields safely
