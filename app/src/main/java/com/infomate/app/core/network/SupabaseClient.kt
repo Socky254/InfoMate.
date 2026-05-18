@@ -1,14 +1,5 @@
 package com.infomate.app.core.network
 
-import com.infomate.app.core.config.Config
-import com.google.gson.Gson
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-
 import android.util.Log
 import com.infomate.app.core.config.Config
 import com.google.gson.Gson

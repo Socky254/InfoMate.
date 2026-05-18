@@ -1,8 +1,5 @@
 package com.infomate.app.ai
 
-import com.infomate.app.core.network.SupabaseClient
-import org.json.JSONObject
-
 import android.util.Log
 import com.infomate.app.core.network.SupabaseClient
 import org.json.JSONObject
