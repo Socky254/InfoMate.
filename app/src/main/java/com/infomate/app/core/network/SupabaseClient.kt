@@ -2,6 +2,9 @@ package com.infomate.app.core.network
 
 import android.util.Log
 import com.infomate.app.core.config.Config
+import com.infomate.app.agent.HealthManager
+import com.infomate.app.agent.HealthState
+import com.infomate.app.agent.HealthSeverity
 import com.google.gson.Gson
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
