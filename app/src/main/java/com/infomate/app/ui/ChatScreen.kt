@@ -39,11 +39,21 @@ import com.infomate.core.ui.theme.SilverText
 import com.infomate.core.ui.theme.InfoMateTheme
 import com.infomate.core.ui.theme.NeonBlue
 
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+
 @Composable
 fun ChatScreen(vm: AgentViewModel = viewModel()) {
     val state by vm.state.collectAsState()
     var searchActive by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     val mediaPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -62,11 +72,15 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
     }
 
     InfoMateTheme {
-        Box(modifier = Modifier.fillMaxSize().background(Obsidian)) {
-            // LAYER 1: Futuristic Animated Tech Grid
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .background(Obsidian)
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { focusManager.clearFocus() })
+            }
+        ) {
             TechGridBackground()
 
-            // LAYER 2: Neural Gradient Glows
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -115,10 +129,16 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
             ) { paddingValues ->
                 val listState = rememberLazyListState()
                 
-                // Auto-scroll logic
+                // Keyboard dismissal on scroll
+                LaunchedEffect(listState.isScrollInProgress) {
+                    if (listState.isScrollInProgress) {
+                        focusManager.clearFocus()
+                    }
+                }
+
                 LaunchedEffect(state.messages.size, state.cognitiveSteps.size) {
                     if (state.messages.isNotEmpty()) {
-                        listState.animateScrollToItem(state.messages.size) // +1 for the header/hub
+                        listState.animateScrollToItem(state.messages.size)
                     }
                 }
 
@@ -129,12 +149,11 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                         .padding(paddingValues),
                     contentPadding = PaddingValues(bottom = 24.dp)
                 ) {
-                    // Item 0: The Visual Hub (now scrolls with the content)
                     item {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(300.dp), // Fixed height instead of weight
+                                .height(300.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             VisualHub(
@@ -145,7 +164,6 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                         }
                     }
 
-                    // Item 1: Thinking steps (if active)
                     item {
                         AnimatedVisibility(
                             visible = state.cognitiveSteps.isNotEmpty(),
@@ -170,17 +188,19 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                         }
                     }
 
-                    // Message Stream
                     val filteredMessages = if (searchQuery.isBlank()) state.messages 
                                          else state.messages.filter { it.content.contains(searchQuery, ignoreCase = true) }
                     
                     items(filteredMessages) { message ->
                         Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
-                            MessageCard(message)
+                            MessageCard(message, vm)
                         }
                     }
                 }
             }
+        }
+    }
+}
         }
     }
 }
@@ -470,6 +490,13 @@ fun InputSection(
                         modifier = Modifier.weight(1f),
                         placeholder = { Text("Directive...", color = SilverText.copy(alpha = 0.4f), fontSize = 16.sp) },
                         readOnly = isListening,
+                        trailingIcon = {
+                            if (input.isNotEmpty() && !isListening) {
+                                IconButton(onClick = { onInputChange("") }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Clear", tint = SilverText.copy(alpha = 0.4f), modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        },
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
                             unfocusedContainerColor = Color.Transparent,
@@ -493,12 +520,28 @@ fun InputSection(
             val isSend = input.isNotBlank() && !isListening
             val icon = if (isSend) Icons.Default.Send else if (isListening) Icons.Filled.Stop else Icons.Filled.Mic
             
+            // Pulse Animation for Action Button
+            val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+            val pulseScale by infiniteTransition.animateFloat(
+                initialValue = 1f,
+                targetValue = if (input.isEmpty() && !isListening) 1.05f else 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1500, easing = FastOutSlowInEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "scale"
+            )
+
             IconButton(
                 onClick = {
                     if (isSend) onSend() else onMicToggle()
                 },
                 modifier = Modifier
                     .size(48.dp)
+                    .graphicsLayer {
+                        scaleX = pulseScale
+                        scaleY = pulseScale
+                    }
                     .background(
                         brush = Brush.linearGradient(
                             if (isListening) listOf(Color.Red, Color(0xFFFF5252))
@@ -514,11 +557,21 @@ fun InputSection(
 }
 
 @Composable
-fun MessageCard(message: ChatMessage) {
+fun MessageCard(message: ChatMessage, vm: AgentViewModel) {
     val isOperator = message.sender == "OPERATOR"
+    val clipboardManager = LocalClipboardManager.current
     
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onLongPress = {
+                        vm.performHapticFeedback(100, 100)
+                        clipboardManager.setText(AnnotatedString(message.content))
+                    }
+                )
+            },
         horizontalArrangement = if (isOperator) Arrangement.End else Arrangement.Start
     ) {
         Column(

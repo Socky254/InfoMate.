@@ -53,6 +53,10 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     private val _state = MutableStateFlow(UIState())
     val state: StateFlow<UIState> = _state.asStateFlow()
 
+    fun performHapticFeedback(duration: Long = 10, intensity: Int = 50) {
+        triggerHaptic(duration, intensity)
+    }
+
     private fun triggerHaptic(duration: Long = 10, intensity: Int = 50) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             vibrator.vibrate(VibrationEffect.createOneShot(duration, intensity))
