@@ -377,19 +377,20 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
         viewModelScope.launch {
             try {
-                // Specialized search query for the AI
-                val searchPrompt = "SEARCH_REQUEST: $query. Search global knowledge and your archives. Provide a comprehensive summary. If you find nothing, do not say 'no intelligent output', instead provide a helpful AI summary of what that topic usually entails."
+                // Humanized search directive
+                val searchPrompt = "SEARCH_DIRECTIVE: Provide a sophisticated summary of '$query' using your global knowledge and neural archives. If no data exists, synthesize a logical AI overview of the topic."
                 
-                launch {
+                val thinkingJob = launch {
                     reasoningEngine.streamReasoning("Global Search: $query").collect { step ->
                         _state.update { s -> s.copy(cognitiveSteps = s.cognitiveSteps + step) }
                     }
                 }
 
                 val response = orchestrator.execute(searchPrompt)
-                
+                thinkingJob.cancel()
+
                 val searchMessage = ChatMessage(
-                    content = "SEARCH RESULTS FOR: \"$query\"\n\n$response",
+                    content = "", // Start empty for typewriter
                     sender = "INFOMATE"
                 )
 
@@ -399,6 +400,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                     brainState = com.infomate.core.ui.components.InfomateState.RESPONDING
                 ) }
                 
+                typeWriterEffect(response)
                 speak(response)
             } catch (e: Exception) {
                 _state.update { it.copy(status = "SEARCH_ERROR: ${e.message}") }

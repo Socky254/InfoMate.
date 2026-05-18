@@ -100,21 +100,23 @@ object LLMClient {
     }
 
     private fun validateOutput(text: String): String {
-        // 1. Remove common identity prefixes (Case Insensitive Regex)
-        val cleaned = text.replace(Regex("^(?i)(infomate|iris|system|assistant):\\s*"), "")
+        // 1. Trim and Remove common identity prefixes (Case Insensitive Regex)
+        // We use a more aggressive approach to strip any leading identity markers or noise
+        val cleaned = text.trim()
+            .replace(Regex("^(?i)(infomate|iris|system|assistant|ai):\\s*", RegexOption.MULTILINE), "")
             .trim()
         
         // 2. Detect and handle identity loops or empty responses
         val lowerCleaned = cleaned.lowercase()
-        if (lowerCleaned == "infomate" || lowerCleaned == "iris" || cleaned.isBlank()) {
-            return "I am fully synchronized, Socrates. My neural link is stable and I am awaiting your next directive."
+        if (lowerCleaned == "infomate" || lowerCleaned == "iris" || lowerCleaned == "ai" || cleaned.isBlank()) {
+            return "My neural link is stable and I am fully synchronized, Socrates. I am ready for your next directive or search request."
         }
 
         // 3. Ensure response has meaningful substance
-        return if (cleaned.length > 3) {
+        return if (cleaned.length > 2) {
             cleaned
         } else {
-            "Neural link active and stable. Please provide your directive, Socrates."
+            "I'm here and operational, Socrates. How can I assist you further?"
         }
     }
 }
