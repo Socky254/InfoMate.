@@ -31,37 +31,38 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Build Debug APK
-      run: ./gradlew assembleDebug
+    - name: Build Optimized Release APK
+      run: ./gradlew assembleRelease
 
     - name: Prepare APK for Release
       run: |
         mkdir -p release-artifacts
-        cp app/build/outputs/apk/debug/app-debug.apk release-artifacts/InfoMate-v9-STABLE.apk
+        cp app/build/outputs/apk/release/app-release.apk release-artifacts/InfoMate-v9-FINAL-OPTIMIZED.apk
 
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: InfoMate-v9-STABLE-APK
-        path: release-artifacts/InfoMate-v9-STABLE.apk
+        name: InfoMate-v9-FINAL-OPTIMIZED
+        path: release-artifacts/InfoMate-v9-FINAL-OPTIMIZED.apk
 
     - name: Create GitHub Release
       if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: v9.0-b${{ github.run_number }}
-        name: InfoMate v9.0 - Stable Build #${{ github.run_number }}
+        tag_name: v9.0-optimized-b${{ github.run_number }}
+        name: InfoMate v9.0 - Final Optimized Build #${{ github.run_number }}
         body: |
-          ### InfoMate v9.0 - Stable Neural Link
+          ### InfoMate v9.0 - Final Optimized Neural Link
           **Architect:** Socrates Kipruto
           
-          This automated build contains the latest neural stability fixes:
-          - **Hardened Ingestor:** Safe pattern extraction across Android versions.
-          - **Stabilized Networking:** Exponential backoff for API reliability.
-          - **Enterprise Diagnostics:** Real-time health monitoring enabled.
+          This final optimized build includes:
+          - **R8/Proguard Optimization:** Reduced APK size and enhanced performance.
+          - **Resource Shrinking:** Stripped unused assets.
+          - **Neural Stability Fix:** Resolved the EdgeBrain context interference.
+          - **Haptic Tuning:** Refined tactile feedback patterns.
           
-          **Download the APK below.**
-        files: release-artifacts/InfoMate-v9-STABLE.apk
+          **Download the optimized APK below.**
+        files: release-artifacts/InfoMate-v9-FINAL-OPTIMIZED.apk
         draft: false
         prerelease: false
       env:
