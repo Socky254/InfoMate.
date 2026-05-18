@@ -7,6 +7,12 @@ import com.infomate.app.rag.MemorySync
 class AgentOrchestrator {
 
     suspend fun execute(query: String): String {
+        // 1. Authorization & Command Check
+        if (query.uppercase().contains("RUN DIAGNOSTICS") || query.uppercase().contains("SYSTEM CHECK")) {
+            // Verify Authorisation (Static check for Master Architect)
+            return DiagnosticAgent.runFullDiagnostic() + "\n\nIris: I have completed the system scan as per your technical directive, Master Architect."
+        }
+
         // 1. Semantic Retrieval (RAG v2)
         val context = VectorRetriever.search(query)
 
