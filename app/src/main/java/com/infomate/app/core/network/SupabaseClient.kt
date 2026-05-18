@@ -124,7 +124,23 @@ object SupabaseClient {
                         return@withContext "{\"error\": \"AI quota exceeded\", \"error_code\": \"RETRY_EXHAUSTED\", \"message\": \"API rate limits reached. Cooling down for 30s.\"}"
                     }
 
-                    // Log the failure to HealthManager
+                    // Log the failure to HealthManager with specific root cause
+                    val errorCode = when (response.code) {
+                        401, 403 -> "AUTH_FAILURE"
+                        404 -> "ENDPOINT_NOT_FOUND"
+                        408 -> "REQUEST_TIMEOUT"
+                        429 -> "QUOTA_EXCEEDED"
+                        in 500..599 -> "SERVER_ERROR_5XX"
+                        else -> "HTTP_${response.code}"
+                    }
+                    
+                    HealthManager.logHealth(
+                        HealthManager.CAT_AI_CORE, 
+                        HealthState.DEGRADED, 
+                        "AI_LINK_FAILURE: $errorCode", 
+                        if (response.code >= 500) HealthSeverity.CRITICAL else HealthSeverity.WARNING
+                    )
+
                     lastError = "HTTP ${response.code}: $responseBody"
                     Log.w("SUPABASE_FUNC", "Attempt $i failed: $lastError")
                     

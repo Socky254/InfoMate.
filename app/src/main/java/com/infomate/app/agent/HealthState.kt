@@ -1,22 +1,18 @@
 package com.infomate.app.agent
 
 enum class HealthState {
-    OPERATIONAL,
-    DEGRADED,
-    OFFLINE,
-    RECOVERING,
+    ONLINE,      // Stable
+    DEGRADED,    // Functional but unstable/limited
+    FAILSAFE,    // Critical failure, operating in restricted/offline mode
+    RECOVERY,    // Attempting self-healing
+    OFFLINE,     // Total communication loss
     UNKNOWN
 }
 
-enum class HealthDetail {
-    STABLE,
-    AUTH_FAILURE,
-    TIMEOUT,
-    EMPTY_RESPONSE,
-    PARSE_FAILURE,
-    QUOTA_EXCEEDED,
-    NETWORK_ERROR,
-    COLD_START,
-    NOT_FOUND,
-    INVALID_HANDSHAKE
+enum class HealthSeverity(val level: Int) {
+    STABLE(0),
+    WARNING(1),
+    DEGRADED(2),
+    CRITICAL(3),
+    EMERGENCY(4)
 }

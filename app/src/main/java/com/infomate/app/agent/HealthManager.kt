@@ -8,26 +8,44 @@ import kotlinx.coroutines.launch
 
 object HealthManager {
 
-    // Subsystems as suggested for enterprise-grade observability
-    const val SUBSYSTEM_AI = "AI_LINK"
-    const val SUBSYSTEM_NETWORK = "NETWORK"
-    const val SUBSYSTEM_MEMORY = "MEMORY"
-    const val SUBSYSTEM_DATABASE = "DATABASE"
-    const val SUBSYSTEM_FEED = "FEED"
-    const val SUBSYSTEM_STREAMING = "STREAMING"
-    const val SUBSYSTEM_SECURITY = "SECURITY"
+    // Structured Diagnostic Categories
+    const val CAT_AI_CORE = "AI_CORE"
+    const val CAT_NETWORK = "NETWORK"
+    const val CAT_DATABASE = "DATABASE"
+    const val CAT_AUTH = "AUTH"
+    const val CAT_CACHE = "CACHE"
+    const val CAT_FILESYSTEM = "FILESYSTEM"
+    const val CAT_VOICE_ENGINE = "VOICE_ENGINE"
+    const val CAT_STREAM_ENGINE = "STREAM_ENGINE"
+    const val CAT_SELF_UPDATE = "SELF_UPDATE"
+    const val CAT_SECURITY = "SECURITY"
+    const val CAT_LOGGING = "LOGGING"
+    const val CAT_MEMORY = "MEMORY"
+
+    // Backward compatibility for old constants
+    const val SUBSYSTEM_AI = CAT_AI_CORE
+    const val SUBSYSTEM_NETWORK = CAT_NETWORK
+    const val SUBSYSTEM_MEMORY = CAT_MEMORY
+    const val SUBSYSTEM_DATABASE = CAT_DATABASE
+    const val SUBSYSTEM_SECURITY = CAT_SECURITY
 
     private val scope = CoroutineScope(Dispatchers.IO)
 
-    fun logHealth(subsystem: String, state: HealthState, details: String) {
-        Log.d("HealthManager", "[$subsystem] $state: $details")
+    fun logHealth(
+        subsystem: String,
+        state: HealthState,
+        details: String,
+        severity: HealthSeverity = HealthSeverity.STABLE
+    ) {
+        Log.d("HealthManager", "[$subsystem][LVL:${severity.level}] $state: $details")
         
         scope.launch {
-            // Mapping to existing 'system_health' table in infomate_v9_FINAL_STAMP.sql
             val data = mapOf(
-                "api_connected" to (state == HealthState.OPERATIONAL),
+                "api_connected" to (state == HealthState.ONLINE),
                 "status_code" to state.name,
-                "error_log" to "[$subsystem] $details"
+                "error_log" to "[$subsystem][SEV:${severity.level}] $details",
+                "severity_level" to severity.level,
+                "timestamp" to System.currentTimeMillis()
             )
             SupabaseClient.insert("system_health", data)
         }
