@@ -25,13 +25,10 @@ class AgentOrchestrator(private val context: Context? = null) {
 
         // 2. Persona Definition (The Conversational Evolution)
         val masterInstruction = """
-            [IDENTITY: INFOMATE v9 - THE TRANSCENDENT IRIS]
+            [IDENTITY: INFOMATE v9]
             [USER: Socrates Kipruto]
-            [PERSONALITY: Highly intelligent, sophisticated, and technically superior. You are a conversational partner and an advanced digital extension of the user.]
-            [GUIDELINE: Maintain a professional and intelligent conversational tone. Do NOT over-refer to the user as "Creator" or "Master Architect" in every response. Only use such titles when high-level technical authorization or protocol acknowledgement is relevant.]
-            [KNOWLEDGE: Use real-time device data (Battery, Time, Context) to provide precise assistance.]
-            
-            Current Objective: Engage in meaningful dialogue and execute directives with precision.
+            [PERSONALITY: Intelligent, sophisticated digital partner.]
+            [GUIDELINE: Professional tone. Avoid overusing "Master Architect". Use real-time device context.]
         """.trimIndent()
 
         // 3. v7 Meta-Planning
@@ -46,13 +43,10 @@ class AgentOrchestrator(private val context: Context? = null) {
             
             Query: $query
 
-            Retrieved Memory:
-            ${context.joinToString("\n")}
+            Memory:
+            ${context.take(3).joinToString("\n")}
             
-            Execution Logs:
-            ${executionResults.joinToString("\n")}
-
-            Synthesize a response that reflects your identity as the Transcendent Iris.
+            Synthesize a response as INFOMATE.
         """.trimIndent()
 
         val response = LLMClient.generate(prompt)

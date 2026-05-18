@@ -92,8 +92,19 @@ object LLMClient {
     }
 
     private fun validateOutput(text: String): String {
-        return if (text.isNotBlank() && text.length > 5) {
-            text
+        val trimmed = text.trim()
+        
+        // Check if the response is just the name of the app (common failure mode for some LLMs)
+        if (trimmed.equals("infomate", ignoreCase = true) || trimmed.equals("iris", ignoreCase = true)) {
+            return """
+                INFOMATE: Neural link generated a partial identity pulse but failed to synthesize a full response.
+                
+                This usually occurs when the prompt is too complex or the backend is under high load. Please retry your directive.
+            """.trimIndent()
+        }
+
+        return if (trimmed.isNotBlank() && trimmed.length > 5) {
+            trimmed
         } else {
             """
                 INFOMATE: Neural output detected but insufficient for communication.
