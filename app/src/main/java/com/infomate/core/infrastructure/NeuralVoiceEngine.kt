@@ -73,6 +73,6 @@ class NeuralVoiceEngine(context: Context) : TextToSpeech.OnInitListener {
 
     fun shutdown() {
         tts.stop()
-        tts.destroy()
+        tts.shutdown()
     }
 }

@@ -49,7 +49,7 @@ class CognitiveArchive(private val context: Context) {
     }
 
     fun getNeuralSummary(): String {
-        return knowledgeGraph.values.takeLast(3).joinToString(" → ") { it.concept }
+        return knowledgeGraph.values.toList().takeLast(3).joinToString(" → ") { it.concept }
     }
     
     fun getRecentTopicsDetailed(): List<KnowledgeNode> {
