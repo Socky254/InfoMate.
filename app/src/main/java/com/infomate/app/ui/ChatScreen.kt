@@ -166,27 +166,7 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                     }
 
                     item {
-                        AnimatedVisibility(
-                            visible = state.cognitiveSteps.isNotEmpty(),
-                            enter = expandVertically() + fadeIn(),
-                            exit = shrinkVertically() + fadeOut()
-                        ) {
-                            Surface(
-                                color = SilverText.copy(alpha = 0.03f),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 20.dp, vertical = 8.dp),
-                                shape = RoundedCornerShape(16.dp),
-                                border = androidx.compose.foundation.BorderStroke(
-                                    0.5.dp,
-                                    CyberCyan.copy(alpha = 0.1f)
-                                )
-                            ) {
-                                Box(modifier = Modifier.padding(16.dp)) {
-                                    LiveThinkingView(steps = state.cognitiveSteps)
-                                }
-                            }
-                        }
+                        NeuralProcessMonitor(steps = state.cognitiveSteps)
                     }
 
                     val filteredMessages = if (searchQuery.isBlank()) state.messages 
@@ -196,6 +176,93 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                         Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
                             MessageCard(message, vm)
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun NeuralProcessMonitor(steps: List<com.infomate.core.brain.ThoughtStep>) {
+    var expanded by remember { mutableStateOf(false) }
+    
+    AnimatedVisibility(
+        visible = steps.isNotEmpty(),
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 8.dp)
+        ) {
+            Surface(
+                onClick = { expanded = !expanded },
+                color = Color.Black.copy(alpha = 0.4f),
+                shape = RoundedCornerShape(12.dp),
+                border = androidx.compose.foundation.BorderStroke(
+                    0.5.dp, 
+                    Brush.linearGradient(listOf(CyberCyan.copy(alpha = 0.3f), Color.Transparent))
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Pulsing Neural Dot
+                        val infiniteTransition = rememberInfiniteTransition(label = "dot")
+                        val dotAlpha by infiniteTransition.animateFloat(
+                            initialValue = 0.3f,
+                            targetValue = 1f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1000, easing = LinearEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "alpha"
+                        )
+                        
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(CyberCyan.copy(alpha = dotAlpha))
+                        )
+                        
+                        Spacer(modifier = Modifier.width(10.dp))
+                        
+                        Text(
+                            text = if (expanded) "ACTIVE NEURAL THREADS" else "COGNITIVE PROCESS ACTIVE",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = CyberCyan.copy(alpha = 0.7f),
+                            letterSpacing = 1.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    
+                    Icon(
+                        imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null,
+                        tint = CyberCyan.copy(alpha = 0.4f),
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
+
+            AnimatedVisibility(visible = expanded) {
+                Surface(
+                    color = Color.Black.copy(alpha = 0.2f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Box(modifier = Modifier.padding(12.dp)) {
+                        LiveThinkingView(steps = steps)
                     }
                 }
             }
