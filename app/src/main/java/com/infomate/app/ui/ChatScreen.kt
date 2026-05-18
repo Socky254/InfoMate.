@@ -21,6 +21,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardActions
+import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -63,7 +66,8 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                         onSearchToggle = { searchActive = !searchActive },
                         onSearchQueryChange = { searchQuery = it },
                         isMaleVoice = state.isMaleVoice,
-                        onVoiceToggle = vm::toggleVoice
+                        onVoiceToggle = vm::toggleVoice,
+                        vm = vm
                     )
                 },
                 bottomBar = {
@@ -248,7 +252,8 @@ fun HeaderSection(
     onSearchToggle: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
     isMaleVoice: Boolean,
-    onVoiceToggle: () -> Unit
+    onVoiceToggle: () -> Unit,
+    vm: AgentViewModel
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -305,10 +310,10 @@ fun HeaderSection(
                     unfocusedIndicatorColor = CyberCyan.copy(alpha = 0.3f)
                 ),
                 singleLine = true,
-                keyboardOptions = androidx.compose.ui.text.input.KeyboardOptions(
-                    imeAction = androidx.compose.ui.text.input.ImeAction.Search
+                keyboardOptions = KeyboardOptions(
+                    imeAction = ImeAction.Search
                 ),
-                keyboardActions = androidx.compose.ui.text.input.KeyboardActions(
+                keyboardActions = KeyboardActions(
                     onSearch = { 
                         vm.performSearch(searchQuery)
                         onSearchToggle() // Close bar after search
