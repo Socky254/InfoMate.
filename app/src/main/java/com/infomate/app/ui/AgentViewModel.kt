@@ -193,9 +193,9 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
     private fun handleGreeting() {
         val greeting = if (_state.value.isMaleVoice) 
-            "I am online and ready, Operator. How can I assist you today?"
+            "I'm online. How can I help you today?"
         else 
-            "Hello! InfoMate is active. I'm listening, what's on your mind?"
+            "Hello! I'm here. What's on your mind?"
         
         val assistantMessage = ChatMessage(content = greeting, sender = "INFOMATE")
         _state.update { it.copy(
