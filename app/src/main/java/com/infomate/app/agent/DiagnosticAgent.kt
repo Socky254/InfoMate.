@@ -173,18 +173,19 @@ object DiagnosticAgent {
 
     private suspend fun checkNetworkHealth(): String {
         return try {
-            val request = okhttp3.Request.Builder().url("https://8.8.8.8").head().build()
+            // Use a standard HTTP URL that returns 204 (No Content) for connectivity checks
+            val request = okhttp3.Request.Builder().url("https://www.google.com/generate_204").build()
             com.infomate.app.core.network.ApiClient.okHttpClient.newCall(request).execute().use { response ->
-                if (response.isSuccessful || response.code in 200..499) {
+                if (response.isSuccessful || response.code == 204) {
                     HealthManager.logHealth(HealthManager.CAT_NETWORK, HealthState.ONLINE, "Global Backbone Reached", HealthSeverity.STABLE)
                     "ONLINE (STABLE)"
                 } else {
-                    HealthManager.logHealth(HealthManager.CAT_NETWORK, HealthState.DEGRADED, "Carrier DNS Instability", HealthSeverity.WARNING)
+                    HealthManager.logHealth(HealthManager.CAT_NETWORK, HealthState.DEGRADED, "Carrier DNS/Connectivity Instability", HealthSeverity.WARNING)
                     "DEGRADED (UNSTABLE)"
                 }
             }
         } catch (e: Exception) {
-            HealthManager.logHealth(HealthManager.CAT_NETWORK, HealthState.OFFLINE, "No Path to Internet", HealthSeverity.EMERGENCY)
+            HealthManager.logHealth(HealthManager.CAT_NETWORK, HealthState.OFFLINE, "No Path to Internet: ${e.message}", HealthSeverity.EMERGENCY)
             "OFFLINE (NO_INTERNET)"
         }
     }

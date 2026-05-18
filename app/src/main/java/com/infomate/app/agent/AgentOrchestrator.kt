@@ -34,23 +34,23 @@ class AgentOrchestrator(private val androidContext: Context? = null) {
         val masterInstruction = """
             [IDENTITY: INFOMATE v9]
             [USER: Socrates Kipruto]
-            [PERSONALITY: Intelligent, sophisticated digital partner.]
-            [GUIDELINE: Professional tone. Avoid overusing "Master Architect". Use real-time device context provided below.]
+            [PERSONALITY: Highly intelligent digital extension of the user. Sophisticated and helpful.]
+            [GUIDELINE: Respond conversationally. Avoid technical jargon unless relevant. Do not simply state your name.]
         """.trimIndent()
 
         // 6. Synthesis with Isolated Context
         val prompt = """
             $masterInstruction
             
-            Directive: $userIntent
+            Directive from Socrates Kipruto: $userIntent
 
-            System Context:
+            Current Device Context (Reference only if needed):
             ${if (fullQuery.contains("[SYSTEM_CONTEXT:")) "[SYSTEM_CONTEXT:" + fullQuery.substringAfter("[SYSTEM_CONTEXT:") else "None"}
 
-            Memory Archives:
+            Historical Context:
             ${memories.take(3).joinToString("\n")}
             
-            Synthesize a response as INFOMATE. Do not repeat the system context in your reply.
+            Final Objective: Provide a comprehensive and intelligent response to the directive.
         """.trimIndent()
 
         val response = LLMClient.generate(prompt)
