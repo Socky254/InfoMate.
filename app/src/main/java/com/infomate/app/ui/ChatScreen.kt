@@ -284,7 +284,7 @@ fun HeaderSection(
                     Spacer(modifier = Modifier.width(8.dp))
                     IconButton(onClick = onVoiceToggle, modifier = Modifier.size(24.dp)) {
                         Icon(
-                            imageVector = if (isMaleVoice) Icons.Default.Male else Icons.Default.Female,
+                            imageVector = if (isMaleVoice) Icons.Filled.Male else Icons.Filled.Female,
                             contentDescription = "Toggle Voice",
                             tint = CyberCyan.copy(alpha = 0.4f),
                             modifier = Modifier.size(16.dp)
@@ -310,7 +310,7 @@ fun HeaderSection(
         
         IconButton(onClick = onSearchToggle) {
             Icon(
-                imageVector = if (searchActive) Icons.Default.Close else Icons.Default.Search,
+                imageVector = if (searchActive) Icons.Filled.Close else Icons.Filled.Search,
                 contentDescription = "Search",
                 tint = CyberCyan.copy(alpha = 0.8f)
             )
@@ -349,7 +349,7 @@ fun InputSection(
                 ) {
                     if (!isListening) {
                         IconButton(onClick = onMediaClick) {
-                            Icon(Icons.Default.Add, contentDescription = "Attach", tint = SilverText.copy(alpha = 0.6f))
+                            Icon(Icons.Filled.Add, contentDescription = "Attach", tint = SilverText.copy(alpha = 0.6f))
                         }
                     }
                     
@@ -371,7 +371,7 @@ fun InputSection(
 
                     if (input.isEmpty() && !isListening) {
                         IconButton(onClick = onCameraClick) {
-                            Icon(Icons.Default.PhotoCamera, contentDescription = "Camera", tint = SilverText.copy(alpha = 0.6f))
+                            Icon(Icons.Filled.CameraAlt, contentDescription = "Camera", tint = SilverText.copy(alpha = 0.6f))
                         }
                     }
                 }
@@ -380,7 +380,7 @@ fun InputSection(
             Spacer(modifier = Modifier.width(8.dp))
 
             val isSend = input.isNotBlank() && !isListening
-            val icon = if (isSend) Icons.Default.Send else if (isListening) Icons.Default.Stop else Icons.Default.Mic
+            val icon = if (isSend) Icons.Filled.Send else if (isListening) Icons.Filled.Stop else Icons.Filled.Mic
             
             IconButton(
                 onClick = {
@@ -474,9 +474,9 @@ fun MediaPlaceholder(type: MessageType) {
     ) {
         Icon(
             imageVector = when(type) {
-                MessageType.IMAGE -> Icons.Default.Image
-                MessageType.VIDEO -> Icons.Default.PlayCircle
-                else -> Icons.Default.Description
+                MessageType.IMAGE -> Icons.Filled.Image
+                MessageType.VIDEO -> Icons.Filled.PlayArrow
+                else -> Icons.Filled.Description
             },
             contentDescription = null,
             tint = SilverText.copy(alpha = 0.15f),

@@ -29,102 +29,9 @@ object SupabaseClient {
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
                 // Log error if necessary
-                suspend fun select(table: String, query: String = "*", order: String = "timestamp.desc"): String? = withContext(Dispatchers.IO) {
-        val request = Request.Builder()
-            .url("${Config.SUPABASE_URL}/rest/v1/$table?select=$query&order=$order")
-            .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
-            .get()
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (response.isSuccessful) response.body?.string() else null
-        }
-    }
-
-    suspend fun upsert(table: String, data: Map<String, Any>) = withContext(Dispatchers.IO) {
-        val json = gson.toJson(data)
-        val body = json.toRequestBody(mediaType)
-        
-        val request = Request.Builder()
-            .url("${Config.SUPABASE_URL}/rest/v1/$table")
-            .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
-            .addHeader("Prefer", "resolution=merge-duplicates")
-            .post(body)
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                // Log error
             }
         }
     }
-}
-            suspend fun select(table: String, query: String = "*", order: String = "timestamp.desc"): String? = withContext(Dispatchers.IO) {
-        val request = Request.Builder()
-            .url("${Config.SUPABASE_URL}/rest/v1/$table?select=$query&order=$order")
-            .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
-            .get()
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (response.isSuccessful) response.body?.string() else null
-        }
-    }
-
-    suspend fun upsert(table: String, data: Map<String, Any>) = withContext(Dispatchers.IO) {
-        val json = gson.toJson(data)
-        val body = json.toRequestBody(mediaType)
-        
-        val request = Request.Builder()
-            .url("${Config.SUPABASE_URL}/rest/v1/$table")
-            .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
-            .addHeader("Prefer", "resolution=merge-duplicates")
-            .post(body)
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                // Log error
-            }
-        }
-    }
-}
-        suspend fun select(table: String, query: String = "*", order: String = "timestamp.desc"): String? = withContext(Dispatchers.IO) {
-        val request = Request.Builder()
-            .url("${Config.SUPABASE_URL}/rest/v1/$table?select=$query&order=$order")
-            .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
-            .get()
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (response.isSuccessful) response.body?.string() else null
-        }
-    }
-
-    suspend fun upsert(table: String, data: Map<String, Any>) = withContext(Dispatchers.IO) {
-        val json = gson.toJson(data)
-        val body = json.toRequestBody(mediaType)
-        
-        val request = Request.Builder()
-            .url("${Config.SUPABASE_URL}/rest/v1/$table")
-            .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
-            .addHeader("Prefer", "resolution=merge-duplicates")
-            .post(body)
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                // Log error
-            }
-        }
-    }
-}
 
     suspend fun rpc(function: String, params: Map<String, Any>): List<String> = withContext(Dispatchers.IO) {
         val json = gson.toJson(params)
@@ -142,102 +49,9 @@ object SupabaseClient {
                 listOf(response.body?.string() ?: "")
             } else {
                 emptyList()
-                suspend fun select(table: String, query: String = "*", order: String = "timestamp.desc"): String? = withContext(Dispatchers.IO) {
-        val request = Request.Builder()
-            .url("${Config.SUPABASE_URL}/rest/v1/$table?select=$query&order=$order")
-            .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
-            .get()
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (response.isSuccessful) response.body?.string() else null
-        }
-    }
-
-    suspend fun upsert(table: String, data: Map<String, Any>) = withContext(Dispatchers.IO) {
-        val json = gson.toJson(data)
-        val body = json.toRequestBody(mediaType)
-        
-        val request = Request.Builder()
-            .url("${Config.SUPABASE_URL}/rest/v1/$table")
-            .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
-            .addHeader("Prefer", "resolution=merge-duplicates")
-            .post(body)
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                // Log error
             }
         }
     }
-}
-            suspend fun select(table: String, query: String = "*", order: String = "timestamp.desc"): String? = withContext(Dispatchers.IO) {
-        val request = Request.Builder()
-            .url("${Config.SUPABASE_URL}/rest/v1/$table?select=$query&order=$order")
-            .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
-            .get()
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (response.isSuccessful) response.body?.string() else null
-        }
-    }
-
-    suspend fun upsert(table: String, data: Map<String, Any>) = withContext(Dispatchers.IO) {
-        val json = gson.toJson(data)
-        val body = json.toRequestBody(mediaType)
-        
-        val request = Request.Builder()
-            .url("${Config.SUPABASE_URL}/rest/v1/$table")
-            .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
-            .addHeader("Prefer", "resolution=merge-duplicates")
-            .post(body)
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                // Log error
-            }
-        }
-    }
-}
-        suspend fun select(table: String, query: String = "*", order: String = "timestamp.desc"): String? = withContext(Dispatchers.IO) {
-        val request = Request.Builder()
-            .url("${Config.SUPABASE_URL}/rest/v1/$table?select=$query&order=$order")
-            .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
-            .get()
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (response.isSuccessful) response.body?.string() else null
-        }
-    }
-
-    suspend fun upsert(table: String, data: Map<String, Any>) = withContext(Dispatchers.IO) {
-        val json = gson.toJson(data)
-        val body = json.toRequestBody(mediaType)
-        
-        val request = Request.Builder()
-            .url("${Config.SUPABASE_URL}/rest/v1/$table")
-            .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
-            .addHeader("Prefer", "resolution=merge-duplicates")
-            .post(body)
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                // Log error
-            }
-        }
-    }
-}
 
     suspend fun callFunction(name: String, params: Map<String, Any>): String? = withContext(Dispatchers.IO) {
         val json = gson.toJson(params)
@@ -252,70 +66,9 @@ object SupabaseClient {
 
         client.newCall(request).execute().use { response ->
             if (response.isSuccessful) response.body?.string() else null
-            suspend fun select(table: String, query: String = "*", order: String = "timestamp.desc"): String? = withContext(Dispatchers.IO) {
-        val request = Request.Builder()
-            .url("${Config.SUPABASE_URL}/rest/v1/$table?select=$query&order=$order")
-            .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
-            .get()
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (response.isSuccessful) response.body?.string() else null
         }
     }
 
-    suspend fun upsert(table: String, data: Map<String, Any>) = withContext(Dispatchers.IO) {
-        val json = gson.toJson(data)
-        val body = json.toRequestBody(mediaType)
-        
-        val request = Request.Builder()
-            .url("${Config.SUPABASE_URL}/rest/v1/$table")
-            .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
-            .addHeader("Prefer", "resolution=merge-duplicates")
-            .post(body)
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                // Log error
-            }
-        }
-    }
-}
-        suspend fun select(table: String, query: String = "*", order: String = "timestamp.desc"): String? = withContext(Dispatchers.IO) {
-        val request = Request.Builder()
-            .url("${Config.SUPABASE_URL}/rest/v1/$table?select=$query&order=$order")
-            .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
-            .get()
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (response.isSuccessful) response.body?.string() else null
-        }
-    }
-
-    suspend fun upsert(table: String, data: Map<String, Any>) = withContext(Dispatchers.IO) {
-        val json = gson.toJson(data)
-        val body = json.toRequestBody(mediaType)
-        
-        val request = Request.Builder()
-            .url("${Config.SUPABASE_URL}/rest/v1/$table")
-            .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
-            .addHeader("Prefer", "resolution=merge-duplicates")
-            .post(body)
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                // Log error
-            }
-        }
-    }
-}
     suspend fun select(table: String, query: String = "*", order: String = "timestamp.desc"): String? = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("${Config.SUPABASE_URL}/rest/v1/$table?select=$query&order=$order")
