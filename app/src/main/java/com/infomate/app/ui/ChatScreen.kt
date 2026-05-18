@@ -113,36 +113,44 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                     )
                 }
             ) { paddingValues ->
-                Column(
+                val listState = rememberLazyListState()
+                
+                // Auto-scroll logic
+                LaunchedEffect(state.messages.size, state.cognitiveSteps.size) {
+                    if (state.messages.isNotEmpty()) {
+                        listState.animateScrollToItem(state.messages.size) // +1 for the header/hub
+                    }
+                }
+
+                LazyColumn(
+                    state = listState,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues)
+                        .padding(paddingValues),
+                    contentPadding = PaddingValues(bottom = 24.dp)
                 ) {
-                    // Central Visual Hub
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(0.35f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        VisualHub(
-                            brainState = state.brainState,
-                            isActive = state.isSpeaking || state.isListening,
-                            amplitudes = state.voiceAmplitudes
-                        )
+                    // Item 0: The Visual Hub (now scrolls with the content)
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(300.dp), // Fixed height instead of weight
+                            contentAlignment = Alignment.Center
+                        ) {
+                            VisualHub(
+                                brainState = state.brainState,
+                                isActive = state.isSpeaking || state.isListening,
+                                amplitudes = state.voiceAmplitudes
+                            )
+                        }
                     }
 
-                    // Content Area
-                    Column(
-                        modifier = Modifier
-                            .weight(0.65f)
-                            .fillMaxWidth()
-                    ) {
-                        // Thinking steps overlay
+                    // Item 1: Thinking steps (if active)
+                    item {
                         AnimatedVisibility(
                             visible = state.cognitiveSteps.isNotEmpty(),
-                            enter = slideInVertically { -it } + fadeIn(),
-                            exit = slideOutVertically { -it } + fadeOut()
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
                         ) {
                             Surface(
                                 color = SilverText.copy(alpha = 0.03f),
@@ -160,27 +168,15 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                                 }
                             }
                         }
+                    }
 
-                        // Chat Stream
-                        val listState = rememberLazyListState()
-                        LaunchedEffect(state.messages.size) {
-                            if (state.messages.isNotEmpty()) {
-                                listState.animateScrollToItem(state.messages.size - 1)
-                            }
-                        }
-
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 24.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            val filteredMessages = if (searchQuery.isBlank()) state.messages 
-                                                 else state.messages.filter { it.content.contains(searchQuery, ignoreCase = true) }
-                            
-                            items(filteredMessages) { message ->
-                                MessageCard(message)
-                            }
+                    // Message Stream
+                    val filteredMessages = if (searchQuery.isBlank()) state.messages 
+                                         else state.messages.filter { it.content.contains(searchQuery, ignoreCase = true) }
+                    
+                    items(filteredMessages) { message ->
+                        Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                            MessageCard(message)
                         }
                     }
                 }
