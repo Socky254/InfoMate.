@@ -319,7 +319,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             addSimulationLog("AUTONOMOUS_RESEARCH_INITIATED: $topic")
             
             // Persistent internet research
-            val findings = GlobalSearchAgent.searchExternal("Advanced synthesis and future trends of $topic")
+            val findings = GlobalSearchAgent.searchExternal("Advanced synthesis and future trends of $topic", getApplication())
             if (findings != null) {
                 // The substrate learns autonomously from the internet
                 NeuralGrowthAgent.reflectAndLearn("Autonomous Internet Research: $topic", findings)
@@ -546,7 +546,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             
             // 1. Try Global Search Fusion (The "Google Placement")
             addTerminalLog("PRIMARY BRAIN UNREACHABLE: INITIATING GOOGLE FUSION...", "WARN", "CORE")
-            val searchResult = GlobalSearchAgent.searchExternal(query)
+            val searchResult = GlobalSearchAgent.searchExternal(query, getApplication())
             if (searchResult != null) {
                 logSystemTelemetry("GOOGLE_FUSION_SUCCESS", "SEARCH")
                 onToken(searchResult)
@@ -995,7 +995,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             
             // Priority 1: Multi-Engine Search
             addTerminalLog("SCANNING GLOBAL ARCHIVES...", "INFO", "RESEARCH")
-            val findings = GlobalSearchAgent.searchExternal(topic) ?: "Neural archives found no external data."
+            val findings = GlobalSearchAgent.searchExternal(topic, getApplication()) ?: "Neural archives found no external data."
             
             addTerminalLog("SYNTHESIZING EXTERNAL DATA...", "SUCCESS", "RESEARCH")
             
@@ -1172,6 +1172,13 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
     fun updateInput(text: String) {
         _state.update { it.copy(input = text) }
+        
+        // v11.5: SPECULATIVE RESEARCH (Warm up the global bridge)
+        if (text.length > 10 && (text.startsWith("What", true) || text.startsWith("How", true) || text.startsWith("Search", true))) {
+            viewModelScope.launch {
+                GlobalSearchAgent.searchExternal(text, getApplication())
+            }
+        }
     }
 
     fun searchGoogle(query: String) {
@@ -1192,8 +1199,8 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             saveMessageToSupabase(userMsg)
             addTerminalLog("INITIATING HUMAN-LIKE EXTENSIVE RESEARCH: $query", "INFO", "RESEARCH")
             
-            // v11.0: Multi-avenue Extensive Deep Dive
-            val comprehensiveData = GlobalSearchAgent.performExtensiveDeepDive(query) { progressUpdate ->
+            // v11.5: Pass context for semantic caching
+            val comprehensiveData = GlobalSearchAgent.performExtensiveDeepDive(query, getApplication()) { progressUpdate ->
                 addTerminalLog(progressUpdate, "SUCCESS", "RESEARCH")
             }
             
@@ -1306,6 +1313,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                     }
                 }
 
+                // v11.5: Pass context to ReliabilitySDK if it supported caching, but it's handled in searchExternal
                 ReliabilitySDK.sendPrompt(searchPrompt)
                 
                 // 2.3 CLIENT UI TIMEOUT (APK SIDE)

@@ -1,19 +1,34 @@
 package com.infomate.app.agent
 
+import android.content.Context
 import android.util.Log
 import com.infomate.app.core.network.SupabaseClient
+import com.infomate.app.storage.WarmDatabase
+import com.infomate.app.storage.ResearchCache
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Global Search Agent (v10.8)
+ * Global Search Agent (v11.5)
  * Orchestrates external search engines and manages neural network nodes.
  */
 object GlobalSearchAgent {
 
-    suspend fun searchExternal(query: String): String? {
+    suspend fun searchExternal(query: String, context: Context? = null): String? {
         Log.i("GlobalSearch", "Initiating node-based search for: $query")
         
+        // v11.5: Semantic Research Caching
+        context?.let {
+            val cached = WarmDatabase.getDatabase(it).warmDao().getCachedResearch(query)
+            if (cached != null && System.currentTimeMillis() - cached.timestamp < 86400000) { // 24h cache
+                Log.i("GlobalSearch", "Neural Cache Hit: $query")
+                return "[NEURAL_CACHE_SYNC]: ${cached.findings}"
+            }
+        }
+
         // 1. Fetch Active Nodes from the registry
         val activeNodes = try {
             val nodesJson = SupabaseClient.select("neural_network_nodes", order = "reliability_rating.desc")
@@ -44,16 +59,24 @@ object GlobalSearchAgent {
             } else null
         } catch (e: Exception) { null }
 
-        if (!results.isNullOrBlank()) {
-            return "[GLOBAL_BRIDGE_SYNC]: $results"
+        val finalResult = if (!results.isNullOrBlank()) {
+            "[GLOBAL_BRIDGE_SYNC]: $results"
+        } else {
+            // 3. Fallback: Secondary Model Proxy (Claude/Inter-Neural)
+            val proxyResult = callInterNeuralProxy(query)
+            if (proxyResult != null) proxyResult
+            else {
+                // 4. v10.1: Emergency Background Search (DuckDuckGo Fusion)
+                performEmergencyWebSearch(query)
+            }
         }
 
-        // 3. Fallback: Secondary Model Proxy (Claude/Inter-Neural)
-        val proxyResult = callInterNeuralProxy(query)
-        if (proxyResult != null) return proxyResult
+        // Save to cache
+        if (finalResult != null && context != null) {
+            WarmDatabase.getDatabase(context).warmDao().cacheResearch(ResearchCache(query, finalResult))
+        }
 
-        // 4. v10.1: Emergency Background Search (DuckDuckGo Fusion)
-        return performEmergencyWebSearch(query)
+        return finalResult
     }
 
     /**
@@ -74,31 +97,36 @@ object GlobalSearchAgent {
     }
 
     /**
-     * EXTENSIVE DEEP DIVE (v11.0: Human-Like Research)
-     * Researches multiple avenues including technical forums, documentation, and news.
+     * EXTENSIVE DEEP DIVE (v11.5: Asynchronous Multi-Avenue Research)
+     * Researches multiple avenues simultaneously for maximum speed.
      */
-    suspend fun performExtensiveDeepDive(query: String, onProgress: (String) -> Unit): String {
+    suspend fun performExtensiveDeepDive(query: String, context: Context? = null, onProgress: (String) -> Unit): String = coroutineScope {
         val comprehensiveReport = StringBuilder()
         
-        // Step 1: Broad Overview (General Knowledge)
-        onProgress("SCANNING_GLOBAL_ARCHIVES: Initiating broad sweep...")
-        val overview = searchExternal(query) ?: "General overview unavailable."
+        onProgress("SCANNING_GLOBAL_ARCHIVES: Initiating asynchronous multi-avenue sweep...")
+
+        // v11.5: FAN-OUT RESEARCH STRATEGY
+        val overviewDeferred = async { searchExternal(query, context) ?: "General overview unavailable." }
+        val techDeferred = async { 
+            val techQuery = "$query implementation details kotlin android best practices"
+            performEmergencyWebSearch(techQuery) ?: "Technical details restricted or not found."
+        }
+        val trendsDeferred = async { 
+            val trendQuery = "$query latest developments 2026"
+            performEmergencyWebSearch(trendQuery) ?: "Trend data synchronized to last known state."
+        }
+
+        val results = awaitAll(overviewDeferred, techDeferred, trendsDeferred)
+        val overview = results[0]
+        val techResults = results[1]
+        val trends = results[2]
+
         comprehensiveReport.append("### GENERAL_OVERVIEW ###\n$overview\n\n")
-
-        // Step 2: Technical Deep Dive (Specialized Avenues)
-        onProgress("TECHNICAL_EXTRACTION: Searching StackOverflow & Android Documentation...")
-        val techQuery = "$query implementation details kotlin android best practices"
-        val techResults = performEmergencyWebSearch(techQuery) ?: "Technical details restricted or not found."
         comprehensiveReport.append("### TECHNICAL_DEEP_DIVE ###\n$techResults\n\n")
-
-        // Step 3: Synthesis of Latest Trends
-        onProgress("SYNTHESIZING_TRENDS: Correlating with current industry standards...")
-        val trendQuery = "$query latest developments 2026"
-        val trends = performEmergencyWebSearch(trendQuery) ?: "Trend data synchronized to last known state."
         comprehensiveReport.append("### FUTURE_TRENDS_&_EVOLUTION ###\n$trends\n\n")
 
         onProgress("RESEARCH_COMPLETE: Finalizing comprehensive data payload.")
-        return comprehensiveReport.toString()
+        comprehensiveReport.toString()
     }
 
     private suspend fun performEmergencyWebSearch(query: String): String? {

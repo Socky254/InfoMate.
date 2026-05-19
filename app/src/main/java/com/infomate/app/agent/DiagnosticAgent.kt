@@ -81,6 +81,14 @@ object DiagnosticAgent {
         scope.launch {
             while (true) {
                 val report = runFullSystemCheck(context)
+                
+                // v11.5: HEURISTIC FAILURE PREDICTION
+                // If backend latency is high, trigger pre-emptive recalibration
+                if (report.contains("REST_API_TIMEOUT") || report.contains("SYNC_DEGRADED")) {
+                    Log.i("DiagnosticAgent", "Heuristic Failure Prediction: High latency detected. Recalibrating...")
+                    GlobalSearchAgent.recalibrateNeuralLink()
+                }
+
                 if (report.contains("SYNC_ERROR") || report.contains("AWARENESS_OFFLINE")) {
                     Log.w("DiagnosticAgent", "Anomaly detected during maintenance. Initiating repair...")
                     triggerAutoRepair(report, context)

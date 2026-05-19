@@ -91,7 +91,7 @@ class AgentOrchestrator(private val androidContext: Context? = null, private val
 
         // 6. MULTI-ENGINE FUSION (v11.0 Continuity)
         if (result.output.contains("SYSTEM_ERROR") || result.output.isBlank()) {
-            val searchFindings = GlobalSearchAgent.searchExternal(userIntent)
+            val searchFindings = GlobalSearchAgent.searchExternal(userIntent, androidContext)
             if (searchFindings != null) {
                 result = GenerationResult(
                     output = "[FUSED_SEARCH_SYNTHESIS]: $searchFindings",

@@ -13,7 +13,7 @@ class WsClientManager(private val url: String) {
         private set
     
     private var reconnectAttempt = 0
-    private val maxReconnectDelay = 8000L
+    private val maxReconnectDelay = 15000L
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var reconnectJob: Job? = null
 
@@ -47,20 +47,39 @@ class WsClientManager(private val url: String) {
                     if (isConnected) {
                         Log.w("WsClientManager", "Neural Link Severed: $reason (Code: $code)")
                         isConnected = false
-                        reconnect()
+                        reconnectWithBackoff()
                     }
                 }
 
                 override fun onError(ex: Exception?) {
                     Log.e("WsClientManager", "Neural Link Fault: ${ex?.message}")
                     isConnected = false
-                    reconnect()
+                    reconnectWithBackoff()
                 }
             }
             ws?.connect()
         } catch (e: Exception) {
             Log.e("WsClientManager", "Immediate Connection Failure: ${e.message}")
-            reconnect()
+            reconnectWithBackoff()
+        }
+    }
+
+    private fun reconnectWithBackoff() {
+        if (reconnectJob?.isActive == true) return
+        
+        StreamController.state = AIState.RECONNECTING
+        
+        reconnectAttempt++
+        
+        // v11.5: EXPONENTIAL BACKOFF WITH JITTER (Invincible Link)
+        val baseDelay = Math.min(2000L * Math.pow(2.0, (reconnectAttempt - 1).toDouble()).toLong(), maxReconnectDelay)
+        val jitter = (Math.random() * (baseDelay * 0.1)).toLong() // 10% Jitter
+        val delayTime = baseDelay + jitter
+
+        reconnectJob = scope.launch {
+            Log.d("WsClientManager", "Re-establishing link in ${delayTime}ms (Attempt $reconnectAttempt)")
+            delay(delayTime)
+            connect()
         }
     }
 
@@ -71,30 +90,11 @@ class WsClientManager(private val url: String) {
             } catch (e: Exception) {
                 Log.e("WsClientManager", "Send failed, enqueuing: ${e.message}")
                 RetryQueue.enqueue(data)
-                reconnect()
+                reconnectWithBackoff()
             }
         } else {
             Log.w("WsClientManager", "Link Offline. Enqueuing directive.")
             RetryQueue.enqueue(data)
-            connect()
-        }
-    }
-
-    private fun reconnect() {
-        if (reconnectJob?.isActive == true) return
-        
-        StreamController.state = AIState.RECONNECTING
-        
-        reconnectAttempt++
-        val delayTime = when (reconnectAttempt) {
-            1 -> 2000L
-            2 -> 4000L
-            else -> maxReconnectDelay
-        }
-
-        reconnectJob = scope.launch {
-            Log.d("WsClientManager", "Re-establishing link in ${delayTime}ms (Attempt $reconnectAttempt)")
-            delay(delayTime)
             connect()
         }
     }

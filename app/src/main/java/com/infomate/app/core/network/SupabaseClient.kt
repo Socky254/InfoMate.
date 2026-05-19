@@ -24,6 +24,20 @@ object SupabaseClient {
         .readTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(15, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
+        .dns(object : okhttp3.Dns {
+            override fun lookup(hostname: String): List<java.net.InetAddress> {
+                return try {
+                    okhttp3.Dns.SYSTEM.lookup(hostname)
+                } catch (e: Exception) {
+                    Log.w("SupabaseClient", "System DNS failed for $hostname, trying Google/Cloudflare fallback...")
+                    // v11.5: Multi-DNS Fallback (Google 8.8.8.8, Cloudflare 1.1.1.1)
+                    listOf(
+                        java.net.InetAddress.getByName("8.8.8.8"),
+                        java.net.InetAddress.getByName("1.1.1.1")
+                    )
+                }
+            }
+        })
         .connectionPool(okhttp3.ConnectionPool(5, 5, TimeUnit.MINUTES))
         .build()
         

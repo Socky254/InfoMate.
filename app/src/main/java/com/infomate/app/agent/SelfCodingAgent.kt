@@ -15,7 +15,7 @@ object SelfCodingAgent {
         
         // 1. Extensive research for latest Android & AI architecture patterns
         val researchQuery = "Modern Android clean architecture with Jetpack Compose and AI Agent orchestration patterns 2026"
-        val findings = GlobalSearchAgent.performExtensiveDeepDive(researchQuery) { /* Log progress if needed */ }
+        val findings = GlobalSearchAgent.performExtensiveDeepDive(researchQuery, null) { /* Log progress if needed */ }
         
         // 2. Propose improvement based on comprehensive findings
         val proposalDescription = "Architectural refinement based on HUMAN-LIKE EXTENSIVE RESEARCH. Analyzed documentation, forums, and current standards."
@@ -48,7 +48,7 @@ object SelfCodingAgent {
         
         // 1. Highly specific research query
         val researchQuery = "Surgical fix for $issue in Android Kotlin (Context: $technicalContext). Avoid breaking core architecture."
-        val findings = GlobalSearchAgent.searchExternal(researchQuery)
+        val findings = GlobalSearchAgent.searchExternal(researchQuery, null)
         
         // 2. Propose a scoped mutation
         if (findings != null) {
@@ -81,7 +81,7 @@ object SelfCodingAgent {
         Log.i("SelfCoding", "Attempting to optimize class logic: $className")
         
         val researchQuery = "Common bugs and optimization for $className in Kotlin Android app"
-        val findings = GlobalSearchAgent.searchExternal(researchQuery)
+        val findings = GlobalSearchAgent.searchExternal(researchQuery, null)
         
         if (findings != null) {
             SupabaseClient.insert("system_proposals", mapOf(

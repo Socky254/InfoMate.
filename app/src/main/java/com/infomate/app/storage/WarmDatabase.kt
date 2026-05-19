@@ -26,6 +26,13 @@ data class WorldSnapshot(
     val timestamp: Long = System.currentTimeMillis()
 )
 
+@Entity(tableName = "research_cache")
+data class ResearchCache(
+    @PrimaryKey val query: String,
+    val findings: String,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
 @Dao
 interface WarmDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -39,9 +46,15 @@ interface WarmDao {
 
     @Query("SELECT * FROM world_snapshots WHERE id = 1")
     suspend fun getWorld(): WorldSnapshot?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun cacheResearch(research: ResearchCache)
+
+    @Query("SELECT * FROM research_cache WHERE `query` = :query LIMIT 1")
+    suspend fun getCachedResearch(query: String): ResearchCache?
 }
 
-@Database(entities = [AgentSnapshot::class, WorldSnapshot::class], version = 2, exportSchema = false)
+@Database(entities = [AgentSnapshot::class, WorldSnapshot::class, ResearchCache::class], version = 3, exportSchema = false)
 abstract class WarmDatabase : RoomDatabase() {
     abstract fun warmDao(): WarmDao
 
