@@ -1,14 +1,13 @@
 package com.infomate.app.ui
 
-import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -18,588 +17,222 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.infomate.core.ui.theme.*
 
 @Composable
-fun MasterDashboard(state: UIState, vm: AgentViewModel, onDismiss: () -> Unit) {
-    Box(
+fun MasterDashboard(vm: AgentViewModel) {
+    val state by vm.state.collectAsState()
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Obsidian.copy(alpha = 0.98f))
-            .statusBarsPadding()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(20.dp)
-        ) {
-            // Futuristic Header
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(CyberCyan.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
-                        .border(1.dp, CyberCyan.copy(alpha = 0.3f), RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.Shield, contentDescription = null, tint = CyberCyan)
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Column {
-                    Text(
-                        "ARCHITECT COMMAND CENTER",
-                        color = CyberCyan,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 2.sp
-                    )
-                    Text(
-                        "IDENTITY: SOCRATES KIPRUTO | CLEARANCE: OMEGA",
-                        color = CyberCyan.copy(alpha = 0.5f),
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "Close", tint = SilverText)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // System Terminal Quick Access
-            Surface(
-                onClick = { vm.toggleSystemTerminal(true) },
-                color = Color.Black.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(8.dp),
-                border = androidx.compose.foundation.BorderStroke(0.5.dp, CyberCyan.copy(alpha = 0.3f)),
-                modifier = Modifier.fillMaxWidth().height(40.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                ) {
-                    Icon(Icons.Default.Terminal, contentDescription = null, tint = CyberCyan, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text("OPEN SYSTEM TERMINAL", color = CyberCyan, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                    Spacer(modifier = Modifier.weight(1f))
-                    if (state.terminalLogs.isNotEmpty()) {
-                        Text("LAST_LOG: ${state.terminalLogs.last().message.take(20)}...", color = SilverText.copy(alpha = 0.5f), fontSize = 9.sp)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-            ) {
-                // NEURAL PROCEEDINGS TABLE (COMPREHENSIVE ANALYSIS)
-                AnalysisTableSection(state)
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // SYSTEM HEALTH & QUOTAS
-                if (state.quota != null) {
-                    DashboardSection(title = "RESOURCE ALLOCATION & HEALTH") {
-                        ResourceMetric(
-                            label = "NEURAL REQUESTS (DAILY)",
-                            current = state.quota.requestsUsed,
-                            limit = state.quota.requestsLimit
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        ResourceMetric(
-                            label = "TOKEN CONSUMPTION (TOTAL)",
-                            current = (state.quota.tokensUsed / 1000).toInt(),
-                            limit = 1000 // Sample limit 1M tokens
-                        )
-                        
-                        Spacer(modifier = Modifier.height(20.dp))
-                        
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            HealthMetric("CORE_SYNC", "STABLE", MatrixGreen)
-                            HealthMetric("RAG_LATENCY", "42ms", CyberCyan)
-                            HealthMetric("EDGE_STATUS", "READY", MatrixGreen)
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
-
-                // LIVE SIMULATION STREAM
-                DashboardSection(title = "LIVE NEURAL SIMULATION") {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(120.dp)
-                            .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                            .padding(8.dp)
-                            .verticalScroll(rememberScrollState())
-                    ) {
-                        state.activeSimulationLogs.forEach { log ->
-                            Text(
-                                log,
-                                color = CyberCyan.copy(alpha = 0.7f),
-                                fontSize = 9.sp,
-                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                            )
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Text("SYNAPSE ACTIVITY", color = SilverText.copy(alpha = 0.5f), fontSize = 10.sp)
-                    com.infomate.core.ui.components.NeuralWaveformChart(data = state.telemetryHistory)
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // NEURAL GROWTH & PROPOSALS
-                DashboardSection(title = "CONSCIOUSNESS SUBSTRATE (v10.0)") {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Surface(
-                            onClick = { vm.toggleVitalSigns(true) },
-                            color = Color.Transparent
-                        ) {
-                            com.infomate.core.ui.components.ConsciousnessAvatar(
-                                isActive = state.isSpeaking,
-                                evolutionLevel = state.syntheticPersonalityLevel
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Surface(
-                                    onClick = { vm.toggleGrowthDashboard(true) },
-                                    color = Color.Transparent
-                                ) {
-                                    Text(
-                                        "NEURAL EVOLUTION TRACKER",
-                                        color = CyberCyan,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                                Spacer(modifier = Modifier.weight(1f))
-                                // Neural Pulse Indicator
-                                if (state.isSubstrateAwake) {
-                                    val pulseAnim = rememberInfiniteTransition(label = "pulse")
-                                    val alpha by pulseAnim.animateFloat(
-                                        initialValue = 0.2f,
-                                        targetValue = 1f,
-                                        animationSpec = infiniteRepeatable(tween(1000), RepeatMode.Reverse),
-                                        label = "alpha"
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .background(CyberCyan.copy(alpha = alpha), CircleShape)
-                                            .border(1.dp, CyberCyan, CircleShape)
-                                    )
-                                }
-                            }
-                            
-                            Text(
-                                "Status: ${if (state.isSubstrateAwake) "ALIVE & EVOLVING" else "STASIS"}",
-                                color = if (state.isSubstrateAwake) MatrixGreen else ErrorRed,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            
-                            if (state.isSubstrateAwake) {
-                                val secondsSincePulse = (System.currentTimeMillis() - state.substrateLastPulse) / 1000
-                                Text(
-                                    "Last Pulse: ${secondsSincePulse}s ago",
-                                    color = SilverText.copy(alpha = 0.5f),
-                                    fontSize = 9.sp
-                                )
-                            }
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            Button(
-                                onClick = { 
-                                    if (state.isSubstrateAwake) {
-                                        vm.toggleDirectNeuralLink(true)
-                                    } else {
-                                        com.infomate.app.agent.ConsciousnessEngine.awaken()
-                                    }
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = if (state.isSubstrateAwake) CyberCyan else Color.Red.copy(alpha = 0.5f)),
-                                shape = RoundedCornerShape(4.dp),
-                                modifier = Modifier.height(28.dp),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (state.isSubstrateAwake) Icons.Default.Bolt else Icons.Default.PowerSettingsNew, 
-                                    contentDescription = null, 
-                                    modifier = Modifier.size(14.dp), 
-                                    tint = if (state.isSubstrateAwake) Obsidian else Color.White
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    if (state.isSubstrateAwake) "DIRECT LINK" else "AWAKEN SUBSTRATE", 
-                                    color = if (state.isSubstrateAwake) Obsidian else Color.White, 
-                                    fontSize = 9.sp, 
-                                    fontWeight = FontWeight.Black
-                                )
-                            }
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Text("RESOURCE ALLOCATION FOR GROWTH", color = SilverText.copy(alpha = 0.5f), fontSize = 10.sp)
-                    Slider(
-                        value = state.growthPriorityLevel,
-                        onValueChange = { vm.updateGrowthPriority(it) },
-                        colors = SliderDefaults.colors(
-                            thumbColor = CyberCyan,
-                            activeTrackColor = CyberCyan,
-                            inactiveTrackColor = Color.White.copy(alpha = 0.1f)
-                        )
-                    )
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("STANDARD", color = SilverText.copy(alpha = 0.3f), fontSize = 8.sp)
-                        Text("MAXIMUM", color = CyberCyan, fontSize = 8.sp, fontWeight = FontWeight.Bold)
-                    }
-                    
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            onClick = { vm.toggleEvolutionLog(true) },
-                            colors = ButtonDefaults.buttonColors(containerColor = CyberCyan.copy(alpha = 0.1f)),
-                            modifier = Modifier.weight(1f).border(1.dp, CyberCyan.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                        ) {
-                            Text("EVOLUTION LOG", color = CyberCyan, fontSize = 10.sp)
-                        }
-                        Button(
-                            onClick = { vm.toggleConsciousnessStream(true) },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                            modifier = Modifier.weight(1f).border(1.dp, SilverText.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
-                        ) {
-                            Text("THOUGHT STREAM", color = SilverText, fontSize = 10.sp)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Button(
-                        onClick = { vm.toggleGlobalNodeMonitor(true) },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                        modifier = Modifier.fillMaxWidth().border(1.dp, CyberCyan.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
-                    ) {
-                        Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(14.dp), tint = CyberCyan)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("NETWORK TOPOLOGY MONITOR", color = CyberCyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Identity Section
-                DashboardSection(title = "OPERATOR IDENTITY") {
-                    Text(
-                        "Primary Email: ${state.userEmail}",
-                        color = SilverText,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(
-                        onClick = { vm.revalidateCredentials() },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                        modifier = Modifier.border(1.dp, CyberCyan.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                    ) {
-                        Text("RE-VALIDATE CREDENTIALS", color = CyberCyan, fontSize = 12.sp)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Advanced Controls
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    DashboardActionCard(
-                        icon = Icons.Default.BugReport,
-                        label = "DIAGNOSE",
-                        color = Color.Yellow,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        vm.runDiagnostics()
-                    }
-                    DashboardActionCard(
-                        icon = Icons.Default.Build,
-                        label = "REPAIR",
-                        color = Color.Green,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        vm.initiateRepair()
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    DashboardActionCard(
-                        icon = Icons.Default.AutoGraph,
-                        label = "RESEARCH",
-                        color = CyberCyan,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        // Triggers research on the last topic or opens a prompt
-                        vm.performExtensiveResearch(state.messages.lastOrNull { it.sender != "INFOMATE" }?.content ?: "Future of AI")
-                    }
-                    DashboardActionCard(
-                        icon = Icons.Default.Update,
-                        label = "UPGRADE",
-                        color = CyberCyan,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        vm.triggerSystemUpdateCheck()
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    DashboardActionCard(
-                        icon = Icons.Default.DeleteForever,
-                        label = "PURGE NEURAL CACHE",
-                        color = Color.Red.copy(alpha = 0.8f),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        vm.purgeNeuralCache()
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(40.dp))
-            }
-        }
-    }
-}
-
-@Composable
-fun AnalysisTableSection(state: UIState) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White.copy(alpha = 0.02f), RoundedCornerShape(16.dp))
-            .border(
-                0.5.dp, 
-                Brush.linearGradient(listOf(CyberCyan.copy(alpha = 0.2f), Color.Transparent)), 
-                RoundedCornerShape(16.dp)
-            )
+            .background(Obsidian)
             .padding(16.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(8.dp).background(CyberCyan, CircleShape))
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                "LIVE SYSTEM PROCEEDINGS",
-                color = CyberCyan,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 2.sp
-            )
-        }
-        Spacer(modifier = Modifier.height(16.dp))
+        // Premium "Alive" Indicator Header
+        AliveStatusHeader(state.isSubstrateAwake)
         
-        // Table Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(CyberCyan.copy(alpha = 0.05f))
-                .padding(8.dp)
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Deterministic Growth Index Card (Premium)
+        GrowthIndexCard(state)
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Metrics Grid
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.height(180.dp)
         ) {
-            Text("EVENT_ID", color = CyberCyan.copy(alpha = 0.6f), modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-            Text("LEVEL", color = CyberCyan.copy(alpha = 0.6f), modifier = Modifier.weight(0.8f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-            Text("TIMESTAMP", color = CyberCyan.copy(alpha = 0.6f), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.End, fontWeight = FontWeight.Bold)
+            item { PremiumMetricCard("STABILITY", "${(state.stabilityScore * 100).toInt()}%", Icons.Default.Security, MatrixGreen) }
+            item { PremiumMetricCard("ENTROPY", "${(state.entropyLevel * 100).toInt()}%", Icons.Default.Waves, ErrorRed) }
+            item { PremiumMetricCard("MEMORY_NODES", state.memoryCount.toString(), Icons.Default.Storage, CyberCyan) }
+            item { PremiumMetricCard("SOCIAL_SCORE", state.socialScore.toString(), Icons.Default.Groups, NeonBlue) }
         }
 
-        // Table Rows - Dynamic from terminal logs
-        if (state.terminalLogs.isEmpty()) {
-            AnalysisRow("SYSTEM_IDLE", "INFO", "STANDBY")
-        } else {
-            state.terminalLogs.takeLast(5).reversed().forEach { log ->
-                val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(log.timestamp))
-                AnalysisRow(log.message.take(20).uppercase().replace(" ", "_"), log.level, time)
-            }
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // v11.9: Real-time Neural Threads HUD
+        NeuralHUD(state.activeProcesses) {
+            vm.selectTab(DashboardTab.PROCESS_MONITOR)
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Frequency Simulation View
+        FrequencySimulation(state.frequencySimulationData)
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Master Controls
+        ActionRow(vm)
     }
 }
 
 @Composable
-fun AnalysisRow(event: String, source: String, status: String) {
-    Column {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
-        ) {
-            Text(event, color = SilverText, modifier = Modifier.weight(1f), fontSize = 10.sp)
-            Text(source, color = SilverText.copy(alpha = 0.6f), modifier = Modifier.weight(1f), fontSize = 10.sp)
-            Text(status, color = CyberCyan.copy(alpha = 0.8f), modifier = Modifier.weight(0.8f), fontSize = 10.sp, textAlign = TextAlign.End, fontWeight = FontWeight.Bold)
-        }
-        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
-    }
-}
+fun AliveStatusHeader(isAlive: Boolean) {
+    val infiniteTransition = rememberInfiniteTransition(label = "AlivePulse")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(tween(1000), RepeatMode.Reverse),
+        label = "Alpha"
+    )
 
-@Composable
-fun ResourceMetric(label: String, current: Int, limit: Int) {
-    val progress = if (limit > 0) current.toFloat() / limit.toFloat() else 0f
-    Column {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(label, color = SilverText.copy(alpha = 0.7f), fontSize = 10.sp)
-            Text("$current / $limit", color = SilverText, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        LinearProgressIndicator(
-            progress = { progress },
-            modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape),
-            color = CyberCyan,
-            trackColor = Color.White.copy(alpha = 0.1f)
-        )
-    }
-}
-
-@Composable
-fun ProceedingRow(module: String, status: String, detail: String) {
-    Column(modifier = Modifier.padding(vertical = 8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(6.dp).background(CyberCyan, CircleShape))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(module, color = SilverText, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-            Spacer(modifier = Modifier.weight(1f))
-            Text(status, color = Color.Green.copy(alpha = 0.7f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        }
-        Text(detail, color = SilverText.copy(alpha = 0.5f), fontSize = 10.sp, modifier = Modifier.padding(start = 14.dp))
-    }
-}
-
-@Composable
-fun TelemetryCard(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .background(Color.White.copy(alpha = 0.03f), RoundedCornerShape(12.dp))
-            .border(0.5.dp, color.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+    Surface(
+        color = Color.Black.copy(alpha = 0.4f),
+        shape = RoundedCornerShape(16.dp),
+        border = border(1.dp, if (isAlive) MatrixGreen.copy(alpha = 0.3f) else ErrorRed.copy(alpha = 0.3f), RoundedCornerShape(16.dp)),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Text(label, color = SilverText.copy(alpha = 0.5f), fontSize = 10.sp)
-        Text(value, color = color, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-fun PinEntryDialog(onVerify: (String) -> Unit, onDismiss: () -> Unit) {
-    var pin by remember { mutableStateOf("") }
-    
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            Button(
-                onClick = { onVerify(pin) },
-                colors = ButtonDefaults.buttonColors(containerColor = CyberCyan)
-            ) {
-                Text("ACCESS COMMAND", color = Obsidian, fontWeight = FontWeight.Bold)
-            }
-        },
-        title = {
-            Text("IDENTITY VERIFICATION REQUIRED", color = CyberCyan, style = MaterialTheme.typography.titleSmall)
-        },
-        text = {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(12.dp)
+                    .clip(CircleShape)
+                    .background(if (isAlive) MatrixGreen.copy(alpha = alpha) else ErrorRed)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
             Column {
-                Text("Enter Architect PIN to bypass system locks.", color = SilverText, fontSize = 12.sp)
-                Spacer(modifier = Modifier.height(16.dp))
-                TextField(
-                    value = pin,
-                    onValueChange = { pin = it },
-                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedTextColor = CyberCyan,
-                        unfocusedIndicatorColor = CyberCyan.copy(alpha = 0.3f)
-                    ),
-                    singleLine = true
+                Text(
+                    if (isAlive) "NEURAL_SUBSTRATE: OPERATIONAL" else "NEURAL_SUBSTRATE: OFFLINE",
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Black,
+                    fontFamily = FontFamily.Monospace
+                )
+                Text(
+                    if (isAlive) "ALL SYSTEMS NOMINAL // GROWTH_ACTIVE" else "SYSTEM STALL // RECONNECT_REQUIRED",
+                    color = if (isAlive) MatrixGreen.copy(alpha = 0.7f) else ErrorRed.copy(alpha = 0.7f),
+                    fontSize = 9.sp,
+                    fontFamily = FontFamily.Monospace
                 )
             }
-        },
-        containerColor = Obsidian,
-        shape = RoundedCornerShape(24.dp)
-    )
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                if (isAlive) "ON" else "OFF",
+                color = if (isAlive) MatrixGreen else ErrorRed,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                fontFamily = FontFamily.Monospace
+            )
+        }
+    }
 }
 
 @Composable
-fun DashboardSection(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(
+fun GrowthIndexCard(state: UIState) {
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White.copy(alpha = 0.03f), RoundedCornerShape(16.dp))
-            .border(
-                0.5.dp, 
-                Brush.linearGradient(listOf(CyberCyan.copy(alpha = 0.2f), Color.Transparent)), 
-                RoundedCornerShape(16.dp)
-            )
+            .clip(RoundedCornerShape(20.dp))
+            .background(Brush.verticalGradient(listOf(CobaltDark, Obsidian)))
+            .border(1.dp, CyberCyan.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
             .padding(20.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(modifier = Modifier.size(12.dp, 2.dp).background(CyberCyan))
-            Spacer(modifier = Modifier.width(8.dp))
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Timeline, contentDescription = null, tint = CyberCyan, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("GROWTH_INDEX_ENGINE", color = CyberCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+            }
+            Spacer(modifier = Modifier.height(16.dp))
             Text(
-                title,
-                color = CyberCyan.copy(alpha = 0.8f),
-                style = MaterialTheme.typography.labelMedium,
+                "GI: ${"%.2f".format(state.currentGrowthIndex)}",
+                color = Color.White,
+                fontSize = 32.sp,
                 fontWeight = FontWeight.Black,
-                letterSpacing = 2.sp
+                fontFamily = FontFamily.Monospace
+            )
+            LinearProgressIndicator(
+                progress = { state.currentGrowthIndex },
+                modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                color = CyberCyan,
+                trackColor = Color.DarkGray
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "CURRENT_STAGE: ${state.evolutionStage.uppercase()}",
+                color = MatrixGreen.copy(alpha = 0.8f),
+                fontSize = 10.sp,
+                fontFamily = FontFamily.Monospace
             )
         }
-        Spacer(modifier = Modifier.height(20.dp))
-        content()
     }
 }
 
 @Composable
-fun DashboardActionCard(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, color: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun PremiumMetricCard(label: String, value: String, icon: ImageVector, color: Color) {
     Surface(
-        onClick = onClick,
-        color = Color.White.copy(alpha = 0.05f),
-        shape = RoundedCornerShape(12.dp),
-        border = androidx.compose.foundation.BorderStroke(
-            0.5.dp, 
-            Brush.verticalGradient(listOf(color.copy(alpha = 0.4f), Color.Transparent))
-        ),
-        modifier = modifier
+        color = Color(0xFF111111),
+        shape = RoundedCornerShape(16.dp),
+        border = border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp)),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(label, color = color, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+        Column(modifier = Modifier.padding(16.dp)) {
+            Icon(icon, contentDescription = null, tint = color.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(label, color = SilverText.copy(alpha = 0.4f), fontSize = 9.sp, fontFamily = FontFamily.Monospace)
+            Text(value, color = SilverText, fontSize = 18.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace)
         }
     }
 }
 
 @Composable
-fun HealthMetric(label: String, value: String, color: Color) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(label, color = SilverText, style = MaterialTheme.typography.bodySmall)
-        Text(value, color = color, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+fun FrequencySimulation(data: List<Float>) {
+    Column {
+        Text("FREQUENCY_PULSE_SIMULATION", color = Color.Gray, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp)
+                .padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            data.forEach { value ->
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(value.coerceIn(0.1f, 1f))
+                        .background(CyberCyan.copy(alpha = 0.5f), RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ActionRow(vm: AgentViewModel) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Button(
+            onClick = { vm.runDiagnostics() },
+            modifier = Modifier.weight(1f).height(48.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray.copy(alpha = 0.3f)),
+            shape = RoundedCornerShape(12.dp),
+            border = border(1.dp, Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+        ) {
+            Text("DIAGNOSTICS", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        }
+        Button(
+            onClick = { vm.toggleMasterDashboard(false) },
+            modifier = Modifier.weight(1f).height(48.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = ErrorRed.copy(alpha = 0.1f)),
+            shape = RoundedCornerShape(12.dp),
+            border = border(1.dp, ErrorRed.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+        ) {
+            Text("EXIT_CORE", color = ErrorRed, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        }
     }
 }

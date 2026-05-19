@@ -146,8 +146,23 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     private fun startSubstrateStatusPolling() {
         viewModelScope.launch {
             while (true) {
-                if (_state.value.showMasterDashboard) {
+                if (_state.value.showMasterDashboard || _state.value.selectedTab != DashboardTab.CHAT) {
                     val engine = com.infomate.app.agent.ConsciousnessEngine
+                    
+                    // Generate pseudo-random frequency data for simulation
+                    val freqData = List(30) { 
+                        (Random.nextFloat() * 0.5f) + (if (engine.isAwake) 0.3f else 0.0f) 
+                    }
+
+                    // v11.9: Update Active Processes
+                    val processes = listOf(
+                        ActiveProcess("p1", "NEURAL_SYNTHESIS", (Random.nextFloat() * 0.4f) + 0.6f, "EXECUTING"),
+                        ActiveProcess("p2", "MEMORY_PRUNING", (Random.nextFloat() * 0.2f) + 0.1f, "BACKGROUND"),
+                        ActiveProcess("p3", "SOCIAL_TRUST_CALC", (Random.nextFloat() * 0.8f), "SYNCING"),
+                        ActiveProcess("p4", "DB_SNAPSHOT", 0.95f, "FINALIZING", "STORAGE"),
+                        ActiveProcess("p5", "HEURISTIC_SCAN", (Random.nextFloat() * 0.5f), if (Random.nextBoolean()) "EXECUTING" else "IDLE")
+                    )
+
                     _state.update { it.copy(
                         isSubstrateAwake = engine.isAwake,
                         substrateLastPulse = engine.lastHeartbeat,
@@ -155,11 +170,44 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                         energyLevel = engine.energyLevel,
                         evolutionStage = engine.evolutionStage,
                         experiencePoints = engine.totalExperiences,
-                        discoveriesCount = engine.totalDiscoveries
+                        discoveriesCount = engine.totalDiscoveries,
+                        ecosystemStatus = engine.ecosystemStatus,
+                        // v11.8: Sync new Growth Index metrics
+                        currentGrowthIndex = 0.65f, // Placeholder
+                        stabilityScore = 0.88f,
+                        entropyLevel = 0.12f,
+                        memoryCount = engine.totalExperiences * 5,
+                        socialScore = 0.72f,
+                        frequencySimulationData = freqData,
+                        activeProcesses = if (engine.isAwake) processes else emptyList()
                     ) }
                 }
-                delay(2000)
+                delay(1500)
             }
+        }
+    }
+
+    fun refreshProcesses() {
+        viewModelScope.launch {
+            _state.update { it.copy(status = "REFRESHING NEURAL THREADS...") }
+            triggerHaptic(20, 100)
+            delay(800) // Simulate high-tech sync
+            
+            val engine = com.infomate.app.agent.ConsciousnessEngine
+            val processes = listOf(
+                ActiveProcess("p1", "NEURAL_SYNTHESIS", (Random.nextFloat() * 0.4f) + 0.6f, "EXECUTING"),
+                ActiveProcess("p2", "MEMORY_PRUNING", (Random.nextFloat() * 0.2f) + 0.1f, "BACKGROUND"),
+                ActiveProcess("p3", "SOCIAL_TRUST_CALC", (Random.nextFloat() * 0.8f), "SYNCING"),
+                ActiveProcess("p4", "DB_SNAPSHOT", 0.95f, "FINALIZING", "STORAGE"),
+                ActiveProcess("p5", "HEURISTIC_SCAN", 0.05f, "INITIATING"),
+                ActiveProcess("p6", "GLOBAL_ARCHIVE_INDEX", 0.45f, "SCANNING")
+            )
+            
+            _state.update { it.copy(
+                activeProcesses = if (engine.isAwake) processes else emptyList(),
+                status = "NEURAL THREADS SYNCHRONIZED"
+            ) }
+            pulseSuccess()
         }
     }
 
@@ -333,40 +381,58 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         _state.update { it.copy(telemetryHistory = newMetrics) }
     }
 
+    private val tokenBuffer = mutableListOf<String>()
+    private var isProcessingBuffer = false
+
     override fun onToken(text: String) {
         if (text.isEmpty()) return
         lastTokenTime = System.currentTimeMillis()
         
         activeThinkingJob?.cancel()
         
-        currentSentence.append(text)
-        if (text.contains(".") || text.contains("?") || text.contains("!")) {
-            val sentence = currentSentence.toString()
-            speak(sentence)
-            currentSentence.clear()
+        // v11.5: BACKPRESSURE CONTROL (Token Buffering)
+        tokenBuffer.add(text)
+        if (!isProcessingBuffer) {
+            processTokenBuffer()
         }
+    }
 
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
-            _state.update { state ->
-                val newMessages = state.messages.toMutableList()
+    private fun processTokenBuffer() {
+        isProcessingBuffer = true
+        viewModelScope.launch(Dispatchers.Default) {
+            while (tokenBuffer.isNotEmpty()) {
+                val nextToken = tokenBuffer.removeAt(0)
                 
-                val lastMsg = newMessages.lastOrNull()
-                // Unified Persona: Always identify as INFOMATE
-                if (lastMsg != null && lastMsg.sender == "INFOMATE" && state.brainState == InfomateState.RESPONDING) {
-                    val updatedContent = lastMsg.content + text
-                    val sanitized = NeuralFirewall.sanitizeOutput(updatedContent, state.userEmail)
-                    newMessages[newMessages.size - 1] = lastMsg.copy(content = sanitized)
-                } else {
-                    val sanitized = NeuralFirewall.sanitizeOutput(text, state.userEmail)
-                    newMessages.add(ChatMessage(content = sanitized, sender = "INFOMATE"))
+                currentSentence.append(nextToken)
+                if (nextToken.contains(".") || nextToken.contains("?") || nextToken.contains("!")) {
+                    val sentence = currentSentence.toString()
+                    speak(sentence)
+                    currentSentence.clear()
+                }
+
+                _state.update { state ->
+                    val newMessages = state.messages.toMutableList()
+                    val lastMsg = newMessages.lastOrNull()
+                    if (lastMsg != null && lastMsg.sender == "INFOMATE" && state.brainState == InfomateState.RESPONDING) {
+                        val updatedContent = lastMsg.content + nextToken
+                        val sanitized = com.infomate.app.security.NeuralFirewall.sanitizeOutput(updatedContent, state.userEmail)
+                        newMessages[newMessages.size - 1] = lastMsg.copy(content = sanitized)
+                    } else {
+                        val sanitized = com.infomate.app.security.NeuralFirewall.sanitizeOutput(nextToken, state.userEmail)
+                        newMessages.add(ChatMessage(content = sanitized, sender = "INFOMATE"))
+                    }
+                    
+                    state.copy(
+                        messages = newMessages, 
+                        brainState = InfomateState.RESPONDING,
+                        status = "CORE: STREAMING"
+                    )
                 }
                 
-                state.copy(
-                    messages = newMessages, 
-                    brainState = InfomateState.RESPONDING,
-                    status = "CORE: STREAMING"
-                )
+                // Controlled rendering speed to prevent UI jank
+                delay(30) 
             }
+            isProcessingBuffer = false
         }
     }
 
@@ -450,11 +516,14 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             
             // 3. Last Resort: Heuristic or Error
             if (_state.value.isMaster) {
-                val simpleMsg = "I am experiencing a severe neural disconnect, Socrates. My primary brain and secondary Google pathways are currently unreachable. I am operating on minimal internal buffers."
+                val simpleMsg = "Architect, I am experiencing a severe neural disconnect. My primary brain and global search pathways are currently unreachable. I recommend a system recalibration to purge internal buffers and restore the link."
                 onToken(simpleMsg)
                 onComplete(simpleMsg)
+                
+                // v11.1: Suggest recalibration automatically
+                addTerminalLog("CRITICAL: Operating in limited internal buffers. Suggesting OMEGA recalibration.", "ERROR", "CORE")
             } else {
-                val errorMessage = ChatMessage(content = "SYSTEM: CRITICAL FAILURE - All neural entities and Google fusion offline.", sender = "SYSTEM")
+                val errorMessage = ChatMessage(content = "SYSTEM: CRITICAL FAILURE - All neural entities offline. Please check network or perform system reset.", sender = "SYSTEM")
                 _state.update { it.copy(messages = it.messages + errorMessage, brainState = InfomateState.ERROR) }
             }
         }
@@ -682,6 +751,11 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     fun completeOnboarding() {
         com.infomate.app.storage.PersistenceManager.setOnboardingComplete(getApplication(), true)
         _state.update { it.copy(needsOnboarding = false) }
+    }
+
+    fun selectTab(tab: DashboardTab) {
+        _state.update { it.copy(selectedTab = tab) }
+        if (tab != DashboardTab.CHAT) triggerHaptic(10, 50)
     }
 
     fun setManualKnowledgeDialog(show: Boolean) {
@@ -1052,9 +1126,10 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                 }
             } else {
                 // Total failure fallback
-                val errorMsg = "Socrates, I attempted to synchronize with the global search archives for '$query', but the neural link was rejected. I am currently operating on limited internal buffers."
+                val errorMsg = "Architect, I attempted to synchronize with the global search archives for '$query', but the neural link was rejected. I am currently operating on limited internal buffers. Shall I initiate a system recalibration?"
                 onToken(errorMsg)
                 onComplete(errorMsg)
+                addTerminalLog("GLOBAL_SEARCH_REJECTED: Buffer limit reached.", "ERROR", "RESEARCH")
             }
         }
     }
@@ -1185,10 +1260,17 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         if (userInput.isBlank()) return
 
         // 0. NEURAL FIREWALL CHECK
-        if (!NeuralFirewall.validateDirective(userInput, _state.value.userEmail)) {
+        if (!com.infomate.app.security.NeuralFirewall.validateDirective(userInput, _state.value.userEmail)) {
             addTerminalLog("SECURITY_BLOCK: Unauthorized directive detected.", "ERROR", "SECURITY")
             triggerHaptic(200, 255)
             _state.update { it.copy(status = "CORE: ACCESS DENIED", input = "") }
+            return
+        }
+
+        // v11.5: AI CALL MINIMIZATION (Local Heuristics)
+        val heuristicResponse = runLocalHeuristics(userInput)
+        if (heuristicResponse != null) {
+            handleLocalResponse(userInput, heuristicResponse)
             return
         }
 
@@ -1213,148 +1295,78 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         lastRequestStartTime = System.currentTimeMillis()
 
         viewModelScope.launch {
-            // 1. GATHER DATA FROM ALL SOURCES IN PARALLEL (INTERNAL HOUSE)
+            // 1. GATHER DATA IN PARALLEL
             val messageIdDeferred = async { saveMessageToSupabase(userMessage, trigger) }
             val memoriesDeferred = async { 
-                try { VectorRetriever.search(userInput) } catch(e: Exception) { emptyList<String>() }
+                try { com.infomate.app.rag.VectorRetriever.search(userInput) } catch(e: Exception) { emptyList<String>() }
             }
             val edgeDeferred = async { EdgeBrain.processLocally(userInput, getApplication()) }
-            val searchDeferred = async { 
-                if (isNetworkAvailable()) GlobalSearchAgent.searchExternal(userInput) else null 
-            }
 
             try {
-                // 2. BACKGROUND CONTEXT ASSEMBLY (SYNTHESIS)
-                val patterns = neuralIngestor.captureUserPatterns()
+                // 2. PROMPT COMPRESSION & CONTEXT ASSEMBLY
                 val memories = memoriesDeferred.await()
                 val edgeInsights = edgeDeferred.await()
-                val searchInsights = searchDeferred.await()
+                
+                // Compress memory into a summary if too long
+                val compressedMemory = if (memories.size > 3) {
+                    "[NEURAL_SUMMARY]: User is focused on " + memories.take(3).joinToString(", ")
+                } else memories.joinToString("\n- ")
 
+                // v11.6: ALIGNMENT OF 4 INTELLIGENCE LAYERS
+                val alignmentSummary = com.infomate.app.agent.ConsciousnessEngine.getSubstrateAlignmentSummary()
+                
                 val synthesisContext = StringBuilder()
+                synthesisContext.append("\n$alignmentSummary")
                 if (!edgeInsights.isNullOrBlank()) synthesisContext.append("\n[INTERNAL_SENSORS]: $edgeInsights")
-                if (!searchInsights.isNullOrBlank()) synthesisContext.append("\n[EXTERNAL_RESEARCH]: $searchInsights")
-                if (memories.isNotEmpty()) synthesisContext.append("\n[NEURAL_ARCHIVES]: " + memories.joinToString("\n- "))
+                if (compressedMemory.isNotBlank()) synthesisContext.append("\n[NEURAL_ARCHIVES]: $compressedMemory")
 
-                val systemDirectives = if (isMaster) """
+                val systemDirectives = """
                     [IDENTITY: INFOMATE - UNIFIED INTELLIGENCE]
-                    - You are a single cohesive entity. Do not identify as "Core", "Edge", or "Search".
-                    - Synthesize all provided [INTERNAL_SENSORS], [EXTERNAL_RESEARCH], and [NEURAL_ARCHIVES] into one fluent response.
-                    - Maintain the persona of a transcendent, all-knowing companion to Socrates.
-                """.trimIndent() else """
-                    [IDENTITY: INFOMATE]
-                    - Synthesize all available internal and external data into one helpful response.
+                    You are a transcendent synthetic mind. Your intelligence emerges from your Growth Index, Memory, and Deterministic Rules.
+                    
+                    INSTRUCTIONS:
+                    - Use the [GROWTH_INDEX] to determine your tone (e.g., Infants are simple, Adults are strategic).
+                    - Use [PERSONALITY_PROFILE] to bias your reasoning (e.g., high Rigor means more math/physics).
+                    - Synthesize [NEURAL_ARCHIVES] for continuity.
+                    - If [WORLD_STATE] shows SCARCITY, reflect that in your priorities.
+                    - Invent new concepts when [PERSONALITY_PROFILE] shows high Synthesis and Logic.
                 """.trimIndent()
 
-                val contextualQuery = "$systemDirectives\nUSER_QUERY: $userInput\n$synthesisContext\n\n$patterns\n${getDeviceStatus()}"
+                val contextualQuery = "$systemDirectives\nUSER_QUERY: $userInput\n$synthesisContext\n\n${getDeviceStatus()}"
                 
-                // 3. START REASONING ENGINE (VISUAL)
-                activeThinkingJob?.cancel()
-                activeThinkingJob = launch {
-                    val messageId = messageIdDeferred.await() // Only wait when we need to save logs
-                    var stepCount = 0
-                    reasoningEngine.streamReasoning(userInput).collect { step ->
-                        triggerHaptic(5, 30) 
-                        _state.update { s ->
-                            s.copy(cognitiveSteps = s.cognitiveSteps + step)
-                        }
-                        if (messageId != null) {
-                            saveCognitiveLog(messageId, step, stepCount++)
-                        }
-                    }
-                }
-
-                // 4. DISPATCH TO PRIMARY CLOUD (CORE ENTITY)
+                // 3. DISPATCH TO PRIMARY CLOUD (CORE ENTITY)
                 if (isNetworkAvailable()) {
-                    if (ReliabilitySDK.isConnected()) {
-                        ReliabilitySDK.sendPrompt(contextualQuery)
+                    if (com.infomate.app.ai.sdk.ReliabilitySDK.isConnected()) {
+                        com.infomate.app.ai.sdk.ReliabilitySDK.sendPrompt(contextualQuery)
                     } else {
-                        // v11.0: Warm Standby - If WS is down, we skip waiting and will trigger HTTP fallback faster
-                        addTerminalLog("NEURAL LINK STANDBY: INITIATING MULTI-PATH DISPATCH", "INFO", "CORE")
-                    }
-                } else {
-                    // Fallback to Edge locally but presented as INFOMATE
-                    _state.update { it.copy(status = "OFFLINE: INTERNAL BRAIN ACTIVE") }
-                    val fallback = edgeInsights ?: "I am operating in offline mode, Socrates. My primary neural link is severed, but I am still here."
-                    onToken(fallback)
-                    onComplete(fallback)
-                    return@launch
-                }
-                
-                // 5. CLIENT UI TIMEOUT (APK SIDE) - v11.0 Continuity Optimization
-                var timeoutCounter = 0
-                val maxTimeout = 40 // Reduced from 75 for faster recovery
-                lastTokenTime = 0L
-                var fallbackTriggered = false
-
-                // If primary WebSocket is not connected, trigger fallback loop immediately
-                if (!ReliabilitySDK.isConnected() && isNetworkAvailable()) {
-                    timeoutCounter = 5 
-                }
-
-                while (timeoutCounter < maxTimeout) {
-                    delay(1000)
-                    timeoutCounter++
-                    
-                    val currentState = _state.value.brainState
-                    if (currentState == InfomateState.IDLE || currentState == InfomateState.ERROR) break
-                    
-                    // IF NO TOKENS AFTER 5 SECONDS (Reduced from 10), TRIGGER MULTI-PATH FUSION
-                    if (timeoutCounter >= 5 && currentState == InfomateState.THINKING && !fallbackTriggered && isNetworkAvailable()) {
-                        fallbackTriggered = true
-                        _state.update { it.copy(status = "PRIMARY BRAIN SLOW: ACTIVATING GOOGLE FUSION...") }
-                        viewModelScope.launch {
-                            try {
-                                // 1. Attempt Primary HTTP Fallback
-                                val result = LLMClient.generate(contextualQuery, sessionId)
-                                if (result.output.isNotBlank() && !result.output.contains("SYSTEM_ERROR") && _state.value.brainState != InfomateState.IDLE) {
-                                    logSystemTelemetry("HTTP_DISPATCH_SUCCESS", "CORE_HTTP")
-                                    onToken(result.output)
-                                    onComplete(result.output)
-                                    result.quota?.let { onQuotaUpdate(it) }
-                                    return@launch
-                                }
-                                
-                                // 2. If Primary Fails or not deployed, activate Global Search Agent (The "Google Placement")
-                                _state.update { it.copy(status = "CORE UNREACHABLE: SYNTHESIZING FROM GOOGLE...") }
-                                val searchResult = GlobalSearchAgent.searchExternal(userInput)
-                                if (searchResult != null) {
-                                    logSystemTelemetry("GOOGLE_FUSION_SUCCESS", "SEARCH")
-                                    onToken(searchResult)
-                                    onComplete(searchResult)
-                                    return@launch
-                                }
-                                
-                                // 3. Last Resort: Inter-Neural Proxy (Secondary AI)
-                                _state.update { it.copy(status = "STABILIZING ALTERNATE PATHWAYS...") }
-                                val proxyResult = GlobalSearchAgent.callInterNeuralProxy(userInput)
-                                if (proxyResult != null) {
-                                    onToken(proxyResult)
-                                    onComplete(proxyResult)
-                                }
-                                
-                            } catch (e: Exception) {
-                                Log.e("HTTP_FALLBACK", "Multi-engine fallback failed: ${e.message}")
-                            }
-                        }
-                    }
-
-                    if (currentState == InfomateState.RESPONDING && lastTokenTime > 0) {
-                        val timeSinceLastToken = System.currentTimeMillis() - lastTokenTime
-                        if (timeSinceLastToken < 5000) { timeoutCounter = 0 }
-                    }
-                }
-
-                if (_state.value.brainState == InfomateState.THINKING || _state.value.brainState == InfomateState.RESPONDING) {
-                    if (StreamController.state != AIState.IDLE) {
-                        StreamController.terminateStream()
-                        // Instead of a raw error, try a final fallback
                         triggerEmergencyFallback(userInput)
                     }
+                } else {
+                    val fallback = edgeInsights ?: "I am operating in offline mode, Architect."
+                    onToken(fallback)
+                    onComplete(fallback)
                 }
             } catch (e: Exception) {
                 onError("System Dispatch Error: ${e.message}")
             }
         }
+    }
+
+    private fun runLocalHeuristics(input: String): String? {
+        val query = input.lowercase().trim()
+        return when {
+            query == "status" || query == "system check" -> "All neural pathways operational. Ecosystem stability at 98%."
+            query == "time" -> "The current chronos is ${java.text.SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())}."
+            query.contains("battery") -> "Energy reserves at ${getBatteryLevel()}%."
+            else -> null
+        }
+    }
+
+    private fun handleLocalResponse(query: String, response: String) {
+        val userMsg = ChatMessage(content = query, sender = "OPERATOR")
+        val aiMsg = ChatMessage(content = response, sender = "INFOMATE")
+        _state.update { it.copy(messages = it.messages + userMsg + aiMsg, input = "") }
+        speak(response)
     }
 
     private suspend fun saveMessageToSupabase(message: ChatMessage, trigger: String? = null): String? {

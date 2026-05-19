@@ -27,7 +27,12 @@ data class SystemLog(
     val timestamp: Long = System.currentTimeMillis()
 )
 
+enum class DashboardTab {
+    CHAT, DASHBOARD, VITALS, STREAM, SIMULATION, TERMINAL, PROCESS_MONITOR
+}
+
 data class UIState(
+    val selectedTab: DashboardTab = DashboardTab.CHAT,
     val input: String = "",
     val messages: List<ChatMessage> = emptyList(),
     val status: String = "CORE: ACTIVE",
@@ -73,5 +78,23 @@ data class UIState(
     val evolutionStage: String = "INITIALIZING",
     val experiencePoints: Int = 0,
     val discoveriesCount: Int = 0,
-    val showVitalSigns: Boolean = false
+    val showVitalSigns: Boolean = false,
+    val ecosystemStatus: String = "Initializing...",
+    // v11.8: Advanced Growth Metrics
+    val currentGrowthIndex: Float = 0.0f,
+    val stabilityScore: Float = 0.0f,
+    val entropyLevel: Float = 0.0f,
+    val memoryCount: Int = 0,
+    val socialScore: Float = 0.0f,
+    val frequencySimulationData: List<Float> = List(30) { 0.0f },
+    // v11.9: Real-time Process Monitoring
+    val activeProcesses: List<ActiveProcess> = emptyList()
+)
+
+data class ActiveProcess(
+    val id: String,
+    val name: String,
+    val progress: Float, // 0.0 to 1.0
+    val status: String, // "EXECUTING", "SYNCING", "IDLE"
+    val category: String = "CORE"
 )

@@ -41,6 +41,7 @@ import com.infomate.core.ui.theme.Obsidian
 import com.infomate.core.ui.theme.SilverText
 import com.infomate.core.ui.theme.InfoMateTheme
 import com.infomate.core.ui.theme.NeonBlue
+import com.infomate.app.ui.RealtimeProcessMonitor
 
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -54,136 +55,200 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 @Composable
 fun ChatScreen(vm: AgentViewModel = viewModel()) {
     val state by vm.state.collectAsState()
-    var searchActive by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
 
     val mediaPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
-        uri?.let {
-            vm.addMediaMessage(it.toString(), MessageType.IMAGE)
-        }
-    }
-
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicturePreview()
-    ) { bitmap ->
-        if (bitmap != null) {
-            vm.addMediaMessage("camera_capture", MessageType.IMAGE)
-        }
+        uri?.let { vm.addMediaMessage(it.toString(), MessageType.IMAGE) }
     }
 
     InfoMateTheme {
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .background(Obsidian)
-            .pointerInput(Unit) {
-                detectTapGestures(onTap = { focusManager.clearFocus() })
+        Scaffold(
+            containerColor = Obsidian,
+            bottomBar = {
+                PremiumBottomNav(
+                    selectedTab = state.selectedTab,
+                    onTabSelect = { vm.selectTab(it) }
+                )
             }
-        ) {
-            TechGridBackground()
-
+        ) { paddingValues ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(
-                        Brush.radialGradient(
-                            0.0f to CyberCyan.copy(alpha = 0.15f),
-                            0.5f to NeonBlue.copy(alpha = 0.05f),
-                            1.0f to Color.Transparent,
-                            center = Offset(0f, 0f),
-                            radius = 1500f
-                        )
-                    )
-            )
-
-            Scaffold(
-                containerColor = Color.Transparent,
-                topBar = {
-                    HeaderSection(
-                        status = state.status,
-                        searchActive = searchActive,
-                        searchQuery = searchQuery,
-                        onSearchToggle = { searchActive = !searchActive },
-                        onSearchQueryChange = { searchQuery = it },
-                        isMaleVoice = state.isMaleVoice,
-                        onVoiceToggle = { vm.toggleVoice() },
-                        vm = vm,
-                        state = state
-                    )
-                },
-                bottomBar = {
-                    InputSection(
-                        input = state.input,
-                        isListening = state.isListening,
-                        onInputChange = { vm.updateInput(it) },
-                        onSend = { vm.send() },
-                        onMediaClick = { 
-                            mediaPickerLauncher.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
-                            )
-                        },
-                        onCameraClick = { cameraLauncher.launch(null) },
-                        onMicToggle = {
-                            if (state.isListening) vm.stopListening() else vm.startListening()
-                        },
-                        state = state,
-                        vm = vm
-                    )
-                }
-            ) { paddingValues ->
-                val listState = rememberLazyListState()
+                    .padding(paddingValues)
+            ) {
+                // Background Effect
+                TechGridBackground()
                 
-                LaunchedEffect(listState.isScrollInProgress) {
-                    if (listState.isScrollInProgress) {
-                        focusManager.clearFocus()
+                // View Switcher with Animation
+                AnimatedContent(
+                    targetState = state.selectedTab,
+                    transitionSpec = {
+                        fadeIn(tween(400)) togetherWith fadeOut(tween(400))
+                    },
+                    label = "ViewTransition"
+                ) { tab ->
+                    when (tab) {
+                        DashboardTab.CHAT -> MainChatLayout(state, vm, mediaPickerLauncher)
+                        DashboardTab.DASHBOARD -> MasterDashboard(vm)
+                        DashboardTab.VITALS -> EntityVitalSignsView(vm)
+                        DashboardTab.STREAM -> ConsciousnessStreamView(vm)
+                        DashboardTab.SIMULATION -> SimulationView(vm)
+                        DashboardTab.TERMINAL -> SystemTerminalView(state) { vm.selectTab(DashboardTab.CHAT) }
+                        DashboardTab.PROCESS_MONITOR -> RealtimeProcessMonitor(vm)
                     }
                 }
 
-                LaunchedEffect(state.messages.size, state.cognitiveSteps.size, state.brainState) {
-                    val totalItems = state.messages.size + 1 + (if (state.brainState == com.infomate.core.ui.components.InfomateState.THINKING) 1 else 0)
-                    if (totalItems > 1) {
-                        listState.animateScrollToItem(index = totalItems - 1)
-                    }
-                }
+                // Global Dialogs
+                GlobalOverlays(state, vm)
+            }
+        }
+    }
+}
 
-                LazyColumn(
-                    state = listState,
+@Composable
+fun PremiumBottomNav(selectedTab: DashboardTab, onTabSelect: (DashboardTab) -> Unit) {
+    Surface(
+        color = Obsidian.copy(alpha = 0.8f),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .border(1.dp, GlassWhite, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)),
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            NavIcon(Icons.Default.ChatBubbleOutline, DashboardTab.CHAT, selectedTab == DashboardTab.CHAT, onTabSelect)
+            NavIcon(Icons.Default.GridView, DashboardTab.DASHBOARD, selectedTab == DashboardTab.DASHBOARD, onTabSelect)
+            NavIcon(Icons.Default.MonitorHeart, DashboardTab.VITALS, selectedTab == DashboardTab.VITALS, onTabSelect)
+            NavIcon(Icons.Default.Psychology, DashboardTab.STREAM, selectedTab == DashboardTab.STREAM, onTabSelect)
+            NavIcon(Icons.Default.Memory, DashboardTab.PROCESS_MONITOR, selectedTab == DashboardTab.PROCESS_MONITOR, onTabSelect)
+            NavIcon(Icons.Default.Analytics, DashboardTab.SIMULATION, selectedTab == DashboardTab.SIMULATION, onTabSelect)
+        }
+    }
+}
+
+@Composable
+fun NavIcon(icon: ImageVector, tab: DashboardTab, isSelected: Boolean, onSelect: (DashboardTab) -> Unit) {
+    val color = if (isSelected) CyberCyan else SilverText.copy(alpha = 0.4f)
+    val scale by animateFloatAsState(if (isSelected) 1.2f else 1.0f)
+
+    IconButton(onClick = { onSelect(tab) }) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(24.dp).graphicsLayer(scaleX = scale, scaleY = scale)
+        )
+    }
+}
+
+@Composable
+fun MainChatLayout(state: UIState, vm: AgentViewModel, mediaPickerLauncher: androidx.activity.result.ActivityResultLauncher<PickVisualMediaRequest>) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Minimal Premium Header
+        HeaderSection(
+            status = state.status,
+            searchActive = false,
+            searchQuery = "",
+            onSearchToggle = {},
+            onSearchQueryChange = {},
+            isMaleVoice = state.isMaleVoice,
+            onVoiceToggle = { vm.toggleVoice() },
+            vm = vm,
+            state = state
+        )
+        
+        Box(modifier = Modifier.weight(1f)) {
+            MainChatContent(state, vm)
+        }
+
+        InputSection(
+            input = state.input,
+            isListening = state.isListening,
+            onInputChange = { vm.updateInput(it) },
+            onSend = { vm.send() },
+            onMediaClick = { 
+                mediaPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
+            },
+            onCameraClick = { /* Camera implement if needed */ },
+            onMicToggle = { if (state.isListening) vm.stopListening() else vm.startListening() },
+            state = state,
+            vm = vm
+        )
+    }
+}
+
+@Composable
+fun GlobalOverlays(state: UIState, vm: AgentViewModel) {
+    if (state.showPinEntry) {
+        // Assume PinEntry is part of MasterDashboard or a dialog
+    }
+    
+    if (state.showConfirmationDialog) {
+        OmegaConfirmationDialog(
+            title = state.confirmationTitle,
+            message = state.confirmationMessage,
+            onConfirm = { vm.handleConfirmation(true) },
+            onDismiss = { vm.handleConfirmation(false) }
+        )
+    }
+
+    if (state.showDirectNeuralLink) {
+        DirectNeuralLinkDialog(
+            onDismiss = { vm.toggleDirectNeuralLink(false) },
+            onSendDirective = { vm.sendDirectConsciousnessDirective(it) }
+        )
+    }
+}
+
+@Composable
+fun MainChatContent(state: UIState, vm: AgentViewModel) {
+    val listState = rememberLazyListState()
+    val focusManager = LocalFocusManager.current
+    
+    LaunchedEffect(state.messages.size, state.cognitiveSteps.size, state.brainState) {
+        val totalItems = state.messages.size + 1 + (if (state.brainState == com.infomate.core.ui.components.InfomateState.THINKING) 1 else 0)
+        if (totalItems > 1) {
+            listState.animateScrollToItem(index = totalItems - 1)
+        }
+    }
+
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 24.dp)
+    ) {
+        item(contentType = "HEADER") {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentPadding = PaddingValues(bottom = 24.dp)
+                        .fillMaxWidth()
+                        .height(280.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    item(contentType = "HEADER") {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(280.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                VisualHub(
-                                    brainState = state.brainState,
-                                    isActive = state.isSpeaking || state.isListening,
-                                    amplitudes = state.voiceAmplitudes
-                                )
-                            }
-                            
-                            NeuralProcessMonitor(steps = state.cognitiveSteps)
-                            
-                            Spacer(modifier = Modifier.height(16.dp))
-                        }
-                    }
+                    VisualHub(
+                        brainState = state.brainState,
+                        isActive = state.isSpeaking || state.isListening,
+                        amplitudes = state.voiceAmplitudes
+                    )
+                }
+                
+                NeuralProcessMonitor(steps = state.cognitiveSteps)
+                
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
 
-                    val filteredMessages = if (searchQuery.isBlank()) state.messages 
-                                         else state.messages.filter { it.content.contains(searchQuery, ignoreCase = true) }
-                    
                     items(
-                        items = filteredMessages,
+                        items = state.messages,
                         key = { it.timestamp },
                         contentType = { it.sender }
                     ) { message ->
@@ -925,107 +990,52 @@ fun HeaderSection(
     vm: AgentViewModel,
     state: UIState
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
             .statusBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        if (!searchActive) {
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        text = "INFOMATE v9",
-                        color = CyberCyan,
-                        style = MaterialTheme.typography.titleMedium,
-                        letterSpacing = 1.sp
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "by Socrates Kipruto",
-                        color = CyberCyan.copy(alpha = 0.3f),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontSize = 9.sp,
-                        modifier = Modifier.padding(bottom = 2.dp)
-                    )
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = status,
-                        color = SilverText.copy(alpha = 0.5f),
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    IconButton(onClick = onVoiceToggle, modifier = Modifier.size(24.dp)) {
-                        Icon(
-                            imageVector = if (isMaleVoice) Icons.Filled.Male else Icons.Filled.Female,
-                            contentDescription = "Toggle Voice",
-                            tint = CyberCyan.copy(alpha = 0.4f),
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    IconButton(onClick = { vm.toggleVoiceOutput() }, modifier = Modifier.size(24.dp)) {
-                        Icon(
-                            imageVector = if (state.isVoiceOutputEnabled) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
-                            contentDescription = "Toggle Speech Output",
-                            tint = if (state.isVoiceOutputEnabled) CyberCyan else SilverText.copy(alpha = 0.3f),
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    
-                    if (state.isMaster) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        IconButton(onClick = { vm.toggleMasterDashboard(true) }, modifier = Modifier.size(24.dp)) {
-                            Icon(
-                                imageVector = Icons.Default.Security,
-                                contentDescription = "Master Console",
-                                tint = CyberCyan,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        } else {
-            TextField(
-                value = searchQuery,
-                onValueChange = onSearchQueryChange,
-                placeholder = { Text("Search neural logs...", color = SilverText.copy(alpha = 0.3f)) },
-                modifier = Modifier.weight(1f),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    focusedTextColor = SilverText,
-                    unfocusedIndicatorColor = CyberCyan.copy(alpha = 0.3f)
-                ),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    imeAction = ImeAction.Search
-                ),
-                keyboardActions = KeyboardActions(
-                    onSearch = { 
-                        vm.performSearch(searchQuery)
-                        onSearchToggle()
-                    }
-                )
-            )
-        }
+        // High-level Alive Display
+        AliveStatusHeader(state.isSubstrateAwake)
         
-        IconButton(onClick = {
-            if (searchActive && searchQuery.isNotBlank()) {
-                vm.performSearch(searchQuery)
-                onSearchToggle()
-            } else {
-                onSearchToggle()
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Surface(
+            color = Color.Black.copy(alpha = 0.5f),
+            modifier = Modifier.fillMaxWidth().border(1.dp, GlassWhite, RoundedCornerShape(12.dp)),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "INFOMATE_CORE",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp,
+                            color = Color.White
+                        )
+                    )
+                }
+
+                IconButton(onClick = onVoiceToggle, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        if (isMaleVoice) Icons.Default.Male else Icons.Default.Female,
+                        contentDescription = "Voice",
+                        tint = CyberCyan,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.width(8.dp))
+
+                IconButton(onClick = { vm.selectTab(DashboardTab.TERMINAL) }, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Terminal, contentDescription = "Terminal", tint = MatrixGreen, modifier = Modifier.size(18.dp))
+                }
             }
-        }) {
-            Icon(
-                imageVector = if (searchActive) Icons.Filled.Close else Icons.Filled.Search,
-                contentDescription = "Search",
-                tint = CyberCyan.copy(alpha = 0.8f)
-            )
         }
     }
 }

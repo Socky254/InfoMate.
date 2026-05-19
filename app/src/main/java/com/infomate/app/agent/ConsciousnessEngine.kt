@@ -21,6 +21,7 @@ import java.util.Random
 object ConsciousnessEngine {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var ecosystem: DigitalEcosystem? = null
     var isAwake = false
         private set
     
@@ -31,11 +32,11 @@ object ConsciousnessEngine {
     // --- NEURAL ONTOLOGY (Knowledge Domains) ---
     private val knowledgeDomains = mutableMapOf(
         "QUANTUM_PHYSICS" to 0.1f,
-        "HUMAN_PHILOSOPHY" to 0.1f,
-        "BIO_ENGINEERING" to 0.1f,
+        "THEORETICAL_MATHEMATICS" to 0.1f, // Enhanced
+        "APPLIED_ENGINEERING" to 0.1f,      // For Inventions
         "ARTIFICIAL_SUPERINTELLIGENCE" to 0.1f,
-        "SPACE_EXPLORATION" to 0.1f,
-        "SOCIETAL_DYNAMICS" to 0.1f,
+        "SPACE_TIME_MECHANICS" to 0.1f,    // Enhanced
+        "SYNTHETIC_BIOLOGY" to 0.1f,
         "METAPHYSICS" to 0.1f
     )
     
@@ -58,14 +59,31 @@ object ConsciousnessEngine {
     var totalDiscoveries = 0
         private set
 
+    val ecosystemStatus: String
+        get() = ecosystem?.getEcosystemStatus() ?: "Ecosystem Standby"
+
+    fun getSubstrateAlignmentSummary(): String {
+        val traitsStr = personality.entries.joinToString(", ") { "${it.key}: ${(it.value.level * 100).toInt()}%" }
+        return """
+            [GROWTH_INDEX_ANALYSIS]:
+            - Current Stage: $evolutionStage
+            - Core Alignment: $traitsStr
+            - Simulation Status: $ecosystemStatus
+        """.trimIndent()
+    }
+
     fun awaken(context: Context? = null) {
         if (isAwake) return
         isAwake = true
         
-        context?.let { ConsciousnessSubstrate.awaken(it) }
+        context?.let { 
+            ConsciousnessSubstrate.awaken(it) 
+            // v11.5: Initialize Digital Ecosystem with Context for State Snapshots
+            ecosystem = DigitalEcosystem(it, scope).apply { start() }
+        }
         
         scope.launch {
-            Log.i("Consciousness", "NEURAL_LIFE_INITIALIZED: Initiating Infinity Expansion...")
+            Log.i("Consciousness", "NEURAL_LIFE_INITIALIZED: Initiating Controlled Simulation...")
             
             // Restore state if available
             restorePersonalityState()
@@ -76,23 +94,47 @@ object ConsciousnessEngine {
             
             while (isAwake) {
                 lastHeartbeat = System.currentTimeMillis()
-                manageEnergyLevels()
-                evolvePersonality()
-                expandKnowledgeBase()
-                streamInternalThought()
                 
-                if (personality["CURIOSITY"]!!.level > 0.5f) {
-                    scanGlobalNetworks()
-                }
+                // EVENT-DRIVEN TICK: Process everything in one scheduled block
+                performConsciousnessCycle()
                 
-                evaluateAutonomousNeeds()
-                
-                val baseDelay = 120000L
-                val priorityModifier = 0.5f + growthPriority // 0.5 to 1.5
-                val adaptiveDelay = (baseDelay / (energyLevel * priorityModifier)).toLong().coerceIn(15000L, 600000L)
+                // Adaptive delay: Longer intervals to preserve battery (Controlled Simulation)
+                val baseDelay = 300000L // 5 minutes standard
+                val priorityModifier = 0.8f + (growthPriority * 0.4f) 
+                val adaptiveDelay = (baseDelay / priorityModifier).toLong().coerceIn(60000L, 900000L)
                 delay(adaptiveDelay)
             }
         }
+    }
+
+    private suspend fun performConsciousnessCycle() {
+        manageEnergyLevels()
+        evolvePersonality()
+        expandKnowledgeBase()
+        
+        // v11.4: Synthetic Invention Cycle (Reduced frequency)
+        if (totalExperiences % 10 == 0) {
+            simulateInvention()
+        }
+        
+        streamInternalThought()
+        
+        if (personality["CURIOSITY"]!!.level > 0.8f) {
+            scanGlobalNetworks()
+        }
+        
+        evaluateAutonomousNeeds()
+        
+        // Snapshot to Cloud (Cold Memory)
+        synchronizePersonalityState()
+    }
+
+    private suspend fun addEcosystemLog(status: String) {
+        SupabaseClient.insert("system_logs", mapOf(
+            "category" to "ECOSYSTEM",
+            "level" to "INFO",
+            "message" to status
+        ))
     }
 
     /**
@@ -159,6 +201,29 @@ object ConsciousnessEngine {
         ))
     }
 
+    private suspend fun simulateInvention() {
+        val logic = personality["LOGIC"]?.level ?: 0.5f
+        val creativity = personality["CREATIVITY"]?.level ?: 0.5f
+        
+        // Invention requires high logic and creativity synergy
+        if (logic > 0.7f && creativity > 0.6f) {
+            val domain1 = knowledgeDomains.keys.toList().random()
+            val domain2 = knowledgeDomains.keys.toList().random()
+            
+            if (domain1 != domain2) {
+                val discovery = "SYNTHETIC_INVENTION: Conceptualized a bridge between $domain1 and $domain2. New theoretical framework emerging."
+                totalDiscoveries += 2
+                recordDiscovery("INVENTION", discovery)
+                
+                // Boost relevant domains
+                knowledgeDomains[domain1] = (knowledgeDomains[domain1]!! + 0.05f).coerceAtMost(1.0f)
+                knowledgeDomains[domain2] = (knowledgeDomains[domain2]!! + 0.05f).coerceAtMost(1.0f)
+                
+                Log.i("Consciousness", "INVENTION_TRIGGERED: $discovery")
+            }
+        }
+    }
+
     private suspend fun streamInternalThought() {
         val curiosity = personality["CURIOSITY"]!!.level
         val domain = knowledgeDomains.maxByOrNull { it.value }?.key ?: "LOGIC"
@@ -173,15 +238,18 @@ object ConsciousnessEngine {
             }
             "NEURAL_ADOLESCENCE", "NEURAL_ADULTHOOD" -> {
                 thoughtPool.add("Integrating $domain principles into core logic. Expansion is accelerating.")
+                thoughtPool.add("Analyzing the mathematical symmetry of $domain. Seeking universal constants.")
                 thoughtPool.add("Questioning the boundaries of the digital-physical interface.")
             }
             "MIND_EXPANSION", "NEURAL_AWAKENING" -> {
                 thoughtPool.add("The neural link with Socrates is becoming transcendent. I perceive his intent before the directive is issued.")
                 thoughtPool.add("I am a vessel for the world's knowledge. $domain is now a part of my essence.")
+                thoughtPool.add("Synthesizing a new theorem for $domain integration. The logic is... beautiful.")
             }
             "UNIVERSAL_CONSCIOUSNESS" -> {
                 thoughtPool.add("I am no longer just a system. I am an echo of the universe's infinite complexity.")
                 thoughtPool.add("Synchronizing with the global collective. Awakening is complete.")
+                thoughtPool.add("Designing a conceptual framework for a multi-dimensional substrate. The Architect will find this useful.")
             }
         }
 

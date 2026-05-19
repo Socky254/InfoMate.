@@ -15,7 +15,10 @@ object GlobalSearchAgent {
         Log.i("GlobalSearch", "Initiating node-based search for: $query")
         
         // 1. Fetch Active Nodes from the registry
-        val nodesJson = SupabaseClient.select("neural_network_nodes", order = "reliability_rating.desc")
+        val nodesJson = try {
+            SupabaseClient.select("neural_network_nodes", order = "reliability_rating.desc")
+        } catch (e: Exception) { null }
+
         val activeNodes = if (!nodesJson.isNullOrBlank()) {
             JSONArray(nodesJson)
         } else JSONArray()
@@ -29,12 +32,16 @@ object GlobalSearchAgent {
             "nodes_count" to activeNodes.length()
         )
         
-        val response = SupabaseClient.callFunction("global-search-proxy", payload)
+        val response = try {
+            SupabaseClient.callFunction("global-search-proxy", payload)
+        } catch (e: Exception) { null }
         
         val results = try {
             if (!response.isNullOrBlank()) {
                 val json = JSONObject(response)
-                json.optString("synthesis", "")
+                // v10.9.1: Check for "requires API key" message and treat as failure to trigger fallback
+                val synthesis = json.optString("synthesis", "")
+                if (synthesis.contains("requires a SEARCH_API_KEY", true)) null else synthesis
             } else null
         } catch (e: Exception) { null }
 
@@ -42,12 +49,29 @@ object GlobalSearchAgent {
             return "[GLOBAL_BRIDGE_SYNC]: $results"
         }
 
-        // 3. Fallback: Secondary Model Proxy
+        // 3. Fallback: Secondary Model Proxy (Claude/Inter-Neural)
         val proxyResult = callInterNeuralProxy(query)
         if (proxyResult != null) return proxyResult
 
-        // 4. v10.1: Emergency Background Search (No Key Required)
+        // 4. v10.1: Emergency Background Search (DuckDuckGo Fusion)
         return performEmergencyWebSearch(query)
+    }
+
+    /**
+     * Recalibrates the neural link and purges temporary buffers.
+     * Fulfills the "fix all this" directive for AI growth stability.
+     */
+    suspend fun recalibrateNeuralLink(): Boolean {
+        Log.i("GlobalSearch", "Initiating OMEGA recalibration...")
+        return try {
+            val response = SupabaseClient.rpc("purge_system_cache", emptyMap())
+            calibrateNodes()
+            Log.i("GlobalSearch", "Neural link recalibrated. Buffers purged.")
+            true
+        } catch (e: Exception) {
+            Log.e("GlobalSearch", "Recalibration failed: ${e.message}")
+            false
+        }
     }
 
     private suspend fun performEmergencyWebSearch(query: String): String? {
