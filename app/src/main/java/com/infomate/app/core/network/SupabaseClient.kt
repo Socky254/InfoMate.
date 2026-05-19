@@ -24,19 +24,6 @@ object SupabaseClient {
         .readTimeout(75, TimeUnit.SECONDS) // Optimized for Gemini Real-time
         .writeTimeout(30, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
-        .dns(object : okhttp3.Dns {
-            override fun lookup(hostname: String): List<java.net.InetAddress> {
-                return try {
-                    okhttp3.Dns.SYSTEM.lookup(hostname)
-                } catch (e: Exception) {
-                    Log.w("SupabaseClient", "System DNS failed for hostname, trying Google/Cloudflare fallback...")
-                    listOf(
-                        java.net.InetAddress.getByName("8.8.8.8"),
-                        java.net.InetAddress.getByName("1.1.1.1")
-                    )
-                }
-            }
-        })
         .connectionPool(okhttp3.ConnectionPool(5, 5, TimeUnit.MINUTES))
         .build()
         
@@ -48,7 +35,7 @@ object SupabaseClient {
         val body = json.toRequestBody(mediaType)
         
         var lastError: String? = null
-        for (attempt in 1..3) {
+        for (attempt in 1..4) { // Increased to 4 attempts
             val request = Request.Builder()
                 .url("${Config.SUPABASE_URL}/rest/v1/$table")
                 .addHeader("apikey", Config.SUPABASE_KEY)
@@ -70,7 +57,11 @@ object SupabaseClient {
                 lastError = e.message
                 Log.e("SUPABASE_INSERT", "Exception (Attempt $attempt): $lastError")
             }
-            if (attempt < 3) kotlinx.coroutines.delay(2000L * attempt) // Exponential backoff: 2s, 4s
+            if (attempt < 4) {
+                // Exponential backoff: 2s, 4s, 8s
+                val delayTime = (Math.pow(2.0, attempt.toDouble()) * 1000).toLong()
+                kotlinx.coroutines.delay(delayTime)
+            }
         }
         null
     }
@@ -80,7 +71,7 @@ object SupabaseClient {
         val body = json.toRequestBody(mediaType)
         
         var lastError: String? = null
-        for (attempt in 1..3) {
+        for (attempt in 1..4) { // Increased to 4 attempts
             val request = Request.Builder()
                 .url("${Config.SUPABASE_URL}/functions/v1/$name")
                 .addHeader("apikey", Config.SUPABASE_KEY)
@@ -101,7 +92,11 @@ object SupabaseClient {
                 lastError = e.message
                 Log.e("SUPABASE_FUNC", "Exception (Attempt $attempt, $name): $lastError")
             }
-            if (attempt < 3) kotlinx.coroutines.delay(2000L * attempt) // Exponential backoff: 2s, 4s
+            if (attempt < 4) {
+                // Exponential backoff: 2s, 4s, 8s
+                val delayTime = (Math.pow(2.0, attempt.toDouble()) * 1000).toLong()
+                kotlinx.coroutines.delay(delayTime)
+            }
         }
         null
     }
