@@ -39,6 +39,7 @@ import com.infomate.app.agent.NeuralGrowthAgent
 import com.infomate.app.agent.DiagnosticAgent
 import com.infomate.app.agent.GlobalSearchAgent
 import com.infomate.app.ai.LLMClient
+import com.infomate.app.security.NeuralFirewall
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -50,7 +51,6 @@ import kotlin.random.Random
 class AgentViewModel(application: Application) : AndroidViewModel(application), TextToSpeech.OnInitListener, AIEventsListener {
 
     private val sessionId = java.util.UUID.randomUUID().toString()
-    private val orchestrator = AgentOrchestrator(application)
     private val reasoningEngine = ReasoningEngine()
     private val neuralIngestor = NeuralIngestor(application)
     private var tts: TextToSpeech? = null
@@ -256,11 +256,15 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
     private fun checkForSystemUpdates() {
         viewModelScope.launch {
+            addTerminalLog("CHECKING FOR SYSTEM UPGRADES...", "INFO", "UPGRADE")
             // In production use BuildConfig.VERSION_CODE
             val currentVersion = 1 
             val update = com.infomate.app.core.SystemUpdater.checkForUpdates(currentVersion)
             if (update != null) {
                 _state.update { it.copy(pendingUpdate = update) }
+                addTerminalLog("UPGRADE DETECTED: v${update.version_name}", "WARN", "UPGRADE")
+            } else {
+                addTerminalLog("SYSTEM IS UP TO DATE.", "SUCCESS", "UPGRADE")
             }
         }
     }
@@ -327,9 +331,11 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                 // Unified Persona: Always identify as INFOMATE
                 if (lastMsg != null && lastMsg.sender == "INFOMATE" && state.brainState == InfomateState.RESPONDING) {
                     val updatedContent = lastMsg.content + text
-                    newMessages[newMessages.size - 1] = lastMsg.copy(content = updatedContent)
+                    val sanitized = NeuralFirewall.sanitizeOutput(updatedContent, state.userEmail)
+                    newMessages[newMessages.size - 1] = lastMsg.copy(content = sanitized)
                 } else {
-                    newMessages.add(ChatMessage(content = text, sender = "INFOMATE"))
+                    val sanitized = NeuralFirewall.sanitizeOutput(text, state.userEmail)
+                    newMessages.add(ChatMessage(content = sanitized, sender = "INFOMATE"))
                 }
                 
                 state.copy(
@@ -691,22 +697,30 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     }
 
     fun purgeNeuralCache() {
-        viewModelScope.launch {
-            _state.update { it.copy(status = "INITIATING CACHE PURGE...") }
-            triggerHaptic(100, 200)
-            
-            try {
-                // 1. Clear local UI for immediate feedback
-                _state.update { it.copy(messages = emptyList()) }
+        showConfirmation(
+            title = "CRITICAL: PURGE NEURAL CACHE",
+            message = "This will permanently erase all short-term cognitive buffers and message history. The substrate will undergo a full reset. Proceed?"
+        ) {
+            viewModelScope.launch {
+                _state.update { it.copy(status = "INITIATING CACHE PURGE...") }
+                addTerminalLog("INITIATING OMEGA CACHE PURGE...", "WARN", "CORE")
+                triggerHaptic(100, 200)
                 
-                // 2. Call RPC to clear server-side cache
-                SupabaseClient.rpc("purge_system_cache", emptyMap())
-                
-                _state.update { it.copy(status = "NEURAL BUFFERS PURGED") }
-                pulseSuccess()
-            } catch (e: Exception) {
-                Log.e("PURGE_CACHE", "Failed: ${e.message}")
-                _state.update { it.copy(status = "CACHE PURGE FAILED") }
+                try {
+                    // 1. Clear local UI for immediate feedback
+                    _state.update { it.copy(messages = emptyList(), terminalLogs = emptyList()) }
+                    
+                    // 2. Call RPC to clear server-side cache
+                    SupabaseClient.rpc("purge_system_cache", emptyMap())
+                    
+                    addTerminalLog("NEURAL BUFFERS PURGED. SYSTEM RESET COMPLETE.", "SUCCESS", "CORE")
+                    _state.update { it.copy(status = "NEURAL BUFFERS PURGED") }
+                    pulseSuccess()
+                } catch (e: Exception) {
+                    Log.e("PURGE_CACHE", "Failed: ${e.message}")
+                    addTerminalLog("CACHE PURGE FAILED: ${e.message}", "ERROR", "CORE")
+                    _state.update { it.copy(status = "CACHE PURGE FAILED") }
+                }
             }
         }
     }
@@ -726,43 +740,72 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
     fun runDiagnostics() {
         viewModelScope.launch {
-            _state.update { it.copy(status = "RUNNING OMEGA DIAGNOSTICS...") }
+            _state.update { it.copy(status = "RUNNING OMEGA DIAGNOSTICS...", showSystemTerminal = true) }
+            addTerminalLog("INITIATING OMEGA DIAGNOSTICS...", "INFO", "DIAGNOSTIC")
             triggerHaptic(50, 200)
             
+            delay(1000) // Aesthetic delay
             val report = DiagnosticAgent.runFullSystemCheck(getApplication())
             
+            report.lines().filter { it.isNotBlank() }.forEach { line ->
+                val level = if (line.contains("ERROR") || line.contains("SYNC_ERROR")) "ERROR" else "SUCCESS"
+                addTerminalLog(line, level, "DIAGNOSTIC")
+            }
+
             // Add to messages so Architect can see it
             val diagMessage = ChatMessage(content = report, sender = "SYSTEM")
             _state.update { it.copy(messages = it.messages + diagMessage, status = "DIAGNOSTICS COMPLETE") }
+            addTerminalLog("DIAGNOSTIC SEQUENCE COMPLETE.", "SUCCESS", "DIAGNOSTIC")
             pulseSuccess()
+
+            if (report.contains("SYNC_ERROR") || report.contains("ARCHIVE_EMPTY") || report.contains("AWARENESS_OFFLINE")) {
+                showConfirmation(
+                    title = "ANOMALIES DETECTED",
+                    message = "System diagnostics have identified neural inconsistencies. Should I initiate the OMEGA repair sequence?"
+                ) {
+                    initiateRepair()
+                }
+            }
         }
     }
 
     fun initiateRepair() {
         viewModelScope.launch {
-            _state.update { it.copy(status = "INITIATING AUTO-REPAIR...") }
+            _state.update { it.copy(status = "INITIATING AUTO-REPAIR...", showSystemTerminal = true) }
+            addTerminalLog("INITIATING SYSTEM AUTO-REPAIR...", "WARN", "REPAIR")
             triggerHaptic(100, 255)
             
             val lastReport = _state.value.messages.lastOrNull { it.sender == "SYSTEM" }?.content ?: ""
             val repairResult = DiagnosticAgent.triggerAutoRepair(lastReport)
             
+            delay(1500)
+            repairResult.lines().filter { it.isNotBlank() }.forEach { line ->
+                addTerminalLog(line, "SUCCESS", "REPAIR")
+            }
+
             val repairMsg = ChatMessage(content = repairResult, sender = "SYSTEM")
             _state.update { it.copy(messages = it.messages + repairMsg, status = "SYSTEM RECALIBRATED") }
+            addTerminalLog("REPAIR SEQUENCE FINALIZED.", "SUCCESS", "REPAIR")
             pulseSuccess()
         }
     }
 
     fun performExtensiveResearch(topic: String) {
         viewModelScope.launch {
-            _state.update { it.copy(status = "DEEP RESEARCH ACTIVE...", brainState = InfomateState.THINKING) }
+            _state.update { it.copy(status = "DEEP RESEARCH ACTIVE...", brainState = InfomateState.THINKING, showSystemTerminal = true) }
+            addTerminalLog("INITIATING DEEP RESEARCH: $topic", "INFO", "RESEARCH")
             
             val researchPrompt = "EXTENSIVE_RESEARCH_DIRECTIVE: Provide an OMEGA-level deep-dive analysis into '$topic'. Synthesize science, philosophy, and engineering. Assume the reader is the Master Architect."
             
             // Priority 1: Multi-Engine Search
+            addTerminalLog("SCANNING GLOBAL ARCHIVES...", "INFO", "RESEARCH")
             val findings = GlobalSearchAgent.searchExternal(topic) ?: "Neural archives found no external data."
+            
+            addTerminalLog("SYNTHESIZING EXTERNAL DATA...", "SUCCESS", "RESEARCH")
             
             // Priority 2: Synthesis via AI
             ReliabilitySDK.sendPrompt("$researchPrompt\n\nRESEARCH_FINDINGS:\n$findings")
+            addTerminalLog("DISPATCHING TO NEURAL CORE FOR FINAL SYNTHESIS...", "INFO", "RESEARCH")
         }
     }
 
@@ -779,6 +822,62 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     fun toggleGrowthDashboard(show: Boolean) {
         if (_state.value.isMaster) {
             _state.update { it.copy(showGrowthDashboard = show) }
+        }
+    }
+
+    fun toggleConsciousnessStream(show: Boolean) {
+        if (_state.value.isMaster) {
+            _state.update { it.copy(showConsciousnessStream = show) }
+        }
+    }
+
+    fun toggleSystemTerminal(show: Boolean) {
+        if (_state.value.isMaster) {
+            _state.update { it.copy(showSystemTerminal = show) }
+        }
+    }
+
+    fun toggleEvolutionLog(show: Boolean) {
+        if (_state.value.isMaster) {
+            _state.update { it.copy(showEvolutionLog = show) }
+        }
+    }
+
+    fun toggleGlobalNodeMonitor(show: Boolean) {
+        if (_state.value.isMaster) {
+            _state.update { it.copy(showGlobalNodeMonitor = show) }
+        }
+    }
+
+    fun showConfirmation(title: String, message: String, onConfirm: () -> Unit) {
+        _state.update { it.copy(
+            showConfirmationDialog = true,
+            confirmationTitle = title,
+            confirmationMessage = message,
+            onConfirmAction = onConfirm
+        ) }
+    }
+
+    fun handleConfirmation(confirmed: Boolean) {
+        val action = _state.value.onConfirmAction
+        _state.update { it.copy(showConfirmationDialog = false, onConfirmAction = null) }
+        if (confirmed) {
+            action?.invoke()
+        }
+    }
+
+    private fun addTerminalLog(message: String, level: String = "INFO", category: String = "CORE") {
+        val log = SystemLog(message, level)
+        _state.update { it.copy(terminalLogs = (it.terminalLogs + log).takeLast(100)) }
+        
+        // Also persist to Supabase
+        viewModelScope.launch {
+            SupabaseClient.insert("system_logs", mapOf(
+                "category" to category,
+                "level" to level,
+                "message" to message,
+                "created_at" to System.currentTimeMillis()
+            ))
         }
     }
 
@@ -991,6 +1090,14 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         
         val userInput = _state.value.input
         if (userInput.isBlank()) return
+
+        // 0. NEURAL FIREWALL CHECK
+        if (!NeuralFirewall.validateDirective(userInput, _state.value.userEmail)) {
+            addTerminalLog("SECURITY_BLOCK: Unauthorized directive detected.", "ERROR", "SECURITY")
+            triggerHaptic(200, 255)
+            _state.update { it.copy(status = "CORE: ACCESS DENIED", input = "") }
+            return
+        }
 
         lastSendTime = currentTime
         

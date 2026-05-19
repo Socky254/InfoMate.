@@ -86,12 +86,33 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION purge_system_cache()
 RETURNS JSONB AS $$
 BEGIN
-    DELETE FROM consciousness_stream WHERE created_at < NOW() - INTERVAL '7 days';
-    RETURN jsonb_build_object('status', 'SUCCESS', 'message', 'Neural buffers recycled.');
+    DELETE FROM consciousness_stream;
+    DELETE FROM system_logs;
+    DELETE FROM messages;
+    DELETE FROM cognitive_logs;
+    RETURN jsonb_build_object('status', 'SUCCESS', 'message', 'Neural substrate recalibrated. All temporary buffers purged.');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 10. INITIAL SEEDING
+-- 10. NEURAL PRUNING FUNCTION (RPC)
+CREATE OR REPLACE FUNCTION prune_low_significance_wisdom(threshold FLOAT)
+RETURNS void AS $$
+BEGIN
+    DELETE FROM wisdom_archives WHERE significance_score < threshold;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 11. NODE HEALTH CHECK UPDATE
+CREATE OR REPLACE FUNCTION update_node_ping(target_node_name TEXT, new_rating FLOAT)
+RETURNS void AS $$
+BEGIN
+    UPDATE neural_network_nodes
+    SET last_ping = NOW(), reliability_rating = new_rating
+    WHERE node_name = target_node_name;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 12. INITIAL SEEDING
 INSERT INTO external_engines (engine_name, priority)
 VALUES ('PRIMARY_CORE', 0), ('GLOBAL_SEARCH', 1), ('NEURAL_PROXY', 2)
 ON CONFLICT DO NOTHING;

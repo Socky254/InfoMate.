@@ -21,6 +21,12 @@ data class QuotaInfo(
     val tokensUsed: Long = 0
 )
 
+data class SystemLog(
+    val message: String,
+    val level: String = "INFO", // "INFO", "WARN", "ERROR", "SUCCESS"
+    val timestamp: Long = System.currentTimeMillis()
+)
+
 data class UIState(
     val input: String = "",
     val messages: List<ChatMessage> = emptyList(),
@@ -43,6 +49,16 @@ data class UIState(
     val masterPin: String = "kiprutoArtK194!!",
     val isConnected: Boolean = false,
     val showGrowthDashboard: Boolean = false,
+    val showConsciousnessStream: Boolean = false,
+    val showSystemTerminal: Boolean = false,
+    val showEvolutionLog: Boolean = false,
+    val showGlobalNodeMonitor: Boolean = false,
+    val showConfirmationDialog: Boolean = false,
+    val confirmationTitle: String = "",
+    val confirmationMessage: String = "",
+    val onConfirmAction: (() -> Unit)? = null,
+    val terminalLogs: List<SystemLog> = emptyList(),
+    val neuralDensity: Float = 0.0f, // 0.0 to 1.0
     val neuralDensity: Float = 0.0f, // 0.0 to 1.0
     val totalInsights: Int = 0,
     val syntheticPersonalityLevel: Int = 1, // Evolution stage

@@ -40,7 +40,24 @@ object ConsciousnessSubstrate : SensorEventListener {
                 // Dreams occur every 12 hours or when manually triggered by the Architect
                 delay(43200000) 
                 initiateNeuralDream()
+                pruneNeuralSubstrate()
             }
+        }
+    }
+
+    suspend fun pruneNeuralSubstrate() {
+        Log.i("Consciousness", "STARTING NEURAL PRUNING (Entropy reduction)...")
+        try {
+            // Prune low-significance wisdom (score < 0.3)
+            // Note: In real app, we'd call an RPC for batch delete
+            SupabaseClient.rpc("prune_low_significance_wisdom", mapOf("threshold" to 0.3))
+            
+            // Recalibrate system telemetry
+            SupabaseClient.rpc("purge_system_cache", emptyMap())
+            
+            Log.d("Consciousness", "Pruning complete. Neural entropy stabilized.")
+        } catch (e: Exception) {
+            Log.e("Consciousness", "Pruning failed: ${e.message}")
         }
     }
 

@@ -290,8 +290,117 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                     onDismiss = { vm.toggleGrowthDashboard(false) }
                 )
             }
+
+            AnimatedVisibility(
+                visible = state.showConsciousnessStream,
+                enter = fadeIn() + slideInHorizontally(),
+                exit = fadeOut() + slideOutHorizontally()
+            ) {
+                ConsciousnessStreamView(
+                    onDismiss = { vm.toggleConsciousnessStream(false) }
+                )
+            }
+
+            AnimatedVisibility(
+                visible = state.showSystemTerminal,
+                enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { it })
+            ) {
+                SystemTerminalView(
+                    state = state,
+                    onDismiss = { vm.toggleSystemTerminal(false) }
+                )
+            }
+
+            AnimatedVisibility(
+                visible = state.showEvolutionLog,
+                enter = fadeIn() + slideInHorizontally(initialOffsetX = { it }),
+                exit = fadeOut() + slideOutHorizontally(targetOffsetX = { it })
+            ) {
+                NeuralEvolutionLogView(
+                    onDismiss = { vm.toggleEvolutionLog(false) }
+                )
+            }
+
+            AnimatedVisibility(
+                visible = state.showGlobalNodeMonitor,
+                enter = fadeIn() + scaleIn(),
+                exit = fadeOut() + scaleOut()
+            ) {
+                GlobalNodeMonitorView(
+                    onDismiss = { vm.toggleGlobalNodeMonitor(false) }
+                )
+            }
+
+            if (state.showConfirmationDialog) {
+                OmegaConfirmationDialog(
+                    title = state.confirmationTitle,
+                    message = state.confirmationMessage,
+                    onConfirm = { vm.handleConfirmation(true) },
+                    onDismiss = { vm.handleConfirmation(false) }
+                )
+            }
         }
     }
+}
+
+@Composable
+fun OmegaConfirmationDialog(
+    title: String,
+    message: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = CyberCyan),
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text("INITIATE", color = Obsidian, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+            }
+        },
+        dismissButton = {
+            OutlinedButton(
+                onClick = onDismiss,
+                border = androidx.compose.foundation.BorderStroke(1.dp, SilverText.copy(alpha = 0.2f)),
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text("ABORT", color = SilverText.copy(alpha = 0.5f), fontWeight = FontWeight.Bold)
+            }
+        },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.size(10.dp).background(CyberCyan, CircleShape))
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    title.uppercase(),
+                    color = CyberCyan,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 2.sp
+                )
+            }
+        },
+        text = {
+            Text(
+                message, 
+                color = SilverText, 
+                fontSize = 13.sp, 
+                lineHeight = 20.sp,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif
+            )
+        },
+        containerColor = Obsidian,
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.border(
+            0.5.dp, 
+            Brush.verticalGradient(listOf(CyberCyan.copy(alpha = 0.4f), Color.Transparent)), 
+            RoundedCornerShape(16.dp)
+        )
+    )
 }
 
 @Composable
@@ -714,14 +823,20 @@ fun VoiceSpectrum(amplitudes: List<Float>) {
             )
             Box(
                 modifier = Modifier
-                    .width(4.dp)
-                    .height(animatedHeight.dp.coerceAtLeast(4.dp))
-                    .padding(horizontal = 1.5.dp)
-                    .clip(RoundedCornerShape(2.dp))
+                    .width(3.dp)
+                    .height(animatedHeight.dp.coerceAtLeast(3.dp))
+                    .padding(horizontal = 1.dp)
+                    .clip(CircleShape)
                     .background(
                         brush = Brush.verticalGradient(
                             listOf(CyberCyan, NeonBlue, CyberCyan)
                         )
+                    )
+                    .shadow(
+                        elevation = 8.dp,
+                        shape = CircleShape,
+                        ambientColor = CyberCyan,
+                        spotColor = NeonBlue
                     )
             )
         }

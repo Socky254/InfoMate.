@@ -5,6 +5,7 @@ import com.infomate.app.ai.GenerationResult
 import com.infomate.app.rag.VectorRetriever
 import com.infomate.app.rag.MemorySync
 import com.infomate.app.ui.QuotaInfo
+import com.infomate.app.security.NeuralFirewall
 import android.content.Context
 
 data class AgentResponse(
@@ -12,9 +13,14 @@ data class AgentResponse(
     val quota: QuotaInfo? = null
 )
 
-class AgentOrchestrator(private val androidContext: Context? = null) {
+class AgentOrchestrator(private val androidContext: Context? = null, private val userEmail: String? = null) {
 
     suspend fun execute(fullQuery: String, sessionId: String = "default"): AgentResponse {
+        // 0. Neural Firewall Validation
+        if (!NeuralFirewall.validateDirective(fullQuery, userEmail)) {
+            return AgentResponse("SECURITY_BLOCK: Unauthorized OMEGA directive detected. Access Denied.")
+        }
+
         // 1. Separate User Intent from System Metadata
         val userIntent = if (fullQuery.contains("[SYSTEM_CONTEXT:")) {
             fullQuery.substringBefore("[SYSTEM_CONTEXT:").trim()
@@ -92,6 +98,9 @@ class AgentOrchestrator(private val androidContext: Context? = null) {
             NeuralGrowthAgent.reflectAndLearn(userIntent, result.output)
         }
 
-        return AgentResponse(result.output, result.quota)
+        // 8. Output Sanitization
+        val cleanOutput = NeuralFirewall.sanitizeOutput(result.output, userEmail)
+
+        return AgentResponse(cleanOutput, result.quota)
     }
 }

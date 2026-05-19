@@ -71,6 +71,30 @@ fun MasterDashboard(state: UIState, vm: AgentViewModel, onDismiss: () -> Unit) {
                 }
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // System Terminal Quick Access
+            Surface(
+                onClick = { vm.toggleSystemTerminal(true) },
+                color = Color.Black.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(8.dp),
+                border = androidx.compose.foundation.BorderStroke(0.5.dp, CyberCyan.copy(alpha = 0.3f)),
+                modifier = Modifier.fillMaxWidth().height(40.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                ) {
+                    Icon(Icons.Default.Terminal, contentDescription = null, tint = CyberCyan, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("OPEN SYSTEM TERMINAL", color = CyberCyan, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Spacer(modifier = Modifier.weight(1f))
+                    if (state.terminalLogs.isNotEmpty()) {
+                        Text("LAST_LOG: ${state.terminalLogs.last().message.take(20)}...", color = SilverText.copy(alpha = 0.5f), fontSize = 9.sp)
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
             Column(
@@ -175,19 +199,31 @@ fun MasterDashboard(state: UIState, vm: AgentViewModel, onDismiss: () -> Unit) {
                     
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
-                            onClick = { vm.toggleGrowthDashboard(true) },
+                            onClick = { vm.toggleEvolutionLog(true) },
                             colors = ButtonDefaults.buttonColors(containerColor = CyberCyan.copy(alpha = 0.1f)),
                             modifier = Modifier.weight(1f).border(1.dp, CyberCyan.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
                         ) {
                             Text("EVOLUTION LOG", color = CyberCyan, fontSize = 10.sp)
                         }
                         Button(
-                            onClick = { /* TODO: Open Consciousness Stream View */ },
+                            onClick = { vm.toggleConsciousnessStream(true) },
                             colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                             modifier = Modifier.weight(1f).border(1.dp, SilverText.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
                         ) {
                             Text("THOUGHT STREAM", color = SilverText, fontSize = 10.sp)
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Button(
+                        onClick = { vm.toggleGlobalNodeMonitor(true) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                        modifier = Modifier.fillMaxWidth().border(1.dp, CyberCyan.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                    ) {
+                        Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(14.dp), tint = CyberCyan)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("NETWORK TOPOLOGY MONITOR", color = CyberCyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
                 }
 
@@ -279,31 +315,39 @@ fun AnalysisTableSection(state: UIState) {
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.White.copy(alpha = 0.02f), RoundedCornerShape(16.dp))
-            .border(0.5.dp, CyberCyan.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
+            .border(
+                0.5.dp, 
+                Brush.linearGradient(listOf(CyberCyan.copy(alpha = 0.2f), Color.Transparent)), 
+                RoundedCornerShape(16.dp)
+            )
             .padding(16.dp)
     ) {
-        Text(
-            "NEURAL LOG ANALYSIS",
-            color = CyberCyan,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp
-        )
-        Spacer(modifier = Modifier.height(12.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(8.dp).background(CyberCyan, CircleShape))
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                "NEURAL LOG ANALYSIS",
+                color = CyberCyan,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.sp
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
         
         // Table Header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(CyberCyan.copy(alpha = 0.1f))
+                .background(CyberCyan.copy(alpha = 0.05f))
                 .padding(8.dp)
         ) {
-            Text("EVENT", color = CyberCyan, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
-            Text("SOURCE", color = CyberCyan, modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
-            Text("STATUS", color = CyberCyan, modifier = Modifier.weight(0.8f), style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.End)
+            Text("EVENT", color = CyberCyan.copy(alpha = 0.6f), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+            Text("SOURCE", color = CyberCyan.copy(alpha = 0.6f), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+            Text("STATUS", color = CyberCyan.copy(alpha = 0.6f), modifier = Modifier.weight(0.8f), style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.End, fontWeight = FontWeight.Bold)
         }
 
-        // Table Rows (Simulated Analysis of recent proceedings)
+        // Table Rows
         AnalysisRow("PROMPT_DISPATCH", "ReliabilitySDK", "VERIFIED")
         AnalysisRow("EMBEDDING_GEN", "VertexEngine", "OPTIMIZED")
         AnalysisRow("RAG_RETRIEVAL", "VectorRetriever", "MATCHED")
@@ -420,17 +464,25 @@ fun DashboardSection(title: String, content: @Composable ColumnScope.() -> Unit)
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.White.copy(alpha = 0.03f), RoundedCornerShape(16.dp))
-            .border(0.5.dp, CyberCyan.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
+            .border(
+                0.5.dp, 
+                Brush.linearGradient(listOf(CyberCyan.copy(alpha = 0.2f), Color.Transparent)), 
+                RoundedCornerShape(16.dp)
+            )
             .padding(20.dp)
     ) {
-        Text(
-            title,
-            color = CyberCyan.copy(alpha = 0.7f),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.ExtraBold,
-            letterSpacing = 1.sp
-        )
-        Spacer(modifier = Modifier.height(16.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(12.dp, 2.dp).background(CyberCyan))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                title,
+                color = CyberCyan.copy(alpha = 0.8f),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.sp
+            )
+        }
+        Spacer(modifier = Modifier.height(20.dp))
         content()
     }
 }
@@ -441,7 +493,10 @@ fun DashboardActionCard(icon: androidx.compose.ui.graphics.vector.ImageVector, l
         onClick = onClick,
         color = Color.White.copy(alpha = 0.05f),
         shape = RoundedCornerShape(12.dp),
-        border = androidx.compose.foundation.BorderStroke(0.5.dp, color.copy(alpha = 0.3f)),
+        border = androidx.compose.foundation.BorderStroke(
+            0.5.dp, 
+            Brush.verticalGradient(listOf(color.copy(alpha = 0.4f), Color.Transparent))
+        ),
         modifier = modifier
     ) {
         Column(
@@ -450,7 +505,7 @@ fun DashboardActionCard(icon: androidx.compose.ui.graphics.vector.ImageVector, l
         ) {
             Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
             Spacer(modifier = Modifier.height(8.dp))
-            Text(label, color = color, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Text(label, color = color, fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
         }
     }
 }
