@@ -59,6 +59,7 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize(), color = Obsidian) {
                     val viewModel: InfomateViewModel = viewModel(
                         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                            @Suppress("UNCHECKED_CAST")
                             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                                 return InfomateViewModel(agent, voiceEngine = voiceEngine) as T
                             }

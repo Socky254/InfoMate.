@@ -35,6 +35,7 @@ object SystemUpdater {
                 val results: List<Map<String, Any>> = gson.fromJson(response, listType)
                 
                 val configMap = results.find { it["key"] == "latest_update" }
+                @Suppress("UNCHECKED_CAST")
                 val valueMap = configMap?.get("value") as? Map<String, Any>
                 
                 if (valueMap != null) {

@@ -43,10 +43,10 @@ class InfomateCloud(private val serverUri: URI) {
                 Log.d("InfomateCloud", "Token: $token")
             },
             onDone = { 
-                if (cont.isActive) cont.resume(fullResponse) {}
+                if (cont.isActive) cont.resume(fullResponse)
             },
             onFail = { error ->
-                if (cont.isActive) cont.resume("CLOUD_ERROR: $error") {}
+                if (cont.isActive) cont.resume("CLOUD_ERROR: $error")
             }
         )
 

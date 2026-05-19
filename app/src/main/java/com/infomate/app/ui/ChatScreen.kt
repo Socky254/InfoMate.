@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -619,7 +620,7 @@ fun HeaderSection(
                     Spacer(modifier = Modifier.width(8.dp))
                     IconButton(onClick = { vm.toggleVoiceOutput() }, modifier = Modifier.size(24.dp)) {
                         Icon(
-                            imageVector = if (state.isVoiceOutputEnabled) Icons.Filled.VolumeUp else Icons.Filled.VolumeOff,
+                            imageVector = if (state.isVoiceOutputEnabled) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
                             contentDescription = "Toggle Speech Output",
                             tint = if (state.isVoiceOutputEnabled) CyberCyan else SilverText.copy(alpha = 0.3f),
                             modifier = Modifier.size(18.dp)
@@ -743,7 +744,7 @@ fun InputSection(
             val isStop = state.brainState == com.infomate.core.ui.components.InfomateState.THINKING || state.brainState == com.infomate.core.ui.components.InfomateState.RESPONDING || state.isSpeaking
             
             val icon = if (isStop) Icons.Default.Stop 
-                      else if (isSend) Icons.Default.Send 
+                      else if (isSend) Icons.AutoMirrored.Filled.Send
                       else if (isListening) Icons.Filled.Stop 
                       else Icons.Filled.Mic
             

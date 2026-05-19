@@ -38,7 +38,7 @@ class WsClientManager(private val url: String) {
                 override fun onMessage(message: String?) {
                     Log.d("WsClientManager", "Raw Data: $message")
                     try {
-                        val json = JSONObject(message)
+                        val json = JSONObject(message ?: "")
                         val event = json.optString("event")
                         
                         // Handle Phoenix protocol messages

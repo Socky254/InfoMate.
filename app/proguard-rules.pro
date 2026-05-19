@@ -26,3 +26,9 @@
 
 # 6. Preserve Line Numbers for Crash Logs
 -keepattributes SourceFile,LineNumberTable
+
+# --- GOOGLE AI / MEDIAPIPE / AUTOVALUE FIXES ---
+-dontwarn javax.lang.model.**
+-dontwarn com.google.auto.value.**
+-dontwarn autovalue.shaded.**
+-dontwarn com.google.common.collect.Immutable*
