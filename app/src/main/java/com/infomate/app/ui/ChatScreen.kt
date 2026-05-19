@@ -105,17 +105,17 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                         onSearchToggle = { searchActive = !searchActive },
                         onSearchQueryChange = { searchQuery = it },
                         isMaleVoice = state.isMaleVoice,
-                        onVoiceToggle = vm::toggleVoice,
+                        onVoiceToggle = { vm.toggleVoice() },
                         vm = vm,
-                        state = state // ADDED
+                        state = state
                     )
                 },
                 bottomBar = {
                     InputSection(
                         input = state.input,
                         isListening = state.isListening,
-                        onInputChange = vm::updateInput,
-                        onSend = vm::send,
+                        onInputChange = { vm.updateInput(it) },
+                        onSend = { vm.send() },
                         onMediaClick = { 
                             mediaPickerLauncher.launch(
                                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
@@ -130,14 +130,94 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                     )
                 }
             ) { paddingValues ->
-                // ... rest of the code
+                val listState = rememberLazyListState()
+                
+                LaunchedEffect(listState.isScrollInProgress) {
+                    if (listState.isScrollInProgress) {
+                        focusManager.clearFocus()
+                    }
+                }
+
+                LaunchedEffect(state.messages.size, state.cognitiveSteps.size, state.brainState) {
+                    val totalItems = state.messages.size + 1 + (if (state.brainState == com.infomate.core.ui.components.InfomateState.THINKING) 1 else 0)
+                    if (totalItems > 1) {
+                        listState.animateScrollToItem(index = totalItems - 1)
+                    }
+                }
+
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    contentPadding = PaddingValues(bottom = 24.dp)
+                ) {
+                    item(contentType = "HEADER") {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(280.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                VisualHub(
+                                    brainState = state.brainState,
+                                    isActive = state.isSpeaking || state.isListening,
+                                    amplitudes = state.voiceAmplitudes
+                                )
+                            }
+                            
+                            NeuralProcessMonitor(steps = state.cognitiveSteps)
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+                    }
+
+                    val filteredMessages = if (searchQuery.isBlank()) state.messages 
+                                         else state.messages.filter { it.content.contains(searchQuery, ignoreCase = true) }
+                    
+                    items(
+                        items = filteredMessages,
+                        key = { it.timestamp },
+                        contentType = { it.sender }
+                    ) { message ->
+                        Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                            MessageCard(message, vm)
+                        }
+                    }
+
+                    if (state.brainState == com.infomate.core.ui.components.InfomateState.THINKING) {
+                        item {
+                            Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                                ThinkingIndicator()
+                            }
+                        }
+                    }
+                }
             }
 
-            // Update Dialog
             if (state.pendingUpdate != null) {
-                AlertDialog(
-                    onDismissRequest = vm::dismissUpdate,
-                    containerColor = Obsidian,
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { vm.dismissUpdate() },
+                    confirmButton = {
+                        androidx.compose.material3.Button(
+                            onClick = { vm.startUpdate() },
+                            colors = ButtonDefaults.buttonColors(containerColor = CyberCyan),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("INITIATE UPGRADE", color = Obsidian, fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    dismissButton = {
+                        if (state.pendingUpdate?.critical == false) {
+                            androidx.compose.material3.TextButton(onClick = { vm.dismissUpdate() }) {
+                                Text("DEFER", color = SilverText.copy(alpha = 0.4f))
+                            }
+                        }
+                    },
                     title = {
                         Text(
                             "NEURAL LINK UPGRADE AVAILABLE",
@@ -160,24 +240,8 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                             )
                         }
                     },
-                    confirmButton = {
-                        Button(
-                            onClick = vm::startUpdate,
-                            colors = ButtonDefaults.buttonColors(containerColor = CyberCyan),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text("INITIATE UPGRADE", color = Obsidian, fontWeight = FontWeight.Bold)
-                        }
-                    },
-                    dismissButton = {
-                        if (state.pendingUpdate?.critical == false) {
-                            TextButton(onClick = vm::dismissUpdate) {
-                                Text("DEFER", color = SilverText.copy(alpha = 0.4f))
-                            }
-                        }
-                    },
                     shape = RoundedCornerShape(24.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, CyberCyan.copy(alpha = 0.3f))
+                    containerColor = Obsidian
                 )
             }
         }
@@ -216,7 +280,6 @@ fun ThinkingIndicator() {
                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Small Cyber Waveform
                     Row(
                         modifier = Modifier.height(12.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -311,7 +374,6 @@ fun NeuralProcessMonitor(steps: List<com.infomate.core.brain.ThoughtStep>) {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Pulsing Neural Dot
                         val infiniteTransition = rememberInfiniteTransition(label = "dot")
                         val dotAlpha by infiniteTransition.animateFloat(
                             initialValue = 0.3f,
@@ -385,7 +447,6 @@ fun TechGridBackground() {
         val strokeWidth = 0.5.dp.toPx()
         val gridColor = CyberCyan.copy(alpha = 0.08f)
 
-        // Vertical Lines
         var x = (gridOffset % gridSpacing)
         while (x < size.width) {
             drawLine(
@@ -397,7 +458,6 @@ fun TechGridBackground() {
             x += gridSpacing
         }
 
-        // Horizontal Lines
         var y = (gridOffset % gridSpacing)
         while (y < size.height) {
             drawLine(
@@ -409,7 +469,6 @@ fun TechGridBackground() {
             y += gridSpacing
         }
         
-        // Circular Depth Glow
         drawRect(
             brush = Brush.verticalGradient(
                 colors = listOf(
@@ -434,7 +493,6 @@ fun VisualHub(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Neon Halo for the Iris
         Box(contentAlignment = Alignment.Center) {
             Surface(
                 modifier = Modifier.size(160.dp),
@@ -465,7 +523,6 @@ fun VisualHub(
             if (isActive) {
                 VoiceSpectrum(amplitudes = amplitudes)
             } else {
-                // Futuristic inactive line with glow
                 Surface(
                     modifier = Modifier
                         .width(60.dp)
@@ -517,7 +574,7 @@ fun HeaderSection(
     isMaleVoice: Boolean,
     onVoiceToggle: () -> Unit,
     vm: AgentViewModel,
-    state: UIState // ADDED
+    state: UIState
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -560,7 +617,7 @@ fun HeaderSection(
                         )
                     }
                     Spacer(modifier = Modifier.width(8.dp))
-                    IconButton(onClick = vm::toggleVoiceOutput, modifier = Modifier.size(24.dp)) {
+                    IconButton(onClick = { vm.toggleVoiceOutput() }, modifier = Modifier.size(24.dp)) {
                         Icon(
                             imageVector = if (state.isVoiceOutputEnabled) Icons.Filled.VolumeUp else Icons.Filled.VolumeOff,
                             contentDescription = "Toggle Speech Output",
@@ -589,7 +646,7 @@ fun HeaderSection(
                 keyboardActions = KeyboardActions(
                     onSearch = { 
                         vm.performSearch(searchQuery)
-                        onSearchToggle() // Close bar after search
+                        onSearchToggle()
                     }
                 )
             )
@@ -690,7 +747,6 @@ fun InputSection(
                       else if (isListening) Icons.Filled.Stop 
                       else Icons.Filled.Mic
             
-            // Pulse Animation for Action Button
             val infiniteTransition = rememberInfiniteTransition(label = "pulse")
             val pulseScale by infiniteTransition.animateFloat(
                 initialValue = 1f,
