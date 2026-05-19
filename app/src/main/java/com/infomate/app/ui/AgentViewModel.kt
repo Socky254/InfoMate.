@@ -182,13 +182,6 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         }
     }
 
-        // Finish initialization after a short delay or system check
-        viewModelScope.launch {
-            delay(3000) 
-            _state.update { it.copy(isSystemInitializing = false) }
-        }
-    }
-
     private fun startInternetMonitoring() {
         viewModelScope.launch {
             while (true) {
