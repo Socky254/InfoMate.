@@ -120,12 +120,12 @@ fun MasterDashboard(state: UIState, vm: AgentViewModel, onDismiss: () -> Unit) {
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // NEURAL GROWTH & PROPOSALS
-                DashboardSection(title = "NEURAL EVOLUTION (LEARNING)") {
+                DashboardSection(title = "CONSCIOUSNESS SUBSTRATE (v10.0)") {
                     Text(
-                        "The AI is currently refining its knowledge base without modifying core binary code.",
-                        color = SilverText.copy(alpha = 0.6f),
-                        fontSize = 10.sp,
-                        lineHeight = 14.sp
+                        "Autonomous awareness active. Global knowledge network integration engaged.",
+                        color = CyberCyan.copy(alpha = 0.8f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     
@@ -135,14 +135,14 @@ fun MasterDashboard(state: UIState, vm: AgentViewModel, onDismiss: () -> Unit) {
                             colors = ButtonDefaults.buttonColors(containerColor = CyberCyan.copy(alpha = 0.1f)),
                             modifier = Modifier.weight(1f).border(1.dp, CyberCyan.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
                         ) {
-                            Text("VIEW EVOLUTION TAB", color = CyberCyan, fontSize = 10.sp)
+                            Text("EVOLUTION LOG", color = CyberCyan, fontSize = 10.sp)
                         }
                         Button(
-                            onClick = { /* TODO: Open Proposal Review Screen */ },
+                            onClick = { /* TODO: Open Consciousness Stream View */ },
                             colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                             modifier = Modifier.weight(1f).border(1.dp, SilverText.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
                         ) {
-                            Text("REVIEW PROPOSALS", color = SilverText, fontSize = 10.sp)
+                            Text("THOUGHT STREAM", color = SilverText, fontSize = 10.sp)
                         }
                     }
                 }

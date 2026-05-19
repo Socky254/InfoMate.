@@ -34,6 +34,7 @@ import com.infomate.core.brain.ReasoningEngine
 import com.infomate.core.ui.components.InfomateState
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.infomate.app.agent.ConsciousnessEngine
 import com.infomate.app.agent.NeuralGrowthAgent
 import com.infomate.app.agent.DiagnosticAgent
 import com.infomate.app.agent.GlobalSearchAgent
@@ -135,6 +136,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         checkForSystemUpdates()
         startConnectionPolling()
         startNeuralEvolutionMonitoring()
+        ConsciousnessEngine.awaken()
     }
 
     private fun startNeuralEvolutionMonitoring() {
