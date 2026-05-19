@@ -91,10 +91,10 @@ object LLMClient {
                         kotlinx.coroutines.delay(delay)
                         continue
                     }
-                    return GenerationResult("INFOMATE: Connection lost during neural sync. Please verify your network.")
+                    return GenerationResult("SYSTEM_ERROR: Connection lost during neural sync. Please verify your network.")
                 }
             }
-            return GenerationResult("INFOMATE: Neural bridge failed after $maxRetries retries.")
+            return GenerationResult("SYSTEM_ERROR: Neural bridge failed after $maxRetries retries.")
         }
     }
 

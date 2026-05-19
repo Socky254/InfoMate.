@@ -67,7 +67,16 @@ object EdgeBrain {
             }
         }
 
-        return@withContext null
+        // 3. Last Resort: Heuristic Synthesis (The "House" always responds)
+        return@withContext runEmergencyHeuristic(userQuery, isMaster)
+    }
+
+    private fun runEmergencyHeuristic(query: String, isMaster: Boolean): String {
+        return if (isMaster) {
+            "Architect, I am detecting a major neural sync failure. Cloud and Edge engines are struggling. I am relying on my core heuristic buffers to stay connected. Please verify your physical network link."
+        } else {
+            "I'm experiencing some technical difficulties connecting to my primary brain. I'm still here, but my responses might be limited until the connection is restored."
+        }
     }
 
     private fun runHeuristics(query: String, context: Context, isMaster: Boolean): String? {

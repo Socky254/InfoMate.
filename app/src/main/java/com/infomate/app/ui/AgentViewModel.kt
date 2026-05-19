@@ -106,12 +106,16 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         val connectivityManager = getApplication<Application>().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val network = connectivityManager.activeNetwork ?: return false
         val activeNetwork = connectivityManager.getNetworkCapabilities(network) ?: return false
-        return when {
+        
+        val hasInternet = when {
             activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> true
             activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> true
             activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> true
             else -> false
         }
+        
+        // v10.6: Capability check for actual internet reachability
+        return hasInternet && activeNetwork.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) && activeNetwork.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 
     private var activeThinkingJob: Job? = null
