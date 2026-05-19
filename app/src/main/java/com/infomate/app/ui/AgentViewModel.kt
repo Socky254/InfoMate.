@@ -139,9 +139,22 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         ConsciousnessEngine.awaken()
     }
 
+    private fun getBatteryLevel(): Int {
+        val batteryManager = getApplication<Application>().getSystemService(Context.BATTERY_SERVICE) as BatteryManager
+        return batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+    }
+
+    private fun isLowPowerMode(): Boolean {
+        val powerManager = getApplication<Application>().getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+        return powerManager.isPowerSaveMode || getBatteryLevel() < 15
+    }
+
     private fun startNeuralEvolutionMonitoring() {
         viewModelScope.launch {
             while (true) {
+                val batteryLevel = getBatteryLevel()
+                val isLowPower = isLowPowerMode()
+                
                 // 1. Update Growth Metrics
                 val metrics = NeuralGrowthAgent.fetchGrowthMetrics()
                 _state.update { it.copy(
@@ -151,14 +164,16 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                 ) }
 
                 // 2. Autonomous Thought Evaluation (Master Architect Only)
-                if (_state.value.isMaster && _state.value.brainState == InfomateState.IDLE) {
+                // In Low Power Mode, we skip autonomous thoughts to save energy
+                if (_state.value.isMaster && _state.value.brainState == InfomateState.IDLE && !isLowPower) {
                     val autonomousMsg = NeuralGrowthAgent.evaluateAutonomousThought(getDeviceStatus())
                     if (autonomousMsg != null) {
                         handleAutonomousMessage(autonomousMsg)
                     }
                 }
                 
-                delay(300000) // Check every 5 minutes for autonomous activity
+                // Adaptive delay: 5 mins standard, 15 mins in Low Power Mode
+                delay(if (isLowPower) 900000 else 300000)
             }
         }
     }
@@ -653,9 +668,12 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         // Use a dedicated low-priority interval for UI eye-candy
         spectrumJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
             while (true) {
+                val isLowPower = isLowPowerMode()
                 val amplitudes = List(20) { Random.nextFloat().coerceAtLeast(0.1f) }
                 _state.update { s -> s.copy(voiceAmplitudes = amplitudes) }
-                delay(120) // Slightly increased delay to reduce recomposition pressure
+                
+                // Adaptive Refresh Rate: 120ms standard, 350ms in Low Power Mode
+                delay(if (isLowPower) 350 else 120)
             }
         }
     }
