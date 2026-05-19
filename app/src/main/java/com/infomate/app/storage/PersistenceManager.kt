@@ -12,6 +12,7 @@ object PersistenceManager {
     private const val KEY_LAST_REQUEST_ID = "last_request_id"
     private const val KEY_PARTIAL_TEXT = "partial_text"
     private const val KEY_PENDING_MESSAGES = "pending_messages"
+    private const val KEY_ONBOARDING_DONE = "onboarding_done"
     private val gson = Gson()
 
     private fun getPrefs(context: Context): SharedPreferences {
@@ -58,5 +59,13 @@ object PersistenceManager {
     private fun savePendingMessages(context: Context, messages: List<ChatMessage>) {
         val json = gson.toJson(messages)
         getPrefs(context).edit().putString(KEY_PENDING_MESSAGES, json).apply()
+    }
+
+    fun setOnboardingComplete(context: Context, complete: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_ONBOARDING_DONE, complete).apply()
+    }
+
+    fun isOnboardingComplete(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_ONBOARDING_DONE, false)
     }
 }

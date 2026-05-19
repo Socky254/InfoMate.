@@ -33,5 +33,7 @@ data class UIState(
     val voiceAmplitudes: List<Float> = List(20) { 0.1f },
     val isVoiceOutputEnabled: Boolean = true, // Master switch for AI Voice
     val needsOnboarding: Boolean = true, // Flag for permission context screen
-    val quota: QuotaInfo? = null
+    val quota: QuotaInfo? = null,
+    val isMaster: Boolean = false, // Master account flag
+    val userEmail: String? = null
 )

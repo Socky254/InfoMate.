@@ -18,9 +18,15 @@ object StreamController {
     }
 
     fun handle(raw: String?) {
-        if (raw == null) return
+        if (raw.isNullOrBlank()) return
         
         try {
+            if (!raw.trim().startsWith("{")) {
+                // Handle raw text as a token if it's not JSON
+                UIRenderer.onToken(raw)
+                return
+            }
+
             val msg = JSONObject(raw)
             when (msg.optString("event")) {
                 "stream_start" -> {
@@ -28,15 +34,17 @@ object StreamController {
                 }
                 "token" -> {
                     val chunk = msg.optString("chunk", "")
-                    SessionManager.partialResponse.append(chunk)
-                    SessionManager.lastSequence++
-                    
-                    // 3.6 Crash Safe State Persistence
-                    appContext?.let {
-                        PersistenceManager.savePartialResponse(it, SessionManager.partialResponse.toString())
+                    if (chunk.isNotEmpty()) {
+                        SessionManager.partialResponse.append(chunk)
+                        SessionManager.lastSequence++
+                        
+                        // 3.6 Crash Safe State Persistence
+                        appContext?.let {
+                            PersistenceManager.savePartialResponse(it, SessionManager.partialResponse.toString())
+                        }
+                        
+                        UIRenderer.onToken(chunk)
                     }
-                    
-                    UIRenderer.onToken(chunk)
                 }
                 "stream_end" -> {
                     state = AIState.DONE

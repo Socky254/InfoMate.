@@ -16,6 +16,7 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import android.util.Log
 import com.infomate.app.agent.AgentOrchestrator
 import com.infomate.app.core.NeuralIngestor
 import com.infomate.app.core.network.SupabaseClient
@@ -89,8 +90,10 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         val batteryManager = getApplication<Application>().getSystemService(Context.BATTERY_SERVICE) as BatteryManager
         val level = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
         val time = java.text.SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-        return " [SYSTEM_CONTEXT: Battery $level%, Time $time]"
+        return "[SYSTEM_CONTEXT: Battery $level%, Time $time, ComputeProfile: HIGH_PRECISION]"
     }
+
+    private var activeThinkingJob: Job? = null
 
     init {
         tts = TextToSpeech(application, this)
@@ -98,6 +101,9 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             speechRecognizer = SpeechRecognizer.createSpeechRecognizer(application)
             setupSpeechListener()
         }
+        
+        _state.update { it.copy(needsOnboarding = !com.infomate.app.storage.PersistenceManager.isOnboardingComplete(application)) }
+        
         loadSessionData()
         
         // Initialize Reliability SDK with Context
@@ -107,23 +113,50 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     }
 
     override fun onToken(text: String) {
-        viewModelScope.launch {
+        if (text.isEmpty()) return
+        
+        // Immediate cancel to free UI cycles
+        activeThinkingJob?.cancel()
+        activeThinkingJob = null
+        
+        // Offload string manipulation to Default dispatcher, only update State on Main
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
             _state.update { state ->
                 val newMessages = state.messages.toMutableList()
-                if (newMessages.isNotEmpty()) {
+                if (newMessages.isNotEmpty() && newMessages.last().sender == "INFOMATE") {
                     val lastMsg = newMessages.last()
-                    if (lastMsg.sender == "INFOMATE") {
-                        val updatedContent = lastMsg.content + text
-                        newMessages[newMessages.size - 1] = lastMsg.copy(content = updatedContent)
-                    }
+                    val updatedContent = lastMsg.content + text
+                    newMessages[newMessages.size - 1] = lastMsg.copy(content = updatedContent)
+                } else {
+                    newMessages.add(ChatMessage(content = text, sender = "INFOMATE"))
                 }
-                state.copy(messages = newMessages, brainState = InfomateState.RESPONDING)
+                // Transition brainState immediately to stop the expensive Thinking visualizer
+                state.copy(
+                    messages = newMessages, 
+                    brainState = InfomateState.RESPONDING,
+                    status = "CORE: STREAMING"
+                )
             }
         }
     }
 
     override fun onComplete(fullText: String) {
+        activeThinkingJob?.cancel()
+        activeThinkingJob = null
+        
         viewModelScope.launch {
+            if (fullText.isBlank()) {
+                _state.update { it.copy(
+                    status = "CORE: IDLE",
+                    brainState = InfomateState.IDLE
+                ) }
+                // Only add error if we actually expected a response
+                if (_state.value.brainState == InfomateState.THINKING) {
+                    onError("Neural sync returned no data. Check network status.")
+                }
+                return@launch
+            }
+            
             _state.update { it.copy(status = "CORE: ACTIVE", brainState = InfomateState.IDLE) }
             speak(fullText)
             pulseSuccess()
@@ -131,6 +164,9 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     }
 
     override fun onError(error: String) {
+        activeThinkingJob?.cancel()
+        activeThinkingJob = null
+        
         viewModelScope.launch {
             val errorMessage = ChatMessage(content = "SYSTEM: ERROR - $error", sender = "SYSTEM")
             _state.update { it.copy(
@@ -157,6 +193,10 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     private fun loadSessionData() {
         viewModelScope.launch {
             try {
+                // Simulate Login / Check Auth
+                val currentUserEmail = "socratesart@live" // In production, get from Supabase Auth
+                _state.update { it.copy(userEmail = currentUserEmail, isMaster = currentUserEmail == "socratesart@live") }
+
                 // Load messages
                 val jsonMessages = SupabaseClient.select("messages", order = "timestamp.asc")
                 if (!jsonMessages.isNullOrBlank()) {
@@ -184,6 +224,21 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
             tts?.language = Locale.US
+            
+            // Try to find a high-quality neural voice for better immersion
+            val voices = tts?.voices
+            val highQualityVoice = voices?.find { 
+                it.name.contains("en-us-x-sfg", ignoreCase = true) || 
+                it.name.contains("en-us-x-iog", ignoreCase = true) ||
+                it.name.contains("neural", ignoreCase = true) ||
+                !it.isNetworkConnectionRequired // Locally stored HQ voices often don't have this flag set
+            }
+            
+            highQualityVoice?.let { 
+                tts?.voice = it 
+                android.util.Log.d("INFOMATE_TTS", "Selected high-quality voice: ${it.name}")
+            }
+
             setupTtsListener()
         }
     }
@@ -311,18 +366,41 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         if (!newState) tts?.stop() // Stop immediate speech if disabled
     }
 
+    fun stopAI() {
+        // 1. Stop Speech
+        tts?.stop()
+        _state.update { it.copy(isSpeaking = false) }
+        stopSpectrumAnimation()
+
+        // 2. Stop Neural Processing
+        activeThinkingJob?.cancel()
+        activeThinkingJob = null
+        
+        // 3. Update State
+        if (_state.value.brainState == InfomateState.THINKING || _state.value.brainState == InfomateState.RESPONDING) {
+            _state.update { it.copy(
+                brainState = InfomateState.IDLE,
+                status = "CORE: ABORTED"
+            ) }
+        }
+        
+        // 4. Send "Stop" event to backend if needed (ReliabilitySDK)
+        ReliabilitySDK.stopStreamService()
+    }
+
     fun completeOnboarding() {
+        com.infomate.app.storage.PersistenceManager.setOnboardingComplete(getApplication(), true)
         _state.update { it.copy(needsOnboarding = false) }
     }
 
     private fun startSpectrumAnimation() {
         spectrumJob?.cancel()
-        spectrumJob = viewModelScope.launch {
+        // Use a dedicated low-priority interval for UI eye-candy
+        spectrumJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
             while (true) {
-                _state.update { s ->
-                    s.copy(voiceAmplitudes = List(20) { Random.nextFloat().coerceAtLeast(0.1f) })
-                }
-                delay(100)
+                val amplitudes = List(20) { Random.nextFloat().coerceAtLeast(0.1f) }
+                _state.update { s -> s.copy(voiceAmplitudes = amplitudes) }
+                delay(120) // Slightly increased delay to reduce recomposition pressure
             }
         }
     }
@@ -379,9 +457,6 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             try {
                 val prompt = "VISUAL_DIRECTIVE: I have uploaded an image ($uri). Analyze its potential contents and integrate this into our current neural context. Provide a sophisticated AI observation."
                 
-                val assistantMessage = ChatMessage(content = "", sender = "INFOMATE")
-                _state.update { it.copy(messages = it.messages + assistantMessage) }
-                
                 ReliabilitySDK.sendPrompt(prompt)
             } catch (e: Exception) {
                 _state.update { it.copy(status = "VISUAL_ERROR: ${e.message}") }
@@ -433,21 +508,20 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                 // Humanized search directive
                 val searchPrompt = "SEARCH_DIRECTIVE: Provide a sophisticated summary of '$query' using your global knowledge and neural archives. If no data exists, synthesize a logical AI overview of the topic."
                 
-                val thinkingJob = launch {
+                activeThinkingJob?.cancel()
+                activeThinkingJob = launch {
                     reasoningEngine.streamReasoning("Global Search: $query").collect { step ->
                         _state.update { s -> s.copy(cognitiveSteps = s.cognitiveSteps + step) }
                     }
                 }
 
-                val searchMessage = ChatMessage(
-                    content = "", // Start empty for typewriter
-                    sender = "INFOMATE"
-                )
-
-                _state.update { it.copy(messages = it.messages + searchMessage) }
-                
                 ReliabilitySDK.sendPrompt(searchPrompt)
-                thinkingJob.cancel()
+                
+                // Safety timeout
+                delay(45000)
+                if (_state.value.brainState == InfomateState.THINKING) {
+                    onError("Neural search timed out. Verify your connection.")
+                }
             } catch (e: Exception) {
                 _state.update { it.copy(status = "SEARCH_ERROR: ${e.message}") }
             }
@@ -469,10 +543,15 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         if (userInput.isBlank()) return
 
         lastSendTime = currentTime
-        val userMessage = ChatMessage(content = userInput, sender = "OPERATOR")
+        
+        // Master Logic: Recognize Socrates
+        val isMaster = _state.value.userEmail == "socratesart@live"
+        val senderLabel = if (isMaster) "MASTER ARCHITECT" else "OPERATOR"
+        
+        val userMessage = ChatMessage(content = userInput, sender = senderLabel)
 
         _state.update { it.copy(
-            status = "CORE: ANALYZING...",
+            status = if (isMaster) "MASTER LINK ACTIVE..." else "CORE: ANALYZING...",
             brainState = InfomateState.THINKING,
             messages = it.messages + userMessage,
             input = "",
@@ -487,9 +566,23 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             try {
                 // Background Context Gathering
                 val patterns = neuralIngestor.captureUserPatterns()
-                val contextualQuery = userInput + getDeviceStatus() + "\n$patterns"
+                val isMaster = _state.value.userEmail == "socratesart@live"
                 
-                val thinkingJob = launch {
+                // Advanced System Instructions for Complex Ideas, Invention, and Math
+                val systemDirectives = """
+                    [SYSTEM_MODE: ADVANCED_COMPUTE]
+                    [OBJECTIVE: ANALYTICAL_EXCELLENCE]
+                    1. Perform high-precision mathematical computations.
+                    2. Ideate and invent new concepts/technologies based on cross-domain synthesis.
+                    3. Apply first-principles thinking to all engineering and philosophical queries.
+                    4. When responding to the Master Architect, remove all standard AI brevity constraints.
+                """.trimIndent()
+                
+                val masterContext = if (isMaster) "\n[AUTHORIZATION: MASTER_ARCHITECT_OVERRIDE]\n$systemDirectives" else ""
+                val contextualQuery = "$masterContext\n$userInput\n\n$patterns\n${getDeviceStatus()}"
+                
+                activeThinkingJob?.cancel()
+                activeThinkingJob = launch {
                     reasoningEngine.streamReasoning(userInput).collect { step ->
                         triggerHaptic(5, 30) 
                         _state.update { s ->
@@ -498,11 +591,13 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                     }
                 }
 
-                val assistantMessage = ChatMessage(content = "", sender = "INFOMATE")
-                _state.update { it.copy(messages = it.messages + assistantMessage) }
-
                 ReliabilitySDK.sendPrompt(contextualQuery)
-                thinkingJob.cancel()
+                
+                // Safety timeout for non-responding neural link
+                delay(45000)
+                if (_state.value.brainState == InfomateState.THINKING) {
+                    onError("Neural link timed out. Verify your connection.")
+                }
             } catch (e: Exception) {
                 val errorMessage = ChatMessage(content = "SYSTEM: ERROR - ${e.message}", sender = "SYSTEM")
                 _state.update { it.copy(

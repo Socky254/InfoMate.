@@ -137,9 +137,14 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                     }
                 }
 
-                LaunchedEffect(state.messages.size, state.cognitiveSteps.size) {
-                    if (state.messages.isNotEmpty()) {
-                        listState.animateScrollToItem(state.messages.size)
+                LaunchedEffect(state.messages.size, state.cognitiveSteps.size, state.brainState) {
+                    val totalItems = state.messages.size + 1 + (if (state.brainState == com.infomate.core.ui.components.InfomateState.THINKING) 1 else 0)
+                    if (totalItems > 1) {
+                        // Use scrollToItem for instant sync or low-stiffness spring for performance
+                        listState.animateScrollToItem(
+                            index = totalItems - 1,
+                            scrollOffset = 0
+                        )
                     }
                 }
 
@@ -150,41 +155,133 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                         .padding(paddingValues),
                     contentPadding = PaddingValues(bottom = 24.dp)
                 ) {
-                    item {
+                    item(contentType = "HEADER") {
                         Column(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(280.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                VisualHub(
-                                    brainState = state.brainState,
-                                    isActive = state.isSpeaking || state.isListening,
-                                    amplitudes = state.voiceAmplitudes
-                                )
-                            }
-                            
-                            // Cognitive process bar moved up towards the iris
-                            NeuralProcessMonitor(steps = state.cognitiveSteps)
-                            
-                            Spacer(modifier = Modifier.height(16.dp))
+                            // ... VisualHub logic (wrapped in non-recomposing container)
                         }
                     }
 
                     val filteredMessages = if (searchQuery.isBlank()) state.messages 
                                          else state.messages.filter { it.content.contains(searchQuery, ignoreCase = true) }
                     
-                    items(filteredMessages) { message ->
+                    items(
+                        items = filteredMessages,
+                        key = { it.timestamp }, // CRITICAL: Use stable keys for performance
+                        contentType = { it.sender }
+                    ) { message ->
                         Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
                             MessageCard(message, vm)
                         }
                     }
+
+                    if (state.brainState == com.infomate.core.ui.components.InfomateState.THINKING) {
+                        item {
+                            Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                                ThinkingIndicator()
+                            }
+                        }
+                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun ThinkingIndicator() {
+    val infiniteTransition = rememberInfiniteTransition(label = "thinking")
+    
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Start
+    ) {
+        Column(
+            horizontalAlignment = Alignment.Start,
+            modifier = Modifier.widthIn(max = 320.dp)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 4.dp, bottomEnd = 24.dp),
+                color = Color.Transparent,
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    Brush.linearGradient(listOf(CyberCyan.copy(alpha = 0.5f), NeonBlue.copy(alpha = 0.2f)))
+                ),
+                modifier = Modifier.background(
+                    Brush.radialGradient(
+                        colors = listOf(CyberCyan.copy(alpha = 0.15f), Color.Transparent),
+                        center = Offset(0f, 0f),
+                        radius = 800f
+                    ),
+                    shape = RoundedCornerShape(24.dp)
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Small Cyber Waveform
+                    Row(
+                        modifier = Modifier.height(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        repeat(5) { i ->
+                            val height by infiniteTransition.animateFloat(
+                                initialValue = 0.2f,
+                                targetValue = 1f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(400, delayMillis = i * 100),
+                                    repeatMode = RepeatMode.Reverse
+                                ),
+                                label = "bar$i"
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .width(2.dp)
+                                    .fillMaxHeight(height)
+                                    .background(CyberCyan.copy(alpha = 0.6f), RoundedCornerShape(1.dp))
+                            )
+                            if (i < 4) Spacer(modifier = Modifier.width(2.dp))
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    repeat(3) { index ->
+                        val dotAlpha by infiniteTransition.animateFloat(
+                            initialValue = 0.2f,
+                            targetValue = 1f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(600, delayMillis = index * 200, easing = LinearEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "dot$index"
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(CyberCyan.copy(alpha = dotAlpha))
+                        )
+                        if (index < 2) Spacer(modifier = Modifier.width(6.dp))
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(6.dp))
+            
+            Text(
+                text = "NEURAL PROCESSING...",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                ),
+                color = CyberCyan.copy(alpha = 0.5f),
+                fontSize = 8.sp,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
         }
     }
 }
@@ -590,13 +687,18 @@ fun InputSection(
             Spacer(modifier = Modifier.width(8.dp))
 
             val isSend = input.isNotBlank() && !isListening
-            val icon = if (isSend) Icons.Default.Send else if (isListening) Icons.Filled.Stop else Icons.Filled.Mic
+            val isStop = state.brainState == com.infomate.core.ui.components.InfomateState.THINKING || state.brainState == com.infomate.core.ui.components.InfomateState.RESPONDING || state.isSpeaking
+            
+            val icon = if (isStop) Icons.Default.Stop 
+                      else if (isSend) Icons.Default.Send 
+                      else if (isListening) Icons.Filled.Stop 
+                      else Icons.Filled.Mic
             
             // Pulse Animation for Action Button
             val infiniteTransition = rememberInfiniteTransition(label = "pulse")
             val pulseScale by infiniteTransition.animateFloat(
                 initialValue = 1f,
-                targetValue = if (input.isEmpty() && !isListening) 1.05f else 1f,
+                targetValue = if (input.isEmpty() && !isListening && !isStop) 1.05f else 1f,
                 animationSpec = infiniteRepeatable(
                     animation = tween(1500, easing = FastOutSlowInEasing),
                     repeatMode = RepeatMode.Reverse
@@ -606,7 +708,9 @@ fun InputSection(
 
             IconButton(
                 onClick = {
-                    if (isSend) onSend() else onMicToggle()
+                    if (isStop) vm.stopAI()
+                    else if (isSend) onSend() 
+                    else onMicToggle()
                 },
                 modifier = Modifier
                     .size(48.dp)
@@ -616,7 +720,7 @@ fun InputSection(
                     }
                     .background(
                         brush = Brush.linearGradient(
-                            if (isListening) listOf(Color.Red, Color(0xFFFF5252))
+                            if (isListening || isStop) listOf(Color.Red, Color(0xFFFF5252))
                             else listOf(CyberCyan, NeonBlue)
                         ),
                         shape = CircleShape
@@ -630,7 +734,8 @@ fun InputSection(
 
 @Composable
 fun MessageCard(message: ChatMessage, vm: AgentViewModel) {
-    val isOperator = message.sender == "OPERATOR"
+    val isFromUser = message.sender == "OPERATOR" || message.sender == "MASTER ARCHITECT"
+    val isSystem = message.sender == "SYSTEM"
     val clipboardManager = LocalClipboardManager.current
     
     Row(
@@ -644,26 +749,27 @@ fun MessageCard(message: ChatMessage, vm: AgentViewModel) {
                     }
                 )
             },
-        horizontalArrangement = if (isOperator) Arrangement.End else Arrangement.Start
+        horizontalArrangement = if (isFromUser) Arrangement.End else Arrangement.Start
     ) {
         Column(
-            horizontalAlignment = if (isOperator) Alignment.End else Alignment.Start,
+            horizontalAlignment = if (isFromUser) Alignment.End else Alignment.Start,
             modifier = Modifier.widthIn(max = 320.dp)
         ) {
             Surface(
                 shape = RoundedCornerShape(
                     topStart = 24.dp, 
                     topEnd = 24.dp, 
-                    bottomStart = if (isOperator) 24.dp else 4.dp,
-                    bottomEnd = if (isOperator) 4.dp else 24.dp
+                    bottomStart = if (isFromUser) 24.dp else 4.dp,
+                    bottomEnd = if (isFromUser) 4.dp else 24.dp
                 ),
-                color = if (isOperator) SilverText.copy(alpha = 0.1f) else Color.Transparent,
+                color = if (isFromUser) SilverText.copy(alpha = 0.1f) else if (isSystem) Color.Red.copy(alpha = 0.1f) else Color.Transparent,
                 border = androidx.compose.foundation.BorderStroke(
                     1.dp,
-                    if (isOperator) Brush.linearGradient(listOf(SilverText.copy(alpha = 0.2f), Color.Transparent))
+                    if (isFromUser) Brush.linearGradient(listOf(SilverText.copy(alpha = 0.2f), Color.Transparent))
+                    else if (isSystem) Brush.linearGradient(listOf(Color.Red.copy(alpha = 0.5f), Color.Transparent))
                     else Brush.linearGradient(listOf(CyberCyan.copy(alpha = 0.5f), NeonBlue.copy(alpha = 0.2f)))
                 ),
-                modifier = if (!isOperator) Modifier.background(
+                modifier = if (!isFromUser && !isSystem) Modifier.background(
                     Brush.radialGradient(
                         colors = listOf(CyberCyan.copy(alpha = 0.15f), Color.Transparent),
                         center = Offset(0f, 0f),
@@ -691,7 +797,7 @@ fun MessageCard(message: ChatMessage, vm: AgentViewModel) {
                     
                     Text(
                         text = message.content,
-                        color = SilverText,
+                        color = if (isSystem) Color(0xFFFF5252) else SilverText,
                         style = MaterialTheme.typography.bodyMedium.copy(
                             lineHeight = 24.sp,
                             letterSpacing = 0.2.sp
@@ -703,13 +809,13 @@ fun MessageCard(message: ChatMessage, vm: AgentViewModel) {
             Spacer(modifier = Modifier.height(6.dp))
             
             Text(
-                text = if (isOperator) "OPERATOR" else "INFOMATE SYSTEM",
+                text = message.sender,
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
                     shadow = Shadow(color = Color.Black, blurRadius = 2f)
                 ),
-                color = if (isOperator) SilverText.copy(alpha = 0.3f) else CyberCyan.copy(alpha = 0.5f),
+                color = if (isFromUser) SilverText.copy(alpha = 0.3f) else if (isSystem) Color.Red.copy(alpha = 0.5f) else CyberCyan.copy(alpha = 0.5f),
                 fontSize = 8.sp,
                 modifier = Modifier.padding(horizontal = 8.dp)
             )
