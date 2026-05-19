@@ -11,12 +11,15 @@ class WsClientManager(private val url: String) {
     var isConnected = false
         private set
     private var ref = 0
+    private var reconnectAttempt = 0
+    private val maxReconnectDelay = 8000L // 8s as per Golden Config
 
     fun connect() {
         try {
             ws = object : WebSocketClient(URI(url)) {
                 override fun onOpen(handshakedata: ServerHandshake?) {
                     isConnected = true
+                    reconnectAttempt = 0 // Reset attempts on success
                     Log.d("WsClientManager", "Neural Link Established")
                     
                     // Supabase Realtime requires joining a channel to receive broadcasts
@@ -25,10 +28,11 @@ class WsClientManager(private val url: String) {
                     // STEP 3 — Flush queued messages
                     RetryQueue.flush(this@WsClientManager)
                     
-                    // STEP 5 — Fix session mismatch
-                    // We restore the sessionId but DO NOT reuse old streaming requestIds automatically
-                    // to prevent state corruption. The user must re-initiate if it failed.
-                    SessionManager.lastRequestId = null
+                    // GOLDEN_CONFIG 6.3: Only resume session on reconnect
+                    if (SessionManager.lastRequestId != null) {
+                        Log.d("WsClientManager", "Attempting to resume session for ${SessionManager.lastRequestId}")
+                        resumeSession(SessionManager.lastRequestId!!, SessionManager.sessionId ?: "")
+                    }
                 }
 
                 override fun onMessage(message: String?) {
@@ -126,9 +130,20 @@ class WsClientManager(private val url: String) {
 
     private fun reconnect() {
         StreamController.state = AIState.RECONNECTING
+        
+        // Exponential Backoff: 2s -> 4s -> 8s
+        reconnectAttempt++
+        val delay = when (reconnectAttempt) {
+            1 -> 2000L
+            2 -> 4000L
+            else -> maxReconnectDelay
+        }
+
+        Log.d("WsClientManager", "Reconnecting in ${delay}ms (Attempt $reconnectAttempt)")
+        
         Thread {
             try {
-                Thread.sleep(3000)
+                Thread.sleep(delay)
                 connect()
             } catch (e: Exception) {}
         }.start()

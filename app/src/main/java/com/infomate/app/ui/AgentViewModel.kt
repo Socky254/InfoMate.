@@ -135,6 +135,8 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         _state.update { it.copy(pendingUpdate = null) }
     }
 
+    private val currentSentence = StringBuilder()
+
     override fun onToken(text: String) {
         if (text.isEmpty()) return
         
@@ -142,6 +144,14 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         activeThinkingJob?.cancel()
         activeThinkingJob = null
         
+        // Sentence-based streaming speech for "Almost Natural" feel
+        currentSentence.append(text)
+        if (text.contains(".") || text.contains("?") || text.contains("!")) {
+            val sentence = currentSentence.toString()
+            speak(sentence)
+            currentSentence.clear()
+        }
+
         // Offload string manipulation to Default dispatcher, only update State on Main
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
             _state.update { state ->
@@ -181,7 +191,14 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             }
             
             _state.update { it.copy(status = "CORE: ACTIVE", brainState = InfomateState.IDLE) }
-            speak(fullText)
+            
+            // Speak remaining tokens if any
+            val remaining = currentSentence.toString().trim()
+            if (remaining.isNotEmpty()) {
+                speak(remaining)
+                currentSentence.clear()
+            }
+            
             pulseSuccess()
         }
     }
@@ -249,17 +266,19 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             tts?.language = Locale.US
             
             // Try to find a high-quality neural voice for better immersion
+            // 7.0 "Almost Natural" Voice Selection
             val voices = tts?.voices
-            val highQualityVoice = voices?.find { 
+            val highQualityVoice = voices?.filter { 
+                it.locale.language == "en" && 
+                (it.name.contains("neural", true) || it.name.contains("network", true) || it.name.contains("studio", true))
+            }?.maxByOrNull { it.quality } ?: voices?.find { 
                 it.name.contains("en-us-x-sfg", ignoreCase = true) || 
-                it.name.contains("en-us-x-iog", ignoreCase = true) ||
-                it.name.contains("neural", ignoreCase = true) ||
-                !it.isNetworkConnectionRequired // Locally stored HQ voices often don't have this flag set
+                it.name.contains("en-us-x-iog", ignoreCase = true)
             }
             
             highQualityVoice?.let { 
                 tts?.voice = it 
-                android.util.Log.d("INFOMATE_TTS", "Selected high-quality voice: ${it.name}")
+                android.util.Log.d("INFOMATE_TTS", "Selected high-quality neural voice: ${it.name}")
             }
 
             setupTtsListener()
@@ -434,21 +453,32 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     }
 
     fun speak(text: String) {
-        if (!_state.value.isVoiceOutputEnabled) return 
+        if (!_state.value.isVoiceOutputEnabled || text.isBlank()) return 
+
+        // 7.1 Clean technical noise before speaking
+        val cleanedText = text
+            .replace(Regex("\\[.*?\\]"), "")
+            .replace(Regex("GEMINI-SYNTHESIS:.*?:", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("(infomate|iris|system|assistant|ai):", RegexOption.IGNORE_CASE), "")
+            .trim()
+
+        if (cleanedText.isEmpty()) return
 
         val params = Bundle()
-        params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "INFOMATE_SPEECH")
+        params.putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "INFOMATE_${System.currentTimeMillis()}")
         
-        // Realistic speech modulation: Slight pitch and rate variations
+        // Realistic speech modulation: Slightly more natural pitch/rate
         if (_state.value.isMaleVoice) {
             tts?.setPitch(0.85f)
-            tts?.setSpeechRate(0.95f)
+            tts?.setSpeechRate(0.92f)
         } else {
-            tts?.setPitch(1.05f)
-            tts?.setSpeechRate(1.0f)
+            tts?.setPitch(1.02f)
+            tts?.setSpeechRate(0.98f)
         }
         
-        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, params, "INFOMATE_SPEECH")
+        // Use QUEUE_ADD for streaming sentences, QUEUE_FLUSH for immediate responses
+        val queueMode = if (state.value.brainState == InfomateState.RESPONDING) TextToSpeech.QUEUE_ADD else TextToSpeech.QUEUE_FLUSH
+        tts?.speak(cleanedText, queueMode, params, params.getString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID))
     }
 
     fun updateInput(text: String) {
@@ -540,11 +570,11 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
                 ReliabilitySDK.sendPrompt(searchPrompt)
                 
-                // FIX 1 & 4 — Increased timeout for deep archival scans
-                delay(120000)
+                // FIX 1 & 4 — 75s timeout for archival scans
+                delay(75000)
                 if (_state.value.brainState == InfomateState.THINKING) {
                     StreamController.terminateStream()
-                    onError("Neural search timed out. Neural archives are currently high-latency.")
+                    onError("Neural search timeout: Archives took too long to synchronize.")
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(status = "SEARCH_ERROR: ${e.message}") }
@@ -617,13 +647,12 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
                 ReliabilitySDK.sendPrompt(contextualQuery)
                 
-                // FIX 1 & 4 — Increase AI timeout to 120s (Master Architect Standard)
-                // We allow the AI more time for complex "Advanced Compute" tasks
-                delay(120000) 
+                // FIX 1 & 4 — Set AI timeout to 75s (Golden Production Config)
+                delay(75000) 
                 if (_state.value.brainState == InfomateState.THINKING || _state.value.brainState == InfomateState.RESPONDING) {
                     if (StreamController.state != AIState.IDLE) {
                         StreamController.terminateStream()
-                        onError("Neural bridge timeout: The system is under heavy load. Please re-initiate.")
+                        onError("Neural link failure: AI session exceeded performance threshold.")
                     }
                 }
             } catch (e: Exception) {

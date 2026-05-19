@@ -9,9 +9,13 @@ import com.infomate.core.device.ContextSensors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+import com.infomate.core.network.InfomateCloud
+import java.net.URI
+
 class SystemOrchestrator(context: Context) {
     private val archive = CognitiveArchive(context)
-    private val brain = InfomateBrain(archive)
+    private val cloud = InfomateCloud(URI("wss://your-supabase-project.supabase.co/functions/v1/infomate-brain"))
+    private val brain = InfomateBrain(archive, cloud)
     private val memory = MemoryStore()
     private val sensors = ContextSensors(context)
 

@@ -20,9 +20,10 @@ class NeuralVoiceEngine(context: Context) : TextToSpeech.OnInitListener {
         if (status == TextToSpeech.SUCCESS) {
             val voices = tts.voices
             // Specifically selecting the most high-frequency/neural voice found on the hardware
-            val highFrequencyVoice = voices.find { 
-                it.locale.language == "en"
-            }
+            val highFrequencyVoice = voices?.filter { 
+                it.locale.language == "en" && 
+                (it.name.contains("neural", true) || it.name.contains("network", true) || it.name.contains("studio", true))
+            }?.maxByOrNull { it.quality } ?: voices?.find { it.locale.language == "en" }
             
             highFrequencyVoice?.let { 
                 tts.voice = it
@@ -59,15 +60,17 @@ class NeuralVoiceEngine(context: Context) : TextToSpeech.OnInitListener {
         if (isReady) {
             applyArchetype(archetype)
             
-            // Text processing for organic human-like realism
-            val naturalText = text
-                .replace("...", "[pause:400]")
-                .replace(". ", ". [pause:300]")
-                .replace(", ", ", [pause:150]")
+            // Text processing for organic human-like realism (Remove technical tags)
+            val cleanedText = text
+                .replace(Regex("\\[.*?\\]"), "")
+                .replace(Regex("GEMINI-SYNTHESIS:.*?:", RegexOption.IGNORE_CASE), "")
+                .replace(Regex("(infomate|iris|system|assistant|ai):", RegexOption.IGNORE_CASE), "")
+                .trim()
+
+            if (cleanedText.isEmpty()) return
             
-            // Android TTS doesn't support [pause] directly in speak, 
-            // but we can break the text into parts or use the '.' for natural rhythm.
-            tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
+            // Use QUEUE_ADD for natural flow if called multiple times, or FLUSH for new responses
+            tts.speak(cleanedText, TextToSpeech.QUEUE_FLUSH, null, "INFOMATE_CORE")
         }
     }
 

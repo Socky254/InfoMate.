@@ -85,50 +85,79 @@ class EventBus {
 class AIGateway {
   constructor(private apiKey: string, private events: EventBus, private model: string = "gemini-2.0-flash-lite") {}
 
-  async generate(requestId: string, tenantId: string, prompt: string): Promise<{ output: string, tokens: number }> {
+  async generateStream(requestId: string, tenantId: string, prompt: string, onToken: (token: string) => void): Promise<{ output: string, tokens: number }> {
     if (!CircuitBreaker.check()) throw new Error("CIRCUIT_OPEN");
 
     await this.events.emit({ requestId, tenantId, event: "ai_call_started" });
     const start = Date.now();
+    let fullOutput = "";
 
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
+      // 2.1 AI GENERATION TIMEOUT (GEMINI LAYER) -> 75s (Golden Config)
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:streamGenerateContent?alt=sse&key=${this.apiKey}`;
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s Hard Timeout
+      const timeoutId = setTimeout(() => controller.abort(), 75000);
 
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            top_p: 0.9,
+            maxOutputTokens: 4096 // 4.1 GENERATION CONFIG
+          }
+        }),
         signal: controller.signal
       });
       clearTimeout(timeoutId);
 
-      const data = await response.json();
+      if (!response.body) throw new Error("NO_RESPONSE_BODY");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let tokens = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (text) {
+                fullOutput += text;
+                onToken(text);
+              }
+              if (data.usageMetadata) {
+                tokens = data.usageMetadata.totalTokenCount;
+              }
+            } catch (e) {
+              // Ignore partial JSON
+            }
+          }
+        }
+      }
+
       const latency = Date.now() - start;
-
-      if (data.error) {
-        CircuitBreaker.recordFailure();
-        await this.events.emit({ requestId, tenantId, event: "ai_call_failed", latencyMs: latency, meta: { error: data.error.message } });
-        throw new Error(`GEMINI_ERROR: ${data.error.message}`);
-      }
-
-      const output = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      const tokens = data.usageMetadata?.totalTokenCount || 0;
-
-      if (!output) {
-        CircuitBreaker.recordFailure();
-        throw new Error("PARSE_FAILURE");
-      }
-
       CircuitBreaker.recordSuccess();
       await this.events.emit({ requestId, tenantId, event: "ai_call_completed", latencyMs: latency, meta: { tokens } });
-      return { output, tokens };
+      return { output: fullOutput, tokens };
     } catch (e) {
       CircuitBreaker.recordFailure();
       throw e;
     }
+  }
+
+  async generate(requestId: string, tenantId: string, prompt: string): Promise<{ output: string, tokens: number }> {
+    // Legacy support for non-streaming calls if needed, but we follow RULE 4.2
+    return this.generateStream(requestId, tenantId, prompt, () => {});
   }
 }
 
@@ -136,7 +165,7 @@ class AIGateway {
 class AIOrchestrator {
   constructor(private supabase: any, private gateway: AIGateway, private events: EventBus) {}
 
-  async handleRequest(envelope: RequestEnvelope): Promise<{ output: string, quota: any }> {
+  async handleRequest(envelope: RequestEnvelope, onToken?: (token: string) => void): Promise<{ output: string, quota: any }> {
     const totalStart = Date.now();
     const { requestId, tenantId } = envelope;
 
@@ -165,6 +194,7 @@ class AIOrchestrator {
       .maybeSingle();
 
     if (cached) {
+      if (onToken) onToken(cached.response_text);
       await this.updateIdempotency(requestId, 'COMPLETED');
       await this.events.emit({ requestId, tenantId, event: "request_finalized", latencyMs: Date.now() - totalStart, meta: { cache: "hit" } });
       const quota = await this.getQuota(tenantId);
@@ -173,7 +203,9 @@ class AIOrchestrator {
 
     // 3. AI Execution
     try {
-      const result = await this.gateway.generate(requestId, tenantId, envelope.payload.prompt);
+      const result = await this.gateway.generateStream(requestId, tenantId, envelope.payload.prompt, (token) => {
+        if (onToken) onToken(token);
+      });
 
       // 4. Persistence & Finalization
       await Promise.all([
@@ -232,82 +264,82 @@ class AIOrchestrator {
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
-  try {
-    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+  const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
-    // 2. AUTHENTICATION DERIVATION
+  // 1. WEBSOCKET UPGRADE (RULE 2.2)
+  if (req.headers.get("upgrade") === "websocket") {
+    const { socket, response } = Deno.upgradeWebSocket(req);
+
+    socket.onmessage = async (e) => {
+      const data = JSON.parse(e.data);
+      if (data.event === "start_stream") {
+        const { requestId, prompt, userId } = data;
+        const events = new EventBus(supabase);
+        const gateway = new AIGateway(Deno.env.get('GEMINI_API_KEY')!, events);
+        const orchestrator = new AIOrchestrator(supabase, gateway, events);
+
+        // 3.3 STREAM HEARTBEAT
+        const heartbeat = setInterval(() => {
+          if (socket.readyState === 1) socket.send(JSON.stringify({ event: "stream_ping", requestId }));
+        }, 15000);
+
+        try {
+          await orchestrator.handleRequest({
+            requestId, userId, tenantId: userId, sessionId: "ws-session", timestamp: Date.now(), type: 'stream',
+            payload: { prompt }
+          }, (token) => {
+            if (socket.readyState === 1) socket.send(JSON.stringify({ event: "token", text: token, requestId }));
+          });
+          if (socket.readyState === 1) socket.send(JSON.stringify({ event: "stream_end", success: true, requestId }));
+        } catch (err) {
+          if (socket.readyState === 1) socket.send(JSON.stringify({ event: "stream_end", success: false, error: err.message, requestId }));
+        } finally {
+          clearInterval(heartbeat);
+        }
+      }
+    };
+    return response;
+  }
+
+  // 2. HTTP STREAMING (RULE 5.2)
+  try {
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing Authorization Header", error_code: "UNAUTHORIZED" }), { status: 401, headers: corsHeaders });
-    }
+    if (!authHeader) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
 
     const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Invalid Session", error_code: "UNAUTHORIZED" }), { status: 401, headers: corsHeaders });
-    }
-
-    const tenantId = user.id;
-    const userId = user.id;
+    if (authError || !user) return new Response(JSON.stringify({ error: "Invalid Session" }), { status: 401, headers: corsHeaders });
 
     const body = await req.json();
+    const requestId = body.requestId;
 
-    // Handle Session Resume Event (Mobile Reliability Layer)
-    if (body.event === "resume") {
-      const { data: log } = await supabase.from('ai_request_logs').select('*').eq('request_id', body.requestId).order('created_at', { ascending: false }).limit(1).maybeSingle();
-      const { data: message } = await supabase.from('ai_messages').select('content').eq('request_id', body.requestId).eq('role', 'assistant').maybeSingle();
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        const send = (msg: any) => controller.enqueue(encoder.encode(JSON.stringify(msg) + "\n"));
 
-      return new Response(JSON.stringify({
-        requestId: body.requestId,
-        event: "stream_end",
-        output: message?.content || "Neural link restored. Session is synchronized.",
-        status: log?.event_type || "UNKNOWN"
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
+        try {
+          const events = new EventBus(supabase);
+          const gateway = new AIGateway(Deno.env.get('GEMINI_API_KEY')!, events);
+          const orchestrator = new AIOrchestrator(supabase, gateway, events);
 
-    // 1. MANDATORY HARD VALIDATION
-    if (!body.requestId || !body.payload?.prompt) {
-      return new Response(JSON.stringify({ error: "Mandatory fields missing (requestId/prompt)", error_code: "INVALID_REQUEST" }), { status: 400, headers: corsHeaders });
-    }
+          await orchestrator.handleRequest({
+            ...body, tenantId: user.id, userId: user.id
+          }, (token) => {
+            send({ event: "token", text: token, requestId });
+          });
 
-    const events = new EventBus(supabase);
-    const gateway = new AIGateway(Deno.env.get('GEMINI_API_KEY')!, events);
-    const orchestrator = new AIOrchestrator(supabase, gateway, events);
+          send({ event: "stream_end", success: true, requestId });
+          controller.close();
+        } catch (error: any) {
+          send({ event: "stream_end", success: false, error: error.message, requestId });
+          controller.close();
+        }
+      }
+    });
 
-    const secureEnvelope: RequestEnvelope = {
-      ...body,
-      tenantId: tenantId,
-      userId: userId
-    };
-
-    const result = await orchestrator.handleRequest(secureEnvelope);
-
-    return new Response(JSON.stringify({
-      requestId: body.requestId,
-      event: "stream_end",
-      output: result.output,
-      quota: result.quota
-    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(stream, { headers: { ...corsHeaders, 'Content-Type': 'application/x-ndjson' } });
 
   } catch (error: any) {
-    console.error("Critical Failure:", error.message);
-
-    let statusCode = 500;
-    let errorCode = "AI_ERROR";
-
-    if (error.message === "QUOTA_EXCEEDED") {
-      statusCode = 429;
-      errorCode = "RATE_LIMITED";
-    } else if (error.message === "SYSTEM_THROTTLED") {
-      statusCode = 503;
-      errorCode = "SERVICE_UNAVAILABLE";
-    }
-
-    return new Response(JSON.stringify({
-      event: "stream_end",
-      error: true,
-      code: errorCode,
-      message: error.message,
-      retryAfter: statusCode === 429 ? 3600 : 0
-    }), { status: statusCode, headers: corsHeaders });
+    return new Response(JSON.stringify({ event: "stream_end", success: false, error: error.message }), { status: 500, headers: corsHeaders });
   }
 })

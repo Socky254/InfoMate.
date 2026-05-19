@@ -20,7 +20,9 @@ data class InfomateResponse(
     val sensoryFeedback: String? = null
 )
 
-class InfomateBrain(archive: CognitiveArchive) {
+import com.infomate.core.network.InfomateCloud
+
+class InfomateBrain(archive: CognitiveArchive, private val cloud: InfomateCloud? = null) {
     private val reasoning = ReasoningEngine()
     private val processor = CognitiveProcessor()
     private val ragMemory = RAGMemorySystem(archive)
@@ -42,7 +44,7 @@ class InfomateBrain(archive: CognitiveArchive) {
 
     // v8 Components (Distributed Intelligence)
     private val globalMemory = GlobalMemory(archive)
-    private val coordinator = GlobalCoordinator(globalMemory)
+    private val coordinator = GlobalCoordinator(globalMemory, cloud)
 
     // System Config
     private val config = SystemConfig()

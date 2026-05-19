@@ -13,21 +13,38 @@ class SyncWorker(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        Log.d("SyncWorker", "Executing background neural sync...")
+        Log.d("SyncWorker", "Executing proactive neural sync [SOCRATES_MODE: ACTIVE]...")
         
         val pendingMessages = PersistenceManager.getPendingMessages(applicationContext)
-        if (pendingMessages.isEmpty()) return Result.success()
-
-        try {
-            pendingMessages.forEach { msg ->
-                // Attempt to send pending messages that were queued during offline/process death
-                ReliabilitySDK.sendPrompt(msg.content)
+        
+        // 1. Flush Pending AI Directives
+        if (pendingMessages.isNotEmpty()) {
+            try {
+                pendingMessages.forEach { msg ->
+                    ReliabilitySDK.sendPrompt(msg.content)
+                }
+                PersistenceManager.clearPendingMessages(applicationContext)
+                Log.i("SyncWorker", "Successfully flushed ${pendingMessages.size} pending directives to archives.")
+            } catch (e: Exception) {
+                Log.e("SyncWorker", "Neural flush failed: ${e.message}")
+                return Result.retry()
             }
-            PersistenceManager.clearPendingMessages(applicationContext)
-            return Result.success()
-        } catch (e: Exception) {
-            Log.e("SyncWorker", "Sync failed: ${e.message}")
-            return Result.retry()
         }
+
+        // 2. Proactive Health Check & Telemetry
+        try {
+            // Heartbeat for Master Architect visibility
+            val status = "SYSTEM_IDLE_FLUSH_COMPLETE"
+            com.infomate.app.agent.HealthManager.logHealth(
+                com.infomate.app.agent.HealthManager.CAT_LOGGING,
+                com.infomate.app.agent.HealthState.ONLINE,
+                "Proactive sync successful. Neural buffers clear.",
+                com.infomate.app.agent.HealthSeverity.STABLE
+            )
+        } catch (e: Exception) {
+            // Non-critical telemetry failure
+        }
+
+        return Result.success()
     }
 }
