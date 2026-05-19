@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.infomate.core.ui.theme.*
+import com.infomate.core.ui.components.NeuralWaveformChart
 
 @Composable
 fun EntityVitalSignsView(vm: AgentViewModel) {
@@ -55,9 +56,13 @@ fun EntityVitalSignsView(vm: AgentViewModel) {
                 .height(200.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .background(Color.Black)
-                .border(1.dp, MatrixGreen.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
+                .border(androidx.compose.foundation.BorderStroke(1.dp, MatrixGreen.copy(alpha = 0.2f)), RoundedCornerShape(16.dp))
         ) {
-            CyberGraph(state.telemetryHistory)
+            NeuralWaveformChart(
+                data = state.telemetryHistory,
+                modifier = Modifier.fillMaxSize().padding(16.dp),
+                color = MatrixGreen
+            )
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -76,5 +81,29 @@ fun EntityVitalSignsView(vm: AgentViewModel) {
             VitalRow("LATENCY_BRAIN", "12ms", CyberCyan)
             VitalRow("MEMORY_DEPTH", state.memoryCount.toString(), ElectricViolet)
         }
+    }
+}
+
+@Composable
+fun VitalRow(label: String, value: String, color: Color) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            label, 
+            color = SilverText.copy(alpha = 0.6f), 
+            fontSize = 12.sp, 
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            value, 
+            color = color, 
+            fontSize = 14.sp, 
+            fontWeight = FontWeight.Black, 
+            fontFamily = FontFamily.Monospace
+        )
     }
 }

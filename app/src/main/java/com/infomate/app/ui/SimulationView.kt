@@ -85,7 +85,7 @@ fun SimulationView(vm: AgentViewModel) {
             modifier = Modifier.weight(1f).fillMaxWidth(),
             color = Color.Black.copy(alpha = 0.3f),
             shape = RoundedCornerShape(16.dp),
-            border = border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp))
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),

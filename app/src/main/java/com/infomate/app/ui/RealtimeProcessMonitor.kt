@@ -109,7 +109,7 @@ fun ProcessMonitorHeader(activeCount: Int, onRefresh: () -> Unit) {
         color = Color.Black.copy(alpha = 0.4f),
         modifier = Modifier
             .fillMaxWidth()
-            .border(bottom = 1.dp, color = GlassWhite, shape = RoundedCornerShape(0.dp))
+            .border(androidx.compose.foundation.BorderStroke(1.dp, GlassWhite), RoundedCornerShape(0.dp))
     ) {
         Row(
             modifier = Modifier

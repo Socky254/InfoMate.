@@ -36,14 +36,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.infomate.core.ui.components.BrainVisualizer
 import com.infomate.core.ui.components.LiveThinkingView
-import com.infomate.core.ui.theme.CyberCyan
-import com.infomate.core.ui.theme.Obsidian
-import com.infomate.core.ui.theme.SilverText
-import com.infomate.core.ui.theme.InfoMateTheme
-import com.infomate.core.ui.theme.NeonBlue
+import com.infomate.core.ui.theme.*
 import com.infomate.app.ui.RealtimeProcessMonitor
 
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -100,7 +97,7 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                     }
                 }
 
-                // Global Dialogs
+                // Global Overlays
                 GlobalOverlays(state, vm)
             }
         }
@@ -114,7 +111,7 @@ fun PremiumBottomNav(selectedTab: DashboardTab, onTabSelect: (DashboardTab) -> U
         modifier = Modifier
             .fillMaxWidth()
             .height(72.dp)
-            .border(1.dp, GlassWhite, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)),
+            .border(androidx.compose.foundation.BorderStroke(1.dp, GlassWhite), RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)),
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
     ) {
         Row(
@@ -135,7 +132,7 @@ fun PremiumBottomNav(selectedTab: DashboardTab, onTabSelect: (DashboardTab) -> U
 @Composable
 fun NavIcon(icon: ImageVector, tab: DashboardTab, isSelected: Boolean, onSelect: (DashboardTab) -> Unit) {
     val color = if (isSelected) CyberCyan else SilverText.copy(alpha = 0.4f)
-    val scale by animateFloatAsState(if (isSelected) 1.2f else 1.0f)
+    val scale by animateFloatAsState(if (isSelected) 1.2f else 1.0f, label = "scale")
 
     IconButton(onClick = { onSelect(tab) }) {
         Icon(
@@ -186,7 +183,10 @@ fun MainChatLayout(state: UIState, vm: AgentViewModel, mediaPickerLauncher: andr
 @Composable
 fun GlobalOverlays(state: UIState, vm: AgentViewModel) {
     if (state.showPinEntry) {
-        // Assume PinEntry is part of MasterDashboard or a dialog
+        PinEntryDialog(
+            onVerify = { pin -> vm.verifyMasterPin(pin) },
+            onDismiss = { vm.toggleMasterDashboard(false) }
+        )
     }
     
     if (state.showConfirmationDialog) {
@@ -201,7 +201,118 @@ fun GlobalOverlays(state: UIState, vm: AgentViewModel) {
     if (state.showDirectNeuralLink) {
         DirectNeuralLinkDialog(
             onDismiss = { vm.toggleDirectNeuralLink(false) },
-            onSendDirective = { vm.sendDirectConsciousnessDirective(it) }
+            onSend = { vm.sendDirectConsciousnessDirective(it) }
+        )
+    }
+
+    AnimatedVisibility(
+        visible = state.showGrowthDashboard,
+        enter = fadeIn() + expandIn(),
+        exit = fadeOut() + shrinkOut()
+    ) {
+        NeuralGrowthDashboard(
+            state = state,
+            onDismiss = { vm.toggleGrowthDashboard(false) }
+        )
+    }
+
+    AnimatedVisibility(
+        visible = state.showConsciousnessStream,
+        enter = fadeIn() + slideInHorizontally(),
+        exit = fadeOut() + slideOutHorizontally()
+    ) {
+        ConsciousnessStreamView(vm)
+    }
+
+    AnimatedVisibility(
+        visible = state.showSystemTerminal,
+        enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+        exit = fadeOut() + slideOutVertically(targetOffsetY = { it })
+    ) {
+        SystemTerminalView(
+            state = state,
+            onDismiss = { vm.toggleSystemTerminal(false) }
+        )
+    }
+
+    AnimatedVisibility(
+        visible = state.showEvolutionLog,
+        enter = fadeIn() + slideInHorizontally(initialOffsetX = { it }),
+        exit = fadeOut() + slideOutHorizontally(targetOffsetX = { it })
+    ) {
+        NeuralEvolutionLogView(
+            onDismiss = { vm.toggleEvolutionLog(false) }
+        )
+    }
+
+    AnimatedVisibility(
+        visible = state.showVitalSigns,
+        enter = fadeIn() + scaleIn(),
+        exit = fadeOut() + scaleOut()
+    ) {
+        EntityVitalSignsView(vm)
+    }
+
+    AnimatedVisibility(
+        visible = state.showGlobalNodeMonitor,
+        enter = fadeIn() + scaleIn(),
+        exit = fadeOut() + scaleOut()
+    ) {
+        GlobalNodeMonitorView(
+            onDismiss = { vm.toggleGlobalNodeMonitor(false) }
+        )
+    }
+
+    if (state.pendingUpdate != null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { vm.dismissUpdate() },
+            confirmButton = {
+                androidx.compose.material3.Button(
+                    onClick = { vm.startUpdate() },
+                    colors = ButtonDefaults.buttonColors(containerColor = CyberCyan),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("INITIATE UPGRADE", color = Obsidian, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                if (state.pendingUpdate?.critical == false) {
+                    androidx.compose.material3.TextButton(onClick = { vm.dismissUpdate() }) {
+                        Text("DEFER", color = SilverText.copy(alpha = 0.4f))
+                    }
+                }
+            },
+            title = {
+                Text(
+                    "NEURAL LINK UPGRADE AVAILABLE",
+                    color = CyberCyan,
+                    style = MaterialTheme.typography.titleMedium,
+                    letterSpacing = 1.sp
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        "Version ${state.pendingUpdate?.version_name} is ready for synchronization.",
+                        color = SilverText
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "CHANGELOG:\n${state.pendingUpdate?.changelog}",
+                        color = SilverText.copy(alpha = 0.6f),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            },
+            shape = RoundedCornerShape(24.dp),
+            containerColor = Obsidian
+        )
+    }
+
+    if (state.showManualKnowledgeDialog) {
+        ManualKnowledgeDialog(
+            onDismiss = { vm.setManualKnowledgeDialog(false) },
+            onSave = { title, content -> vm.saveManualKnowledge(title, content) }
         )
     }
 }
@@ -209,9 +320,8 @@ fun GlobalOverlays(state: UIState, vm: AgentViewModel) {
 @Composable
 fun MainChatContent(state: UIState, vm: AgentViewModel) {
     val listState = rememberLazyListState()
-    val focusManager = LocalFocusManager.current
     
-    LaunchedEffect(state.messages.size, state.cognitiveSteps.size, state.brainState) {
+    LaunchedEffect(state.messages.size, state.brainState) {
         val totalItems = state.messages.size + 1 + (if (state.brainState == com.infomate.core.ui.components.InfomateState.THINKING) 1 else 0)
         if (totalItems > 1) {
             listState.animateScrollToItem(index = totalItems - 1)
@@ -247,184 +357,30 @@ fun MainChatContent(state: UIState, vm: AgentViewModel) {
             }
         }
 
-                    items(
-                        items = state.messages,
-                        key = { it.timestamp },
-                        contentType = { it.sender }
-                    ) { message ->
-                        Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
-                            MessageCard(message, vm)
-                        }
-                    }
+        items(
+            items = state.messages,
+            key = { it.timestamp },
+            contentType = { it.sender }
+        ) { message ->
+            Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                MessageCard(message, vm)
+            }
+        }
 
-                    if (state.brainState == com.infomate.core.ui.components.InfomateState.THINKING) {
-                        item {
-                            Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
-                                ThinkingIndicator()
-                            }
-                        }
-                    }
-
-                    if (state.brainState == com.infomate.core.ui.components.InfomateState.ERROR) {
-                        item {
-                            GoogleFallbackCard(onSearch = { 
-                                val lastUserMsg = state.messages.lastOrNull { it.sender == "OPERATOR" || it.sender == "MASTER ARCHITECT" }
-                                vm.searchGoogle(lastUserMsg?.content ?: state.input)
-                            })
-                        }
-                    }
+        if (state.brainState == com.infomate.core.ui.components.InfomateState.THINKING) {
+            item {
+                Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                    ThinkingIndicator()
                 }
             }
+        }
 
-            if (state.pendingUpdate != null) {
-                androidx.compose.material3.AlertDialog(
-                    onDismissRequest = { vm.dismissUpdate() },
-                    confirmButton = {
-                        androidx.compose.material3.Button(
-                            onClick = { vm.startUpdate() },
-                            colors = ButtonDefaults.buttonColors(containerColor = CyberCyan),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text("INITIATE UPGRADE", color = Obsidian, fontWeight = FontWeight.Bold)
-                        }
-                    },
-                    dismissButton = {
-                        if (state.pendingUpdate?.critical == false) {
-                            androidx.compose.material3.TextButton(onClick = { vm.dismissUpdate() }) {
-                                Text("DEFER", color = SilverText.copy(alpha = 0.4f))
-                            }
-                        }
-                    },
-                    title = {
-                        Text(
-                            "NEURAL LINK UPGRADE AVAILABLE",
-                            color = CyberCyan,
-                            style = MaterialTheme.typography.titleMedium,
-                            letterSpacing = 1.sp
-                        )
-                    },
-                    text = {
-                        Column {
-                            Text(
-                                "Version ${state.pendingUpdate?.version_name} is ready for synchronization.",
-                                color = SilverText
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                "CHANGELOG:\n${state.pendingUpdate?.changelog}",
-                                color = SilverText.copy(alpha = 0.6f),
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    },
-                    shape = RoundedCornerShape(24.dp),
-                    containerColor = Obsidian
-                )
-            }
-
-            if (state.showManualKnowledgeDialog) {
-                ManualKnowledgeDialog(
-                    onDismiss = { vm.setManualKnowledgeDialog(false) },
-                    onSave = { title, content -> vm.saveManualKnowledge(title, content) }
-                )
-            }
-
-            AnimatedVisibility(
-                visible = state.showMasterDashboard,
-                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
-            ) {
-                MasterDashboard(
-                    state = state,
-                    vm = vm,
-                    onDismiss = { vm.toggleMasterDashboard(false) }
-                )
-            }
-
-            if (state.showPinEntry) {
-                PinEntryDialog(
-                    onVerify = { pin -> vm.verifyMasterPin(pin) },
-                    onDismiss = { vm.toggleMasterDashboard(false) }
-                )
-            }
-
-            if (state.showDirectNeuralLink) {
-                DirectNeuralLinkDialog(
-                    onDismiss = { vm.toggleDirectNeuralLink(false) },
-                    onSend = { directive -> vm.sendDirectConsciousnessDirective(directive) }
-                )
-            }
-
-            AnimatedVisibility(
-                visible = state.showGrowthDashboard,
-                enter = fadeIn() + expandIn(),
-                exit = fadeOut() + shrinkOut()
-            ) {
-                NeuralGrowthDashboard(
-                    state = state,
-                    onDismiss = { vm.toggleGrowthDashboard(false) }
-                )
-            }
-
-            AnimatedVisibility(
-                visible = state.showConsciousnessStream,
-                enter = fadeIn() + slideInHorizontally(),
-                exit = fadeOut() + slideOutHorizontally()
-            ) {
-                ConsciousnessStreamView(
-                    onDismiss = { vm.toggleConsciousnessStream(false) }
-                )
-            }
-
-            AnimatedVisibility(
-                visible = state.showSystemTerminal,
-                enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
-                exit = fadeOut() + slideOutVertically(targetOffsetY = { it })
-            ) {
-                SystemTerminalView(
-                    state = state,
-                    onDismiss = { vm.toggleSystemTerminal(false) }
-                )
-            }
-
-            AnimatedVisibility(
-                visible = state.showEvolutionLog,
-                enter = fadeIn() + slideInHorizontally(initialOffsetX = { it }),
-                exit = fadeOut() + slideOutHorizontally(targetOffsetX = { it })
-            ) {
-                NeuralEvolutionLogView(
-                    onDismiss = { vm.toggleEvolutionLog(false) }
-                )
-            }
-
-            AnimatedVisibility(
-                visible = state.showVitalSigns,
-                enter = fadeIn() + scaleIn(),
-                exit = fadeOut() + scaleOut()
-            ) {
-                EntityVitalSignsView(
-                    state = state,
-                    onDismiss = { vm.toggleVitalSigns(false) }
-                )
-            }
-
-            AnimatedVisibility(
-                visible = state.showGlobalNodeMonitor,
-                enter = fadeIn() + scaleIn(),
-                exit = fadeOut() + scaleOut()
-            ) {
-                GlobalNodeMonitorView(
-                    onDismiss = { vm.toggleGlobalNodeMonitor(false) }
-                )
-            }
-
-            if (state.showConfirmationDialog) {
-                OmegaConfirmationDialog(
-                    title = state.confirmationTitle,
-                    message = state.confirmationMessage,
-                    onConfirm = { vm.handleConfirmation(true) },
-                    onDismiss = { vm.handleConfirmation(false) }
-                )
+        if (state.brainState == com.infomate.core.ui.components.InfomateState.ERROR) {
+            item {
+                GoogleFallbackCard(onSearch = { 
+                    val lastUserMsg = state.messages.lastOrNull { it.sender == "OPERATOR" || it.sender == "MASTER ARCHITECT" }
+                    vm.searchGoogle(lastUserMsg?.content ?: state.input)
+                })
             }
         }
     }
@@ -482,8 +438,7 @@ fun OmegaConfirmationDialog(
         containerColor = Obsidian,
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier.border(
-            0.5.dp, 
-            Brush.verticalGradient(listOf(CyberCyan.copy(alpha = 0.4f), Color.Transparent)), 
+            androidx.compose.foundation.BorderStroke(0.5.dp, Brush.verticalGradient(listOf(CyberCyan.copy(alpha = 0.4f), Color.Transparent))), 
             RoundedCornerShape(16.dp)
         )
     )
@@ -1003,7 +958,7 @@ fun HeaderSection(
 
         Surface(
             color = Color.Black.copy(alpha = 0.5f),
-            modifier = Modifier.fillMaxWidth().border(1.dp, GlassWhite, RoundedCornerShape(12.dp)),
+            modifier = Modifier.fillMaxWidth().border(androidx.compose.foundation.BorderStroke(1.dp, GlassWhite), RoundedCornerShape(12.dp)),
             shape = RoundedCornerShape(12.dp)
         ) {
             Row(
@@ -1096,7 +1051,7 @@ fun InputSection(
                                 DropdownMenu(
                                     expanded = showMenu,
                                     onDismissRequest = { showMenu = false },
-                                    modifier = Modifier.background(Obsidian).border(0.5.dp, CyberCyan.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                                    modifier = Modifier.background(Obsidian).border(androidx.compose.foundation.BorderStroke(0.5.dp, CyberCyan.copy(alpha = 0.2f)), RoundedCornerShape(8.dp))
                                 ) {
                                     DropdownMenuItem(
                                         text = { Text("Image/Video", color = SilverText) },
@@ -1332,4 +1287,63 @@ fun MediaPlaceholder(type: MessageType) {
             modifier = Modifier.size(48.dp)
         )
     }
+}
+
+@Composable
+fun PinEntryDialog(onVerify: (String) -> Boolean, onDismiss: () -> Unit) {
+    var pin by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (onVerify(pin)) {
+                        // Success
+                    } else {
+                        error = true
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = CyberCyan)
+            ) {
+                Text("VERIFY", color = Obsidian, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("CANCEL", color = SilverText.copy(alpha = 0.4f))
+            }
+        },
+        title = { Text("MASTER_CORE ACCESS", color = CyberCyan, letterSpacing = 2.sp) },
+        text = {
+            Column {
+                Text("Enter Architect PIN to establish master link.", color = SilverText, fontSize = 12.sp)
+                Spacer(modifier = Modifier.height(16.dp))
+                TextField(
+                    value = pin,
+                    onValueChange = { 
+                        pin = it
+                        error = false
+                    },
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Password),
+                    isError = error,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedTextColor = SilverText,
+                        unfocusedTextColor = SilverText,
+                        focusedIndicatorColor = CyberCyan
+                    )
+                )
+                if (error) {
+                    Text("INVALID ARCHITECT PIN", color = ErrorRed, fontSize = 10.sp, modifier = Modifier.padding(top = 4.dp))
+                }
+            }
+        },
+        containerColor = Obsidian,
+        shape = RoundedCornerShape(16.dp)
+    )
 }

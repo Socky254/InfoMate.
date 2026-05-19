@@ -89,7 +89,7 @@ fun AliveStatusHeader(isAlive: Boolean) {
     Surface(
         color = Color.Black.copy(alpha = 0.4f),
         shape = RoundedCornerShape(16.dp),
-        border = border(1.dp, if (isAlive) MatrixGreen.copy(alpha = 0.3f) else ErrorRed.copy(alpha = 0.3f), RoundedCornerShape(16.dp)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, if (isAlive) MatrixGreen.copy(alpha = 0.3f) else ErrorRed.copy(alpha = 0.3f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -176,7 +176,7 @@ fun PremiumMetricCard(label: String, value: String, icon: ImageVector, color: Co
     Surface(
         color = Color(0xFF111111),
         shape = RoundedCornerShape(16.dp),
-        border = border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(16.dp)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -221,7 +221,7 @@ fun ActionRow(vm: AgentViewModel) {
             modifier = Modifier.weight(1f).height(48.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray.copy(alpha = 0.3f)),
             shape = RoundedCornerShape(12.dp),
-            border = border(1.dp, Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color.Gray.copy(alpha = 0.2f))
         ) {
             Text("DIAGNOSTICS", fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
@@ -230,7 +230,7 @@ fun ActionRow(vm: AgentViewModel) {
             modifier = Modifier.weight(1f).height(48.dp),
             colors = ButtonDefaults.buttonColors(containerColor = ErrorRed.copy(alpha = 0.1f)),
             shape = RoundedCornerShape(12.dp),
-            border = border(1.dp, ErrorRed.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+            border = androidx.compose.foundation.BorderStroke(1.dp, ErrorRed.copy(alpha = 0.3f))
         ) {
             Text("EXIT_CORE", color = ErrorRed, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
