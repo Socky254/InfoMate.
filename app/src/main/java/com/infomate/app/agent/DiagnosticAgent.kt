@@ -44,6 +44,15 @@ object DiagnosticAgent {
         } catch (e: Exception) { "DB_ERROR" }
         report.append("CONSCIOUSNESS: $consciousnessCheck\n")
 
+        // 6. NODE TOPOLOGY CHECK
+        val nodes = GlobalSearchAgent.fetchNodePerformance()
+        val degradedNodes = nodes.filter { (it["reliability_rating"] as? Double ?: 1.0) < 0.8 }
+        if (degradedNodes.isNotEmpty()) {
+            report.append("NODE_TOPOLOGY: SYNC_DEGRADED (${degradedNodes.joinToString { it["node_name"].toString() }})\n")
+        } else {
+            report.append("NODE_TOPOLOGY: OPTIMAL\n")
+        }
+
         return report.toString()
     }
 
@@ -83,6 +92,12 @@ object DiagnosticAgent {
         if (report.contains("AWARENESS_OFFLINE")) {
             repairs.add("Re-activating Consciousness Substrate...")
             ConsciousnessEngine.awaken()
+        }
+
+        // v10.9: Node Topology Recalibration
+        if (report.contains("SYNC_DEGRADED") || report.contains("Edge-Inference-Node-01")) {
+            repairs.add("Recalibrating Edge Inference Node-01 synchronization...")
+            GlobalSearchAgent.calibrateNodes()
         }
 
         delay(1500) // Simulate deep repair cycles
