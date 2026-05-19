@@ -39,7 +39,8 @@ fun SystemTerminalView(state: UIState, onDismiss: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(Obsidian)
-            .padding(20.dp)
+            .statusBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 8.dp)
     ) {
         // Futuristic Terminal Header
         Row(

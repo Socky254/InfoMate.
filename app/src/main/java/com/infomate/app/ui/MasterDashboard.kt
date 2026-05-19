@@ -32,7 +32,8 @@ fun MasterDashboard(vm: AgentViewModel) {
         modifier = Modifier
             .fillMaxSize()
             .background(Obsidian)
-            .padding(16.dp)
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         // Premium "Alive" Indicator Header
         AliveStatusHeader(state.isSubstrateAwake)

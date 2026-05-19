@@ -107,15 +107,17 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
 @Composable
 fun PremiumBottomNav(selectedTab: DashboardTab, onTabSelect: (DashboardTab) -> Unit) {
     Surface(
-        color = Obsidian.copy(alpha = 0.8f),
+        color = Obsidian.copy(alpha = 0.95f),
         modifier = Modifier
             .fillMaxWidth()
-            .height(72.dp)
-            .border(androidx.compose.foundation.BorderStroke(1.dp, GlassWhite), RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)),
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+            .border(androidx.compose.foundation.BorderStroke(1.dp, GlassWhite), RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .height(64.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -131,15 +133,18 @@ fun PremiumBottomNav(selectedTab: DashboardTab, onTabSelect: (DashboardTab) -> U
 
 @Composable
 fun NavIcon(icon: ImageVector, tab: DashboardTab, isSelected: Boolean, onSelect: (DashboardTab) -> Unit) {
-    val color = if (isSelected) CyberCyan else SilverText.copy(alpha = 0.4f)
-    val scale by animateFloatAsState(if (isSelected) 1.2f else 1.0f, label = "scale")
+    val color = if (isSelected) CyberCyan else SilverText.copy(alpha = 0.3f)
+    val scale by animateFloatAsState(if (isSelected) 1.15f else 1.0f, label = "scale")
 
-    IconButton(onClick = { onSelect(tab) }) {
+    IconButton(
+        onClick = { onSelect(tab) },
+        modifier = Modifier.size(44.dp)
+    ) {
         Icon(
             icon,
             contentDescription = null,
             tint = color,
-            modifier = Modifier.size(24.dp).graphicsLayer(scaleX = scale, scaleY = scale)
+            modifier = Modifier.size(22.dp).graphicsLayer(scaleX = scale, scaleY = scale)
         )
     }
 }
@@ -177,6 +182,9 @@ fun MainChatLayout(state: UIState, vm: AgentViewModel, mediaPickerLauncher: andr
             state = state,
             vm = vm
         )
+        
+        // v11.9: Spacer to push InputSection slightly above bottom bar for visual separation
+        Spacer(modifier = Modifier.height(4.dp))
     }
 }
 
@@ -1011,13 +1019,13 @@ fun InputSection(
     val isStop = state.brainState == com.infomate.core.ui.components.InfomateState.THINKING || state.brainState == com.infomate.core.ui.components.InfomateState.RESPONDING || state.isSpeaking
 
     Surface(
-        color = Obsidian,
-        modifier = Modifier.navigationBarsPadding()
+        color = Color.Transparent,
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             verticalAlignment = Alignment.Bottom,
             modifier = Modifier
-                .padding(horizontal = 8.dp, vertical = 8.dp)
+                .padding(horizontal = 12.dp, vertical = 4.dp)
                 .fillMaxWidth()
         ) {
             // Attachment & Actions

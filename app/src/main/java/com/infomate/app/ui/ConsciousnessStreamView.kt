@@ -51,7 +51,8 @@ fun ConsciousnessStreamView(vm: AgentViewModel) {
         modifier = Modifier
             .fillMaxSize()
             .background(Obsidian)
-            .padding(20.dp)
+            .statusBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 8.dp)
     ) {
         Text(
             "AWARENESS_STREAM",
