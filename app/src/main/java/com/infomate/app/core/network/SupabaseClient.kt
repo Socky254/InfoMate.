@@ -2,9 +2,6 @@ package com.infomate.app.core.network
 
 import android.util.Log
 import com.infomate.app.core.config.Config
-import com.infomate.app.agent.HealthManager
-import com.infomate.app.agent.HealthState
-import com.infomate.app.agent.HealthSeverity
 import com.google.gson.Gson
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -16,34 +13,22 @@ import java.util.concurrent.TimeUnit
 
 object SupabaseClient {
 
-    // Optimized OkHttpClient with connection pooling and stabilization
+    private var userToken: String? = null
+
+    fun setUserToken(token: String?) {
+        userToken = token
+    }
+
     private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(90, TimeUnit.SECONDS) // Increased for complex reasoning
-        .writeTimeout(30, TimeUnit.SECONDS)
-        .retryOnConnectionFailure(true) // Automatically handle simple connection drops
-        .connectionPool(okhttp3.ConnectionPool(5, 5, TimeUnit.MINUTES)) // Keep connections warm
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(15, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
+        .connectionPool(okhttp3.ConnectionPool(5, 5, TimeUnit.MINUTES))
         .build()
         
     private val gson = Gson()
     private val mediaType = "application/json; charset=utf-8".toMediaType()
-
-    // Circuit Breaker / Cooldown mechanism
-    private var cooldownUntil = 0L
-    private const val COOLDOWN_DURATION = 30_000L // 30 seconds
-
-    private fun checkCooldown(): String? {
-        val now = System.currentTimeMillis()
-        if (now < cooldownUntil) {
-            val remaining = (cooldownUntil - now) / 1000
-            return "{\"error\": \"System Cooling Down\", \"error_code\": \"RETRY_EXHAUSTED\", \"message\": \"Neural link is stabilizing. Please wait $remaining seconds.\"}"
-        }
-        return null
-    }
-
-    private fun triggerCooldown() {
-        cooldownUntil = System.currentTimeMillis() + COOLDOWN_DURATION
-    }
 
     suspend fun insert(table: String, data: Map<String, Any>) = withContext(Dispatchers.IO) {
         val json = gson.toJson(data)
@@ -52,8 +37,7 @@ object SupabaseClient {
         val request = Request.Builder()
             .url("${Config.SUPABASE_URL}/rest/v1/$table")
             .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
-            .addHeader("Connection", "keep-alive") // Signal to keep link open
+            .addHeader("Authorization", "Bearer ${userToken ?: Config.SUPABASE_KEY}")
             .post(body)
             .build()
 
@@ -68,130 +52,45 @@ object SupabaseClient {
         }
     }
 
-    suspend fun rpc(function: String, params: Map<String, Any>): List<String> = withContext(Dispatchers.IO) {
-        val json = gson.toJson(params)
-        val body = json.toRequestBody(mediaType)
-        
-        val request = Request.Builder()
-            .url("${Config.SUPABASE_URL}/rest/v1/rpc/$function")
-            .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
-            .post(body)
-            .build()
-
-        try {
-            client.newCall(request).execute().use { response ->
-                val responseBody = response.body?.string()
-                Log.d("SUPABASE_RPC_RAW", "Table: $function, Response: $responseBody")
-                if (response.isSuccessful) {
-                    listOf(responseBody ?: "")
-                } else {
-                    emptyList()
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("SUPABASE_RPC", "Exception: ${e.message}")
-            emptyList()
-        }
-    }
-
     suspend fun callFunction(name: String, params: Map<String, Any>): String? = withContext(Dispatchers.IO) {
-        val cooldownMessage = checkCooldown()
-        if (cooldownMessage != null) return@withContext cooldownMessage
-
         val json = gson.toJson(params)
         val body = json.toRequestBody(mediaType)
         
         val request = Request.Builder()
             .url("${Config.SUPABASE_URL}/functions/v1/$name")
             .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
-            .addHeader("Connection", "keep-alive")
+            .addHeader("Authorization", "Bearer ${userToken ?: Config.SUPABASE_KEY}")
             .post(body)
             .build()
 
-        // Implement jittered exponential backoff for neural stability
-        var lastError = ""
-        for (i in 1..4) { // Increased attempts to 4
-            try {
-                client.newCall(request).execute().use { response ->
-                    val responseBody = response.body?.string()
-                    
-                    // STEP 1: LOG RAW API RESPONSE (User requested tag)
-                    Log.d("AI_RAW_RESPONSE", responseBody ?: "NULL")
-                    
-                    if (response.isSuccessful) return@withContext responseBody
-                    
-                    if (response.code == 429) {
-                        triggerCooldown()
-                        return@withContext "{\"error\": \"AI quota exceeded\", \"error_code\": \"RETRY_EXHAUSTED\", \"message\": \"API rate limits reached. Cooling down for 30s.\"}"
-                    }
-
-                    // Log the failure to HealthManager with specific root cause
-                    val errorCode = when (response.code) {
-                        401, 403 -> "AUTH_FAILURE"
-                        404 -> "ENDPOINT_NOT_FOUND"
-                        408 -> "REQUEST_TIMEOUT"
-                        429 -> "QUOTA_EXCEEDED"
-                        in 500..599 -> "SERVER_ERROR_5XX"
-                        else -> "HTTP_${response.code}"
-                    }
-                    
-                    HealthManager.logHealth(
-                        HealthManager.CAT_AI_CORE, 
-                        HealthState.DEGRADED, 
-                        "AI_LINK_FAILURE: $errorCode", 
-                        if (response.code >= 500) HealthSeverity.CRITICAL else HealthSeverity.WARNING
-                    )
-
-                    lastError = "HTTP ${response.code}: $responseBody"
-                    Log.w("SUPABASE_FUNC", "Attempt $i failed: $lastError")
-                    
-                    // If we get a 5xx error, it's a server issue, worth retrying
-                    // If we get a 4xx (other than 429), it's likely a client error, don't retry
-                    if (response.code in 400..499 && response.code != 429 && response.code != 408) {
-                        return@withContext "{\"error\": \"Client error\", \"error_code\": \"CLIENT_ERR\", \"message\": \"$lastError\"}"
-                    }
-                }
-            } catch (e: Exception) {
-                lastError = e.message ?: "Unknown error"
-                Log.e("SUPABASE_FUNC", "Attempt $i Exception: $lastError")
+        try {
+            client.newCall(request).execute().use { response ->
+                val responseBody = response.body?.string()
+                Log.d("SUPABASE_FUNC", "Response ($name): $responseBody")
                 
-                // If it's a timeout or connection issue, we retry.
+                // Return RAW response, let caller handle parsing/logic
+                return@withContext responseBody
             }
-            
-            if (i < 4) {
-                // Exponential backoff: 1s, 2s, 4s with jitter
-                val delayTime = (Math.pow(2.0, i.toDouble() - 1) * 1000).toLong() + (0..500).random()
-                kotlinx.coroutines.delay(delayTime)
-            }
+        } catch (e: Exception) {
+            Log.e("SUPABASE_FUNC", "Exception: ${e.message}")
+            return@withContext null
         }
-        
-        triggerCooldown() // Failure after 4 attempts triggers a cooldown
-        return@withContext "{\"error\": \"Neural link unstable\", \"error_code\": \"RETRY_EXHAUSTED\", \"message\": \"Communication failed after 4 attempts. $lastError\"}"
     }
 
     suspend fun select(table: String, query: String = "*", order: String = "timestamp.desc"): String? = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("${Config.SUPABASE_URL}/rest/v1/$table?select=$query&order=$order")
             .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
-            .addHeader("Connection", "keep-alive")
+            .addHeader("Authorization", "Bearer ${userToken ?: Config.SUPABASE_KEY}")
             .get()
             .build()
 
         try {
             client.newCall(request).execute().use { response ->
                 val body = response.body?.string()
-                if (response.isSuccessful) {
-                    body
-                } else {
-                    Log.e("SUPABASE_SELECT", "Failed: ${response.code} - $body")
-                    null
-                }
+                if (response.isSuccessful) body else null
             }
         } catch (e: Exception) {
-            Log.e("SUPABASE_SELECT", "Exception: ${e.message}")
             null
         }
     }
@@ -203,20 +102,17 @@ object SupabaseClient {
         val request = Request.Builder()
             .url("${Config.SUPABASE_URL}/rest/v1/$table")
             .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${Config.SUPABASE_KEY}")
+            .addHeader("Authorization", "Bearer ${userToken ?: Config.SUPABASE_KEY}")
             .addHeader("Prefer", "resolution=merge-duplicates")
             .post(body)
             .build()
 
         try {
             client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    Log.e("SUPABASE_UPSERT", "Failed: ${response.code}")
-                }
+                if (!response.isSuccessful) Log.e("SUPABASE_UPSERT", "Failed: ${response.code}")
             }
         } catch (e: Exception) {
             Log.e("SUPABASE_UPSERT", "Exception: ${e.message}")
         }
     }
 }
-

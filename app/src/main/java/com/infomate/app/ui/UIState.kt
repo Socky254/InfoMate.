@@ -15,6 +15,12 @@ data class ChatMessage(
     val timestamp: Long = System.currentTimeMillis()
 )
 
+data class QuotaInfo(
+    val requestsUsed: Int = 0,
+    val requestsLimit: Int = 0,
+    val tokensUsed: Long = 0
+)
+
 data class UIState(
     val input: String = "",
     val messages: List<ChatMessage> = emptyList(),
@@ -26,5 +32,6 @@ data class UIState(
     val isMaleVoice: Boolean = false,
     val voiceAmplitudes: List<Float> = List(20) { 0.1f },
     val isVoiceOutputEnabled: Boolean = true, // Master switch for AI Voice
-    val needsOnboarding: Boolean = true // Flag for permission context screen
+    val needsOnboarding: Boolean = true, // Flag for permission context screen
+    val quota: QuotaInfo? = null
 )

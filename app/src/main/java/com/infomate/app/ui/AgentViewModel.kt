@@ -19,6 +19,11 @@ import androidx.lifecycle.viewModelScope
 import com.infomate.app.agent.AgentOrchestrator
 import com.infomate.app.core.NeuralIngestor
 import com.infomate.app.core.network.SupabaseClient
+import com.infomate.app.ai.sdk.AIEventsListener
+import com.infomate.app.ai.sdk.AIState
+import com.infomate.app.ai.sdk.ReliabilitySDK
+import com.infomate.app.ai.sdk.UIRenderer
+import com.infomate.app.core.config.Config
 import com.infomate.core.brain.ReasoningEngine
 import com.infomate.core.ui.components.InfomateState
 import com.google.gson.Gson
@@ -33,8 +38,9 @@ import kotlinx.coroutines.launch
 import java.util.*
 import kotlin.random.Random
 
-class AgentViewModel(application: Application) : AndroidViewModel(application), TextToSpeech.OnInitListener {
+class AgentViewModel(application: Application) : AndroidViewModel(application), TextToSpeech.OnInitListener, AIEventsListener {
 
+    private val sessionId = java.util.UUID.randomUUID().toString()
     private val orchestrator = AgentOrchestrator(application)
     private val reasoningEngine = ReasoningEngine()
     private val neuralIngestor = NeuralIngestor(application)
@@ -92,6 +98,59 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             setupSpeechListener()
         }
         loadSessionData()
+        
+        // Initialize Reliability SDK with Context
+        UIRenderer.setListener(this)
+        StreamController.init(application)
+        ReliabilitySDK.init(application, "${Config.SUPABASE_URL.replace("https", "wss")}/realtime/v1/websocket?apikey=${Config.SUPABASE_KEY}")
+    }
+
+    override fun onToken(text: String) {
+        viewModelScope.launch {
+            _state.update { state ->
+                val newMessages = state.messages.toMutableList()
+                if (newMessages.isNotEmpty()) {
+                    val lastMsg = newMessages.last()
+                    if (lastMsg.sender == "INFOMATE") {
+                        val updatedContent = lastMsg.content + text
+                        newMessages[newMessages.size - 1] = lastMsg.copy(content = updatedContent)
+                    }
+                }
+                state.copy(messages = newMessages, brainState = InfomateState.RESPONDING)
+            }
+        }
+    }
+
+    override fun onComplete(fullText: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(status = "CORE: ACTIVE", brainState = InfomateState.IDLE) }
+            speak(fullText)
+            pulseSuccess()
+        }
+    }
+
+    override fun onError(error: String) {
+        viewModelScope.launch {
+            val errorMessage = ChatMessage(content = "SYSTEM: ERROR - $error", sender = "SYSTEM")
+            _state.update { it.copy(
+                messages = it.messages + errorMessage,
+                status = "CORE: ERROR",
+                brainState = InfomateState.ERROR
+            ) }
+        }
+    }
+
+    override fun onStateChange(aiState: AIState) {
+        viewModelScope.launch {
+            val status = when (aiState) {
+                AIState.SENDING -> "CORE: ANALYZING..."
+                AIState.STREAMING -> "CORE: RESPONDING"
+                AIState.RECONNECTING -> "NEURAL LINK RECONNECTING..."
+                AIState.ERROR -> "CORE: ERROR"
+                else -> "CORE: ACTIVE"
+            }
+            _state.update { it.copy(status = status) }
+        }
     }
 
     private fun loadSessionData() {
@@ -318,18 +377,11 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             
             try {
                 val prompt = "VISUAL_DIRECTIVE: I have uploaded an image ($uri). Analyze its potential contents and integrate this into our current neural context. Provide a sophisticated AI observation."
-                val response = orchestrator.execute(prompt)
                 
                 val assistantMessage = ChatMessage(content = "", sender = "INFOMATE")
                 _state.update { it.copy(messages = it.messages + assistantMessage) }
                 
-                typeWriterEffect(response)
-                
-                _state.update { it.copy(
-                    status = "CORE: ACTIVE",
-                    brainState = InfomateState.RESPONDING
-                ) }
-                speak(response)
+                ReliabilitySDK.sendPrompt(prompt)
             } catch (e: Exception) {
                 _state.update { it.copy(status = "VISUAL_ERROR: ${e.message}") }
             }
@@ -386,22 +438,15 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                     }
                 }
 
-                val response = orchestrator.execute(searchPrompt)
-                thinkingJob.cancel()
-
                 val searchMessage = ChatMessage(
                     content = "", // Start empty for typewriter
                     sender = "INFOMATE"
                 )
 
-                _state.update { it.copy(
-                    messages = it.messages + searchMessage,
-                    status = "CORE: ACTIVE",
-                    brainState = com.infomate.core.ui.components.InfomateState.RESPONDING
-                ) }
+                _state.update { it.copy(messages = it.messages + searchMessage) }
                 
-                typeWriterEffect(response)
-                speak(response)
+                ReliabilitySDK.sendPrompt(searchPrompt)
+                thinkingJob.cancel()
             } catch (e: Exception) {
                 _state.update { it.copy(status = "SEARCH_ERROR: ${e.message}") }
             }
@@ -452,23 +497,11 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                     }
                 }
 
-                val response = orchestrator.execute(contextualQuery)
-                thinkingJob.cancel() 
-
                 val assistantMessage = ChatMessage(content = "", sender = "INFOMATE")
+                _state.update { it.copy(messages = it.messages + assistantMessage) }
 
-                _state.update { it.copy(
-                    messages = it.messages + assistantMessage,
-                    status = "CORE: RESPONDING",
-                    brainState = InfomateState.RESPONDING
-                ) }
-                
-                typeWriterEffect(response)
-                
-                _state.update { it.copy(status = "CORE: ACTIVE") }
-                // Save the FINAL cleaned response to Supabase
-                saveMessageToSupabase(ChatMessage(content = response, sender = "INFOMATE"))
-                speak(response)
+                ReliabilitySDK.sendPrompt(contextualQuery)
+                thinkingJob.cancel()
             } catch (e: Exception) {
                 val errorMessage = ChatMessage(content = "SYSTEM: ERROR - ${e.message}", sender = "SYSTEM")
                 _state.update { it.copy(
