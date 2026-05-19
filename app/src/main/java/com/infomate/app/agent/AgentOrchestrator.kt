@@ -89,8 +89,16 @@ class AgentOrchestrator(private val androidContext: Context? = null, private val
 
         var result = LLMClient.generate(prompt, sessionId)
 
-        // 6. MULTI-ENGINE FALLBACK
-        // ... (existing fallback logic) ...
+        // 6. MULTI-ENGINE FUSION (v11.0 Continuity)
+        if (result.output.contains("SYSTEM_ERROR") || result.output.isBlank()) {
+            val searchFindings = GlobalSearchAgent.searchExternal(userIntent)
+            if (searchFindings != null) {
+                result = GenerationResult(
+                    output = "[FUSED_SEARCH_SYNTHESIS]: $searchFindings",
+                    quota = result.quota
+                )
+            }
+        }
 
         // 7. Reflection & Learning (Knowledge Growth only, no code mutation)
         if (result.output.length > 20 && !result.output.contains("SYSTEM_ERROR")) {
