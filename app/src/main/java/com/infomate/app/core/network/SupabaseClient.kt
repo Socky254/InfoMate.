@@ -34,53 +34,61 @@ object SupabaseClient {
         val json = gson.toJson(data)
         val body = json.toRequestBody(mediaType)
         
-        val request = Request.Builder()
-            .url("${Config.SUPABASE_URL}/rest/v1/$table")
-            .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${userToken ?: Config.SUPABASE_KEY}")
-            .addHeader("Prefer", "return=representation")
-            .post(body)
-            .build()
+        var lastError: String? = null
+        for (attempt in 1..2) { // v11.2: Added automatic retry for DB persistence
+            val request = Request.Builder()
+                .url("${Config.SUPABASE_URL}/rest/v1/$table")
+                .addHeader("apikey", Config.SUPABASE_KEY)
+                .addHeader("Authorization", "Bearer ${userToken ?: Config.SUPABASE_KEY}")
+                .addHeader("Prefer", "return=representation")
+                .post(body)
+                .build()
 
-        try {
-            client.newCall(request).execute().use { response ->
-                val responseBody = response.body?.string()
-                if (!response.isSuccessful) {
-                    Log.e("SUPABASE_INSERT", "Failed: ${response.code} - $responseBody")
-                    null
-                } else {
-                    responseBody
+            try {
+                client.newCall(request).execute().use { response ->
+                    val responseBody = response.body?.string()
+                    if (response.isSuccessful) return@withContext responseBody
+                    
+                    lastError = "HTTP ${response.code}: $responseBody"
+                    Log.e("SUPABASE_INSERT", "Attempt $attempt failed: $lastError")
                 }
+            } catch (e: Exception) {
+                lastError = e.message
+                Log.e("SUPABASE_INSERT", "Exception (Attempt $attempt): $lastError")
             }
-        } catch (e: Exception) {
-            Log.e("SUPABASE_INSERT", "Exception: ${e.message}")
-            null
+            if (attempt < 2) kotlinx.coroutines.delay(1000L * attempt)
         }
+        null
     }
 
     suspend fun callFunction(name: String, params: Map<String, Any>): String? = withContext(Dispatchers.IO) {
         val json = gson.toJson(params)
         val body = json.toRequestBody(mediaType)
         
-        val request = Request.Builder()
-            .url("${Config.SUPABASE_URL}/functions/v1/$name")
-            .addHeader("apikey", Config.SUPABASE_KEY)
-            .addHeader("Authorization", "Bearer ${userToken ?: Config.SUPABASE_KEY}")
-            .post(body)
-            .build()
+        var lastError: String? = null
+        for (attempt in 1..2) { // v11.2: Added automatic retry for Edge Functions
+            val request = Request.Builder()
+                .url("${Config.SUPABASE_URL}/functions/v1/$name")
+                .addHeader("apikey", Config.SUPABASE_KEY)
+                .addHeader("Authorization", "Bearer ${userToken ?: Config.SUPABASE_KEY}")
+                .post(body)
+                .build()
 
-        try {
-            client.newCall(request).execute().use { response ->
-                val responseBody = response.body?.string()
-                Log.d("SUPABASE_FUNC", "Response ($name): $responseBody")
-                
-                // Return RAW response, let caller handle parsing/logic
-                return@withContext responseBody
+            try {
+                client.newCall(request).execute().use { response ->
+                    val responseBody = response.body?.string()
+                    if (response.isSuccessful) return@withContext responseBody
+                    
+                    lastError = "HTTP ${response.code}: $responseBody"
+                    Log.e("SUPABASE_FUNC", "Attempt $attempt ($name) failed: $lastError")
+                }
+            } catch (e: Exception) {
+                lastError = e.message
+                Log.e("SUPABASE_FUNC", "Exception (Attempt $attempt, $name): $lastError")
             }
-        } catch (e: Exception) {
-            Log.e("SUPABASE_FUNC", "Exception: ${e.message}")
-            return@withContext null
+            if (attempt < 2) kotlinx.coroutines.delay(1500L * attempt)
         }
+        null
     }
 
     suspend fun select(

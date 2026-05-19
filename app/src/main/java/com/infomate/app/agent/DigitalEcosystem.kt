@@ -33,7 +33,11 @@ class DigitalEcosystem(private val context: Context, private val scope: Coroutin
         
         scope.launch {
             // Restore from Warm Memory (Room) first
-            restoreFromWarmMemory()
+            try {
+                restoreFromWarmMemory()
+            } catch (e: Exception) {
+                Log.e("DigitalEcosystem", "Warm Memory Restoration Failed: ${e.message}")
+            }
             
             // 1. Initial Seed Agents if none exist
             if (agents.isEmpty()) seedInitialAgents()
@@ -42,6 +46,10 @@ class DigitalEcosystem(private val context: Context, private val scope: Coroutin
             startSimulationLoop()
             startSnapshotLoop()
         }
+    }
+
+    fun stop() {
+        isRunning = false
     }
 
     private fun startSimulationLoop() {

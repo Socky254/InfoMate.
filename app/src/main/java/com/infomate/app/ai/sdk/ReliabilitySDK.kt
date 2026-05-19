@@ -17,15 +17,20 @@ object ReliabilitySDK {
     fun isConnected(): Boolean = wsManager?.isConnected ?: false
 
     fun init(context: Context, url: String) {
-        appContext = context.applicationContext
-        SessionManager.init(appContext!!)
-        wsManager = WsClientManager(url).apply { connect() }
-        startHeartbeat()
+        try {
+            appContext = context.applicationContext
+            SessionManager.init(appContext!!)
+            wsManager = WsClientManager(url).apply { connect() }
+            startHeartbeat()
+        } catch (e: Exception) {
+            android.util.Log.e("ReliabilitySDK", "Failed to initialize: ${e.message}")
+        }
     }
 
     fun sendPrompt(prompt: String) {
-        // STEP 1 — Validate payload BEFORE sending
-        if (prompt.trim().isEmpty()) {
+        // STEP 1 — Validate payload BEFORE sending (v11.2: Added sanitization)
+        val sanitizedPrompt = prompt.trim()
+        if (sanitizedPrompt.isEmpty()) {
             UIRenderer.onError("System Error: Empty directive rejected.")
             return
         }
@@ -35,20 +40,25 @@ object ReliabilitySDK {
         
         if (sId.isBlank()) {
             UIRenderer.onError("System Error: Neural session invalid.")
-            // Try to re-init session manager if it failed
+            com.infomate.app.agent.HealthManager.logHealth(
+                com.infomate.app.agent.HealthManager.CAT_AUTH,
+                com.infomate.app.agent.HealthState.DEGRADED,
+                "Blank sessionId during prompt dispatch",
+                com.infomate.app.agent.HealthSeverity.WARNING
+            )
             appContext?.let { SessionManager.init(it) }
             return
         }
 
-        // v11.0: Active Connection Check
+        // v11.0: Active Connection Check (Auto-reconnect on dispatch)
         if (wsManager?.isConnected == false) {
-            android.util.Log.w("ReliabilitySDK", "Neural link is STANDBY. Queueing directive for multi-path fusion.")
-            wsManager?.connect() // Attempt immediate reconnection
+            android.util.Log.w("ReliabilitySDK", "Neural link is STANDBY. Attempting high-priority reconnection.")
+            wsManager?.connect()
         }
 
         // 3.3 Persistent Queue (Write -> Store -> Send)
         appContext?.let {
-            PersistenceManager.addPendingMessage(it, ChatMessage(prompt, "OPERATOR"))
+            PersistenceManager.addPendingMessage(it, ChatMessage(sanitizedPrompt, "OPERATOR"))
             PersistenceManager.saveSession(it, sId, reqId)
         }
 
@@ -56,14 +66,16 @@ object ReliabilitySDK {
         SessionManager.reset()
         StreamController.state = AIState.SENDING
 
-        // Start Foreground Service for active stream
+        // Start Foreground Service for active stream (v11.3: Improved lifecycle)
         startStreamService()
 
-        // STEP 2 — Fix JSON serialization (JSONObject is safe)
+        // STEP 2 — Unified Core Protocol (event: start_stream)
         val payload = JSONObject().apply {
+            put("event", "start_stream")
             put("requestId", reqId)
             put("sessionId", sId)
-            put("payload", JSONObject().put("prompt", prompt))
+            put("userId", sId)
+            put("prompt", sanitizedPrompt)
             put("timestamp", System.currentTimeMillis())
         }
 

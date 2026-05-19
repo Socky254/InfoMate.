@@ -21,30 +21,37 @@ object StreamController {
         if (raw.isNullOrBlank()) return
         
         try {
-            if (!raw.trim().startsWith("{")) {
+            val trimmed = raw.trim()
+            if (!trimmed.startsWith("{")) {
                 // Handle raw text as a token if it's not JSON
-                accumulateToken(raw)
-                UIRenderer.onToken(raw)
+                accumulateToken(trimmed)
+                UIRenderer.onToken(trimmed)
                 return
             }
 
-            val msg = JSONObject(raw)
-            when (msg.optString("event")) {
-                "stream_start" -> {
-                    state = AIState.STREAMING
+            val msg = JSONObject(trimmed)
+            // v11.4: Multi-format support (Handles raw events or Phoenix-wrapped)
+            val event = msg.optString("event")
+            val payload = if (msg.has("payload")) msg.optJSONObject("payload") else msg
+
+            when (event) {
+                "stream_start", "phx_reply" -> {
+                    if (event == "stream_start") state = AIState.STREAMING
                 }
-                "stream_ping", "token_ping" -> {
-                    android.util.Log.d("StreamController", "Neural Heartbeat: AI is still synthesizing...")
+                "stream_ping", "token_ping", "phx_reply" -> {
+                    // Internal keep-alive
                 }
-                "token" -> {
-                    val chunk = msg.optString("chunk", msg.optString("text", ""))
+                "token", "broadcast" -> {
+                    val dataObj = if (event == "broadcast") payload?.optJSONObject("content") else payload
+                    val chunk = dataObj?.optString("text") ?: dataObj?.optString("chunk") ?: ""
+                    
                     if (chunk.isNotEmpty()) {
                         accumulateToken(chunk)
                         UIRenderer.onToken(chunk)
                     }
                 }
                 "stream_end" -> {
-                    val quotaJson = msg.optJSONObject("quota")
+                    val quotaJson = payload?.optJSONObject("quota")
                     quotaJson?.let {
                         val quota = com.infomate.app.ui.QuotaInfo(
                             requestsUsed = it.optInt("requestsUsed"),
@@ -56,20 +63,9 @@ object StreamController {
                     terminateStream()
                     UIRenderer.onComplete(SessionManager.partialResponse.toString())
                 }
-                "quota_update" -> {
-                    val quotaJson = msg.optJSONObject("quota")
-                    quotaJson?.let {
-                        val quota = com.infomate.app.ui.QuotaInfo(
-                            requestsUsed = it.optInt("requestsUsed"),
-                            requestsLimit = it.optInt("requestsLimit"),
-                            tokensUsed = it.optLong("tokensUsed")
-                        )
-                        UIRenderer.onQuotaUpdate(quota)
-                    }
-                }
-                "error" -> {
+                "error", "phx_error" -> {
                     terminateStream()
-                    UIRenderer.onError(msg.optString("message", "Unknown error"))
+                    UIRenderer.onError(payload?.optString("message", "Neural Link Protocol Error"))
                 }
             }
         } catch (e: Exception) {

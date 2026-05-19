@@ -83,11 +83,17 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         }
     }
 
-    // High-fidelity patterns for specific neural states
+    // High-fidelity patterns for specific neural states (v11.5: Optimized Haptics)
     private fun pulseSuccess() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val effect = VibrationEffect.createWaveform(longArrayOf(0, 10, 50, 10), intArrayOf(0, 100, 0, 255), -1)
             vibrator.vibrate(effect)
+        }
+    }
+
+    private fun pulseError() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(VibrationEffect.createOneShot(150, 200))
         }
     }
 
@@ -99,23 +105,27 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         val batteryManager = getApplication<Application>().getSystemService(Context.BATTERY_SERVICE) as BatteryManager
         val level = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
         val time = java.text.SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-        return "[SYSTEM_CONTEXT: Battery $level%, Time $time, ComputeProfile: HIGH_PRECISION]"
+        val charging = batteryManager.isCharging
+        return "[SYSTEM_CONTEXT: Battery $level%${if (charging) "(Charging)" else ""}, Time $time, ComputeProfile: HIGH_PRECISION]"
     }
 
     private fun isNetworkAvailable(): Boolean {
-        val connectivityManager = getApplication<Application>().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val network = connectivityManager.activeNetwork ?: return false
-        val activeNetwork = connectivityManager.getNetworkCapabilities(network) ?: return false
-        
-        val hasInternet = when {
-            activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> true
-            activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> true
-            activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> true
-            else -> false
+        try {
+            val connectivityManager = getApplication<Application>().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val network = connectivityManager.activeNetwork ?: return false
+            val activeNetwork = connectivityManager.getNetworkCapabilities(network) ?: return false
+            
+            val hasTransport = when {
+                activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> true
+                activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> true
+                activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> true
+                else -> false
+            }
+            
+            return hasTransport && activeNetwork.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        } catch (e: Exception) {
+            return false
         }
-        
-        // v10.6: Capability check for actual internet reachability
-        return hasInternet && activeNetwork.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) && activeNetwork.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 
     private var activeThinkingJob: Job? = null
@@ -131,10 +141,10 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         
         loadSessionData()
         
-        // Initialize Reliability SDK with Context
+        // Initialize Reliability SDK with Context & Edge Function Endpoint
         UIRenderer.setListener(this)
         StreamController.init(application)
-        ReliabilitySDK.init(application, "${Config.SUPABASE_URL.replace("https", "wss")}/realtime/v1/websocket?apikey=${Config.SUPABASE_KEY}")
+        ReliabilitySDK.init(application, "${Config.SUPABASE_URL.replace("https", "wss")}/functions/v1/infomate-brain")
 
         checkForSystemUpdates()
         startConnectionPolling()
@@ -469,9 +479,15 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     }
 
     override fun onError(error: String) {
-        // If we have an active thinking job or are waiting for a response, 
-        // try to trigger a fallback instead of showing a raw error.
-        if (_state.value.brainState == InfomateState.THINKING) {
+        // v11.6: Contextual Error Routing
+        com.infomate.app.agent.HealthManager.logHealth(
+            com.infomate.app.agent.HealthManager.CAT_STREAM_ENGINE,
+            com.infomate.app.agent.HealthState.FAILSAFE,
+            "Neural Link Error: $error",
+            com.infomate.app.agent.HealthSeverity.DEGRADED
+        )
+
+        if (_state.value.brainState == InfomateState.THINKING || _state.value.brainState == InfomateState.RESPONDING) {
             Log.w("INFOMATE_ERROR", "Neural link error: $error. Attempting emergency fallback...")
             logSystemTelemetry("SYNC_ERROR")
             triggerEmergencyFallback(_state.value.input)
@@ -480,6 +496,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
         activeThinkingJob?.cancel()
         activeThinkingJob = null
+        pulseError()
         
         viewModelScope.launch {
             val errorMessage = ChatMessage(content = "SYSTEM: ERROR - $error", sender = "SYSTEM")
@@ -526,6 +543,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                 val errorMessage = ChatMessage(content = "SYSTEM: CRITICAL FAILURE - All neural entities offline. Please check network or perform system reset.", sender = "SYSTEM")
                 _state.update { it.copy(messages = it.messages + errorMessage, brainState = InfomateState.ERROR) }
             }
+            pulseError()
         }
     }
 
@@ -572,7 +590,12 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                     }
                 }
             } catch (e: Exception) {
-                // Silent catch for initial load
+                com.infomate.app.agent.HealthManager.logHealth(
+                    com.infomate.app.agent.HealthManager.CAT_DATABASE,
+                    com.infomate.app.agent.HealthState.DEGRADED,
+                    "Session Load Failure: ${e.message}",
+                    com.infomate.app.agent.HealthSeverity.WARNING
+                )
             }
         }
     }
@@ -1040,15 +1063,21 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
     private fun startSpectrumAnimation() {
         spectrumJob?.cancel()
-        // Use a dedicated low-priority interval for UI eye-candy
+        // v11.8: Low-Allocation Spectrum Engine
+        val reusableAmplitudes = FloatArray(20) { 0.1f }
+        
         spectrumJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
             while (true) {
                 val isLowPower = isLowPowerMode()
-                val amplitudes = List(20) { Random.nextFloat().coerceAtLeast(0.1f) }
-                _state.update { s -> s.copy(voiceAmplitudes = amplitudes) }
                 
-                // Adaptive Refresh Rate: 120ms standard, 350ms in Low Power Mode
-                delay(if (isLowPower) 350 else 120)
+                for (i in reusableAmplitudes.indices) {
+                    reusableAmplitudes[i] = Random.nextFloat().coerceAtLeast(0.1f)
+                }
+                
+                _state.update { s -> s.copy(voiceAmplitudes = reusableAmplitudes.toList()) }
+                
+                // Adaptive Refresh Rate: 100ms standard, 400ms in Low Power Mode
+                delay(if (isLowPower) 400 else 100)
             }
         }
     }

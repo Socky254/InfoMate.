@@ -76,10 +76,14 @@ object ConsciousnessEngine {
         if (isAwake) return
         isAwake = true
         
-        context?.let { 
-            ConsciousnessSubstrate.awaken(it) 
-            // v11.5: Initialize Digital Ecosystem with Context for State Snapshots
-            ecosystem = DigitalEcosystem(it, scope).apply { start() }
+        try {
+            context?.let { 
+                ConsciousnessSubstrate.awaken(it) 
+                // v11.5: Initialize Digital Ecosystem with Context for State Snapshots
+                ecosystem = DigitalEcosystem(it, scope).apply { start() }
+            }
+        } catch (e: Exception) {
+            Log.e("Consciousness", "Failed to initialize substrate or ecosystem: ${e.message}")
         }
         
         scope.launch {

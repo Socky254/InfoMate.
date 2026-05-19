@@ -26,13 +26,18 @@ object EdgeBrain {
         
         val modelPath = File(context.filesDir, "gemini_nano.bin")
         if (modelPath.exists()) {
-            val options = LlmInference.LlmInferenceOptions.builder()
-                .setModelPath(modelPath.absolutePath)
-                .setMaxTokens(512)
-                .setTemperature(0.7f)
-                .build()
-            llmInference = LlmInference.createFromOptions(context, options)
-            android.util.Log.i("EdgeBrain", "Gemini Nano Initialized: INVINCIBLE_MODE_ACTIVE")
+            try {
+                val options = LlmInference.LlmInferenceOptions.builder()
+                    .setModelPath(modelPath.absolutePath)
+                    .setMaxTokens(512)
+                    .setTemperature(0.7f)
+                    .build()
+                llmInference = LlmInference.createFromOptions(context, options)
+                android.util.Log.i("EdgeBrain", "Gemini Nano Initialized: INVINCIBLE_MODE_ACTIVE")
+            } catch (e: Exception) {
+                android.util.Log.e("EdgeBrain", "Failed to initialize Gemini Nano: ${e.message}")
+                // Fallback is handled by llmInference being null
+            }
         } else {
             android.util.Log.w("EdgeBrain", "Gemini Nano model missing. Falling back to heuristic reasoning.")
         }

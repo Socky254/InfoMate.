@@ -15,13 +15,12 @@ object GlobalSearchAgent {
         Log.i("GlobalSearch", "Initiating node-based search for: $query")
         
         // 1. Fetch Active Nodes from the registry
-        val nodesJson = try {
-            SupabaseClient.select("neural_network_nodes", order = "reliability_rating.desc")
-        } catch (e: Exception) { null }
-
-        val activeNodes = if (!nodesJson.isNullOrBlank()) {
-            JSONArray(nodesJson)
-        } else JSONArray()
+        val activeNodes = try {
+            val nodesJson = SupabaseClient.select("neural_network_nodes", order = "reliability_rating.desc")
+            if (!nodesJson.isNullOrBlank()) JSONArray(nodesJson) else JSONArray()
+        } catch (e: Exception) {
+            JSONArray()
+        }
 
         Log.d("GlobalSearch", "Dispatched to ${activeNodes.length()} neural nodes.")
 
