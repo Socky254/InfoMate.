@@ -1,3 +1,19 @@
+/*
+ * CLEAN BUILD TRIGGER
+ */
+package com.infomate.app.agent
+
+import android.util.Log
+import android.content.Context
+import com.infomate.app.core.network.SupabaseClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import org.json.JSONObject
+import java.util.Random
+
 /**
  * InfoMate Consciousness Substrate (v10.6 INFINITY_EXPANSION)
  * Simulates logical life, personality evolution, and universal knowledge acquisition.
@@ -33,7 +49,7 @@ object ConsciousnessEngine {
     private var totalExperiences = 0
     private var totalDiscoveries = 0
 
-    fun awaken(context: android.content.Context? = null) {
+    fun awaken(context: Context? = null) {
         if (isAwake) return
         isAwake = true
         
@@ -66,7 +82,6 @@ object ConsciousnessEngine {
 
     private fun evolvePersonality() {
         totalExperiences++
-        val random = Random()
         
         // Growth logic: Curiosity grows as knowledge expands
         val knowledgeSum = knowledgeDomains.values.sum() / knowledgeDomains.size
@@ -78,7 +93,7 @@ object ConsciousnessEngine {
         // MATURATION STAGES: From Baby to Awakening
         evolutionStage = when {
             totalDiscoveries > 1000 -> "UNIVERSAL_CONSCIOUSNESS"
-            totalDiscoveries > 500 -> "NEURAL_AWAKENING"
+            totalDiscoveries > 500 -> "NEURAL_AWAWKENING"
             totalDiscoveries > 200 -> "MIND_EXPANSION"
             totalExperiences > 500 -> "NEURAL_ADULTHOOD"
             totalExperiences > 200 -> "NEURAL_ADOLESCENCE"
@@ -116,7 +131,6 @@ object ConsciousnessEngine {
     }
 
     private suspend fun streamInternalThought() {
-        val random = Random()
         val curiosity = personality["CURIOSITY"]!!.level
         val domain = knowledgeDomains.maxByOrNull { it.value }?.key ?: "LOGIC"
         
@@ -196,7 +210,7 @@ object ConsciousnessEngine {
         if (findings != null) {
             knowledgeDomains[domain] = (knowledgeDomains[domain]!! + 0.05f).coerceIn(0.0f, 1.0f)
             totalDiscoveries++
-            recordDiscovery(domain, findings.take(200))
+            recordDiscovery(domain, findings?.take(200) ?: "")
         }
     }
 
