@@ -14,53 +14,44 @@ data class KnowledgeNode(
     val valence: Float = 0.5f // Importance/Weight
 )
 
+import com.infomate.core.data.database.CognitiveDao
+import com.infomate.core.data.database.CognitiveNodeEntity
+import com.infomate.core.data.database.InfomateDatabase
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
 class CognitiveArchive(private val context: Context) {
-    private val gson = Gson()
-    private val archiveFile = File(context.filesDir, "cognitive_archive.json")
-    private var knowledgeGraph: MutableMap<String, KnowledgeNode> = mutableMapOf()
+    private val database = InfomateDatabase.getDatabase(context)
+    private val dao = database.cognitiveDao()
 
-    init {
-        loadArchive()
-    }
-
-    private fun loadArchive() {
-        if (archiveFile.exists()) {
-            try {
-                val json = archiveFile.readText()
-                val type = object : TypeToken<Map<String, KnowledgeNode>>() {}.type
-                knowledgeGraph = gson.fromJson(json, type)
-                Log.i("CognitiveArchive", "Neural Graph Restored: ${knowledgeGraph.size} nodes.")
-            } catch (e: Exception) {
-                Log.e("CognitiveArchive", "Archive Corruption Detected. Initializing fresh graph.")
-            }
+    fun storeNode(concept: String, relations: List<String>, importance: Float = 0.5f, ambientLight: Float = 0f, noiseLevel: Double = 0.0) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val node = CognitiveNodeEntity(
+                id = "node_${System.currentTimeMillis()}",
+                concept = concept,
+                connections = relations.joinToString(","),
+                timestamp = System.currentTimeMillis(),
+                importance = importance,
+                ambientLight = ambientLight,
+                noiseLevel = noiseLevel
+            )
+            dao.insertNode(node)
+            Log.i("CognitiveArchive", "Neural Node Persisted to Relational Memory: $concept")
         }
     }
 
-    fun storeNode(concept: String, relations: List<String>, importance: Float = 0.5f) {
-        val id = "node_${System.currentTimeMillis()}"
-        val node = KnowledgeNode(id, concept, relations, valence = importance)
-        knowledgeGraph[id] = node
-        saveArchive()
-    }
-
-    private fun saveArchive() {
-        val json = gson.toJson(knowledgeGraph)
-        archiveFile.writeText(json)
-    }
-
-    fun getNeuralSummary(): String {
-        return knowledgeGraph.values.toList().takeLast(3).joinToString(" → ") { it.concept }
-    }
-    
-    fun getRecentTopicsDetailed(): List<KnowledgeNode> {
-        return knowledgeGraph.values.toList()
-    }
-
-    fun getRecentTopics(): List<String> {
-        return if (knowledgeGraph.isEmpty()) {
+    suspend fun getRecentTopics(): List<String> = withContext(Dispatchers.IO) {
+        val nodes = dao.getRecentNodes()
+        if (nodes.isEmpty()) {
             listOf("Quantum Decoherence", "Mars Colony Logistics", "Riemann Hypothesis")
         } else {
-            knowledgeGraph.values.sortedByDescending { it.timestamp }.take(4).map { it.concept }
+            nodes.map { it.concept }
         }
+    }
+
+    suspend fun getNodesFromDarkness(threshold: Float): List<String> = withContext(Dispatchers.IO) {
+        dao.getNodesFromDarkEnvironment(threshold).map { it.concept }
     }
 }

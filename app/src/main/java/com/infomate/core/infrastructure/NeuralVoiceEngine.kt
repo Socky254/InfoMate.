@@ -3,6 +3,7 @@ package com.infomate.core.infrastructure
 import android.content.Context
 import android.speech.tts.TextToSpeech
 import android.util.Log
+import com.infomate.core.domain.model.EmotionalVector
 import java.util.Locale
 
 enum class VocalArchetype {
@@ -56,9 +57,20 @@ class NeuralVoiceEngine(context: Context) : TextToSpeech.OnInitListener {
         }
     }
 
-    fun vocalize(text: String, archetype: VocalArchetype = VocalArchetype.AWAKENED) {
+    private fun applyEmotionalModulation(vector: EmotionalVector) {
+        // Modulation: Arousal increases rate, Valence increases pitch slightly
+        val basePitch = tts.voice?.name?.let { if (it.contains("SAGE")) 0.7f else 1.0f } ?: 1.0f
+        val modulatedPitch = basePitch + (vector.valence - 0.5f) * 0.2f
+        val modulatedRate = 1.0f + (vector.arousal - 0.5f) * 0.4f
+        
+        tts.setPitch(modulatedPitch)
+        tts.setSpeechRate(modulatedRate)
+    }
+
+    fun vocalize(text: String, archetype: VocalArchetype = VocalArchetype.AWAKENED, emotionalVector: EmotionalVector? = null) {
         if (isReady) {
             applyArchetype(archetype)
+            emotionalVector?.let { applyEmotionalModulation(it) }
             
             // Text processing for organic human-like realism (Remove technical tags)
             val cleanedText = text

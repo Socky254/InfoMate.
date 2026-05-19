@@ -1,9 +1,13 @@
 package com.infomate.core
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -40,14 +44,27 @@ import com.infomate.core.presentation.viewmodel.InfomateViewModel
 
 class MainActivity : ComponentActivity() {
     private lateinit var voiceEngine: NeuralVoiceEngine
+    private lateinit var sensors: ContextSensors
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            // Permission granted, re-init sensors if needed or just log
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+        
         val archive = CognitiveArchive(this)
         val brain = InfomateBrain(archive)
-        val sensors = ContextSensors(this)
+        sensors = ContextSensors(this)
         val tools = ToolRouter()
         val firewall = ExecutionFirewall()
         val agent = InfomateAgent(brain, archive, sensors, tools, firewall)
@@ -56,16 +73,27 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             InfoMateTheme {
+                var showAuthScreen by remember { 
+                    mutableStateOf(ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) 
+                }
+
                 Surface(modifier = Modifier.fillMaxSize(), color = Obsidian) {
-                    val viewModel: InfomateViewModel = viewModel(
-                        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
-                            @Suppress("UNCHECKED_CAST")
-                            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                                return InfomateViewModel(agent, voiceEngine = voiceEngine) as T
+                    if (showAuthScreen) {
+                        NeuralAuthorizationScreen(onAuthorize = {
+                            requestPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            showAuthScreen = false
+                        })
+                    } else {
+                        val viewModel: InfomateViewModel = viewModel(
+                            factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                                @Suppress("UNCHECKED_CAST")
+                                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                                    return InfomateViewModel(agent, sensors, voiceEngine) as T
+                                }
                             }
-                        }
-                    )
-                    InfomateDashboard(viewModel, downloadManager)
+                        )
+                        InfomateDashboard(viewModel, downloadManager)
+                    }
                 }
             }
         }
@@ -74,6 +102,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         voiceEngine.shutdown()
+        sensors.shutdown()
     }
 }
 

@@ -33,6 +33,17 @@ class InfomateAgent(
                 )
             }
 
+            if (input == "PROACTIVE_THOUGHT" || input == "SAGE_OBSERVATION") {
+                val brainResponse = brain.process(input, sensoryData)
+                return@withContext AgentResponse(
+                    output = brainResponse.output,
+                    steps = brainResponse.steps,
+                    recommendation = brainResponse.recommendation,
+                    layer = brainResponse.layer,
+                    emotionalVector = brainResponse.emotionalVector
+                )
+            }
+
             // 2. Brain Reasoning with Environmental modulation
             val brainResponse = brain.process(input, sensoryData)
             
@@ -61,7 +72,9 @@ class InfomateAgent(
                 archive.storeNode(
                     concept = input,
                     relations = listOf("sensory_${sensoryData.ambientLight}", "layer_${brainResponse.layer}"),
-                    importance = if (brainResponse.layer == "RESEARCH" || brainResponse.layer == "UNIFIED") 0.9f else 0.5f
+                    importance = if (brainResponse.layer == "RESEARCH" || brainResponse.layer == "UNIFIED") 0.9f else 0.5f,
+                    ambientLight = sensoryData.ambientLight,
+                    noiseLevel = sensoryData.acousticNoiseLevel
                 )
             }
 
@@ -70,7 +83,9 @@ class InfomateAgent(
                 steps = brainResponse.steps,
                 requiresTool = toolExecuted,
                 recommendation = brainResponse.recommendation,
-                media = brainResponse.media
+                media = brainResponse.media,
+                layer = brainResponse.layer,
+                emotionalVector = brainResponse.emotionalVector
             )
         } catch (e: Exception) {
             Log.e("InfomateAgent", "Loop Failure", e)

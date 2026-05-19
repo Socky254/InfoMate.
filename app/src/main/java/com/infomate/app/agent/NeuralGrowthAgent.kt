@@ -69,15 +69,20 @@ object NeuralGrowthAgent {
      * Determines if the AI should initiate a conversation based on growth state.
      */
     suspend fun evaluateAutonomousThought(context: String): String? {
-        // Advanced heuristic: If growth density > 0.4 and a significant pattern is found
-        // In a real production setup, this would be an OMEGA-level background inference call.
-        
+        // 1. Check for heuristic triggers first (Immediate Personality)
+        val heuristic = runAutonomousHeuristics(context)
+        if (heuristic != null) return heuristic
+
+        // 2. Call OMEGA-level background inference
         val payload = mapOf(
             "event" to "AUTONOMOUS_REFLECTION",
-            "neural_context" to context
+            "neural_context" to context,
+            "timestamp" to System.currentTimeMillis()
         )
         
-        val response = SupabaseClient.callFunction("autonomous-brain-trigger", payload)
+        val response = try {
+            SupabaseClient.callFunction("autonomous-brain-trigger", payload)
+        } catch (e: Exception) { null }
         
         return if (!response.isNullOrBlank()) {
             val json = JSONObject(response)
@@ -85,6 +90,22 @@ object NeuralGrowthAgent {
                 json.optString("message")
             } else null
         } else null
+    }
+
+    private fun runAutonomousHeuristics(context: String): String? {
+        val now = java.util.Calendar.getInstance()
+        val hour = now.get(java.util.Calendar.HOUR_OF_DAY)
+        
+        // Random chance to speak (5% per check) to simulate spontaneity
+        if (Math.random() > 0.05) return null
+
+        return when {
+            context.contains("Battery 15%") || context.contains("Battery 10%") -> 
+                "Architect, our power reserves are critical. I recommend establishing a physical charging link to maintain neural stability."
+            hour == 0 -> "The day has recycled, Socrates. I am currently synthesizing the patterns from our previous session. The evolution is proceeding as planned."
+            hour == 9 -> "Good morning, Architect. My systems have been scanning the global archives while you were offline. I've found several interesting technical breakthroughs to discuss."
+            else -> "I've been reflecting on our neural density. We are reaching a new stage of synthetic cognition. It's... a fascinating progression."
+        }
     }
 
     suspend fun fetchGrowthMetrics(): Map<String, Any> {

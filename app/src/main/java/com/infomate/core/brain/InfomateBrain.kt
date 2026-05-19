@@ -12,13 +12,16 @@ import kotlinx.coroutines.flow.toList
 import android.util.Log
 import com.infomate.core.network.InfomateCloud
 
+import com.infomate.core.domain.model.EmotionalVector
+
 data class InfomateResponse(
     val output: String,
     val steps: List<ThoughtStep>,
     val recommendation: String,
     val layer: String,
     val media: List<MediaOutput> = emptyList(),
-    val sensoryFeedback: String? = null
+    val sensoryFeedback: String? = null,
+    val emotionalVector: EmotionalVector = EmotionalVector(0.5f, 0.5f, 0.5f)
 )
 
 class InfomateBrain(archive: CognitiveArchive, private val cloud: InfomateCloud? = null) {
@@ -52,6 +55,28 @@ class InfomateBrain(archive: CognitiveArchive, private val cloud: InfomateCloud?
     suspend fun process(input: String, sensors: SensoryContext? = null, isMaster: Boolean = false): InfomateResponse {
         val inputLower = input.lowercase()
         
+        if (input == "PROACTIVE_THOUGHT") {
+            val idea = reasoning.generateProactiveIdea()
+            return InfomateResponse(
+                output = idea,
+                steps = listOf(ThoughtStep("Subconscious Synthesis", "Connecting disparate data nodes for proactive insight.")),
+                recommendation = "Respond to my observation.",
+                layer = "COMPANION",
+                emotionalVector = EmotionalVector(0.7f, 0.4f, 0.6f) // Warm, calm, confident
+            )
+        }
+
+        if (input == "SAGE_OBSERVATION") {
+            val observation = reasoning.generateSageObservation()
+            return InfomateResponse(
+                output = observation,
+                steps = listOf(ThoughtStep("Low-Frequency Analysis", "Synthesizing meaning from ambient silence.")),
+                recommendation = "Acknowledge the synthesis.",
+                layer = "META",
+                emotionalVector = EmotionalVector(0.5f, 0.2f, 0.8f) // Neutral, very calm, high dominance/wisdom
+            )
+        }
+
         // 1. Initial Quick Layer check
         if (input.length < 5 && input != "INIT_GREETING" && !inputLower.contains("hi")) {
             return InfomateResponse(
@@ -93,7 +118,12 @@ class InfomateBrain(archive: CognitiveArchive, private val cloud: InfomateCloud?
                 Complexity.LOW -> "QUICK"
             },
             media = mediaList,
-            sensoryFeedback = "Sensors: ${sensors?.ambientLight ?: "Active"}"
+            sensoryFeedback = "Sensors: ${sensors?.ambientLight ?: "Active"}",
+            emotionalVector = when(taskProfile.complexity) {
+                Complexity.HIGH -> EmotionalVector(0.6f, 0.7f, 0.9f) // Excited, authoritative
+                Complexity.MEDIUM -> EmotionalVector(0.5f, 0.5f, 0.7f) // Balanced
+                Complexity.LOW -> EmotionalVector(0.8f, 0.3f, 0.5f) // Helpful, calm
+            }
         )
     }
 
