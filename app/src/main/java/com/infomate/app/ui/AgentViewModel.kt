@@ -137,8 +137,11 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
     private val currentSentence = StringBuilder()
 
+    private var lastTokenTime = 0L
+
     override fun onToken(text: String) {
         if (text.isEmpty()) return
+        lastTokenTime = System.currentTimeMillis()
         
         // Immediate cancel to free UI cycles
         activeThinkingJob?.cancel()
@@ -570,8 +573,20 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
                 ReliabilitySDK.sendPrompt(searchPrompt)
                 
-                // FIX 1 & 4 — 75s timeout for archival scans
-                delay(75000)
+                // 2.3 CLIENT UI TIMEOUT (APK SIDE)
+                var timeoutCounter = 0
+                val maxTimeout = 75
+                lastTokenTime = 0L
+
+                while (timeoutCounter < maxTimeout) {
+                    delay(1000)
+                    timeoutCounter++
+                    if (_state.value.brainState == InfomateState.IDLE) break
+                    if (_state.value.brainState == InfomateState.RESPONDING && lastTokenTime > 0) {
+                        if (System.currentTimeMillis() - lastTokenTime < 5000) timeoutCounter = 0
+                    }
+                }
+
                 if (_state.value.brainState == InfomateState.THINKING) {
                     StreamController.terminateStream()
                     onError("Neural search timeout: Archives took too long to synchronize.")
@@ -647,8 +662,29 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
                 ReliabilitySDK.sendPrompt(contextualQuery)
                 
-                // FIX 1 & 4 — Set AI timeout to 75s (Golden Production Config)
-                delay(75000) 
+                // 2.3 CLIENT UI TIMEOUT (APK SIDE)
+                // DO NOT hard timeout streaming responses. Only timeout if NO tokens arrive.
+                var timeoutCounter = 0
+                val maxTimeout = 75 // seconds
+                lastTokenTime = 0L // Reset for new request
+
+                while (timeoutCounter < maxTimeout) {
+                    delay(1000)
+                    timeoutCounter++
+                    
+                    val currentState = _state.value.brainState
+                    // If we finished or failed already, exit the timeout loop
+                    if (currentState == InfomateState.IDLE || currentState == InfomateState.ERROR) break
+                    
+                    // If we are responding (streaming), reset the local counter if tokens are arriving
+                    if (currentState == InfomateState.RESPONDING && lastTokenTime > 0) {
+                        val timeSinceLastToken = System.currentTimeMillis() - lastTokenTime
+                        if (timeSinceLastToken < 5000) { // If token arrived in last 5s, we are healthy
+                            timeoutCounter = 0 
+                        }
+                    }
+                }
+
                 if (_state.value.brainState == InfomateState.THINKING || _state.value.brainState == InfomateState.RESPONDING) {
                     if (StreamController.state != AIState.IDLE) {
                         StreamController.terminateStream()
