@@ -13,7 +13,7 @@ gson = "2.10.1"
 work = "2.11.0"
 room = "2.8.4"
 coil = "3.3.0"
-mediapipe = "0.10.31"
+mediapipe = "0.10.35"
 javaWebsocket = "1.5.4"
 
 [libraries]
