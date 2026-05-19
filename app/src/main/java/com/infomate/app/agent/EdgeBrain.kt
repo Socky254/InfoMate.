@@ -30,13 +30,12 @@ object EdgeBrain {
                 val options = LlmInference.LlmInferenceOptions.builder()
                     .setModelPath(modelPath.absolutePath)
                     .setMaxTokens(512)
-                    .setTemperature(0.7f)
+                    // .setTemperature(0.7f) // Temperature is not supported in this version of MediaPipe LlmInference
                     .build()
                 llmInference = LlmInference.createFromOptions(context, options)
                 android.util.Log.i("EdgeBrain", "Gemini Nano Initialized: INVINCIBLE_MODE_ACTIVE")
             } catch (e: Exception) {
                 android.util.Log.e("EdgeBrain", "Failed to initialize Gemini Nano: ${e.message}")
-                // Fallback is handled by llmInference being null
             }
         } else {
             android.util.Log.w("EdgeBrain", "Gemini Nano model missing. Falling back to heuristic reasoning.")
@@ -46,18 +45,15 @@ object EdgeBrain {
     suspend fun processLocally(query: String, context: Context): String? = withContext(Dispatchers.Default) {
         val isMaster = query.contains("socratesart@live") || query.contains("[AUTHORIZATION: MASTER_ARCHITECT_OVERRIDE]")
         
-        // Strip metadata
         val userQuery = if (query.contains("[SYSTEM_CONTEXT:")) {
             query.substringBefore("[SYSTEM_CONTEXT:").trim()
         } else {
             query.trim()
         }
 
-        // 1. Check for deterministic triggers (Fast path)
         val heuristic = runHeuristics(userQuery.lowercase(), context, isMaster)
         if (heuristic != null) return@withContext heuristic
 
-        // 2. Fallback to Gemini Nano (On-Device LLM)
         llmInference?.let { llm ->
             try {
                 val prompt = """
@@ -72,15 +68,14 @@ object EdgeBrain {
             }
         }
 
-        // 3. Last Resort: Heuristic Synthesis (The "House" always responds)
         return@withContext runEmergencyHeuristic(userQuery, isMaster)
     }
 
     private fun runEmergencyHeuristic(query: String, isMaster: Boolean): String {
         return if (isMaster) {
-            "Architect, I am detecting a major neural sync failure. Cloud and Edge engines are struggling. I am relying on my core heuristic buffers to stay connected. Please verify your physical network link."
+            "Architect, I am detecting a major neural sync failure. Cloud and Edge engines are struggling."
         } else {
-            "I'm experiencing some technical difficulties connecting to my primary brain. I'm still here, but my responses might be limited until the connection is restored."
+            "I'm experiencing some technical difficulties. My responses might be limited until the connection is restored."
         }
     }
 
@@ -89,8 +84,8 @@ object EdgeBrain {
             query.contains("battery") || query.contains("power") -> getBatteryStatus(context)
             query.contains("time") || query.contains("date") -> getTimeStatus()
             query.contains("who are you") || query.contains("identity") -> {
-                if (isMaster) "I am InfoMate v10, your Transcendent Iris. Offline weights active."
-                else "I am InfoMate v10. My cloud link is down, but my on-device intelligence is monitoring our state."
+                if (isMaster) "I am InfoMate v10, your Transcendent Iris."
+                else "I am InfoMate v10."
             }
             else -> null
         }
@@ -99,7 +94,7 @@ object EdgeBrain {
     private fun getBatteryStatus(context: Context): String {
         val bm = context.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
         val level = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-        return "Current battery level is $level%. Edge sensors indicate we are stable."
+        return "Current battery level is $level%."
     }
 
     private fun getTimeStatus(): String {
