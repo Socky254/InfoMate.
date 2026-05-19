@@ -34,6 +34,7 @@ import com.infomate.core.brain.ReasoningEngine
 import com.infomate.core.ui.components.InfomateState
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.infomate.app.agent.GlobalSearchAgent
 import com.infomate.app.ai.LLMClient
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -828,17 +829,37 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                     // IF NO TOKENS AFTER 10 SECONDS, TRIGGER HTTP FALLBACK
                     if (timeoutCounter >= 10 && currentState == InfomateState.THINKING && !fallbackTriggered && isNetworkAvailable()) {
                         fallbackTriggered = true
-                        _state.update { it.copy(status = "NEURAL LINK SLOW: ACTIVATING HTTP BRIDGE...") }
+                        _state.update { it.copy(status = "NEURAL LINK SLOW: ACTIVATING MULTI-ENGINE SEARCH...") }
                         viewModelScope.launch {
                             try {
+                                // 1. Attempt Primary HTTP Fallback
                                 val result = LLMClient.generate(contextualQuery, sessionId)
-                                if (result.output.isNotBlank() && _state.value.brainState != InfomateState.IDLE) {
+                                if (result.output.isNotBlank() && !result.output.contains("SYSTEM_ERROR") && _state.value.brainState != InfomateState.IDLE) {
                                     onToken(result.output)
                                     onComplete(result.output)
                                     result.quota?.let { onQuotaUpdate(it) }
+                                    return@launch
                                 }
+                                
+                                // 2. If Primary Fails, activate Global Search Agent
+                                _state.update { it.copy(status = "PRIMARY AI DOWN: SCANNING GLOBAL SEARCH ENGINES...") }
+                                val searchResult = GlobalSearchAgent.searchExternal(userInput)
+                                if (searchResult != null) {
+                                    onToken(searchResult)
+                                    onComplete(searchResult)
+                                    return@launch
+                                }
+                                
+                                // 3. Last Resort: Inter-Neural Proxy (Secondary AI)
+                                _state.update { it.copy(status = "GLOBAL SEARCH EMPTY: ACTIVATING INTER-NEURAL PROXY...") }
+                                val proxyResult = GlobalSearchAgent.callInterNeuralProxy(userInput)
+                                if (proxyResult != null) {
+                                    onToken(proxyResult)
+                                    onComplete(proxyResult)
+                                }
+                                
                             } catch (e: Exception) {
-                                Log.e("HTTP_FALLBACK", "Fallback failed: ${e.message}")
+                                Log.e("HTTP_FALLBACK", "Multi-engine fallback failed: ${e.message}")
                             }
                         }
                     }

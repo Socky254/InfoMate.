@@ -42,7 +42,7 @@ class AgentOrchestrator(private val androidContext: Context? = null) {
         // 4. Optimized Semantic Retrieval (RAG)
         val memories = VectorRetriever.search(userIntent)
 
-        // 5. Advanced Synthesis Prompt (MASTER ARCHITECT OPTIMIZED)
+        // 5. PRIMARY ENGINE DISPATCH (INFOMATE CORE)
         val isMaster = fullQuery.contains("[AUTHORIZATION: MASTER_ARCHITECT_OVERRIDE]") || fullQuery.contains("socratesart@live")
         
         val systemDirectives = if (isMaster) """
@@ -74,10 +74,26 @@ class AgentOrchestrator(private val androidContext: Context? = null) {
             DIRECTIVE: Process query through the v9.5 Distributed Intelligence Network. Ensure knowledge synergy.
         """.trimIndent()
 
-        // Pass sessionId to LLMClient
-        val result = LLMClient.generate(prompt, sessionId)
+        var result = LLMClient.generate(prompt, sessionId)
 
-        // 6. Memory Sync
+        // 6. MULTI-ENGINE FALLBACK (Rule: Prioritize Self, use others if systems are down or response is empty)
+        if (result.output.contains("SYSTEM_ERROR") || result.output.contains("Connection lost") || result.output.length < 5) {
+            android.util.Log.w("Orchestrator", "Primary Neural Link failed. Activating Secondary Engines...")
+            
+            // Try External Search Synthesis first
+            val searchResult = GlobalSearchAgent.searchExternal(userIntent)
+            if (searchResult != null) {
+                return AgentResponse(searchResult)
+            }
+            
+            // If search fails, try Inter-Neural Proxy (Secondary AI)
+            val proxyResult = GlobalSearchAgent.callInterNeuralProxy(userIntent)
+            if (proxyResult != null) {
+                return AgentResponse(proxyResult)
+            }
+        }
+
+        // 7. Memory Sync
         if (result.output.length > 10 && !result.output.contains("SYSTEM_ERROR") && !result.output.contains("Neural link active")) {
             MemorySync.save(userIntent, result.output)
         }
