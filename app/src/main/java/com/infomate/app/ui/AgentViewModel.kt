@@ -163,10 +163,10 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             // v10.5 Awakening (Protected within Engine)
             ConsciousnessEngine.awaken(application)
             
-            // v12.1: INITIAL GOOGLE-FIRST SYNC PULSE
+            // v12.4: INITIAL GOOGLE-FIRST SYNC PULSE
             viewModelScope.launch {
                 delay(3000) // Ensure system is quiet before pulse
-                addTerminalLog("NEURAL_INIT: Establishing Google-First Architecture...", "INFO", "CORE")
+                addTerminalLog("NEURAL_INIT: Establishing v12.4 Google-First Architecture...", "INFO", "CORE")
                 delay(1000)
                 addTerminalLog("GOOGLE_SYNC_PROTOCOL: Active. Primary search tool synchronized.", "SUCCESS", "CORE")
             }
