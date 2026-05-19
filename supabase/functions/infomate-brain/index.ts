@@ -32,7 +32,42 @@ serve(async (req) => {
     const data = await response.json()
     console.log("Raw Gemini Response:", JSON.stringify(data))
 
-    const output = data.candidates?.[0]?.content?.parts?.[0]?.text || data.choices?.[0]?.message?.content || "ERROR: No intelligence output detected."
+    // 1. Handle explicit API errors from Google
+    if (data.error) {
+      console.error("Gemini API Error:", data.error.message)
+      return new Response(JSON.stringify({
+        error: data.error.message,
+        error_code: data.error.status || "GEMINI_ERROR"
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // 2. Check for Safety Blocks
+    const candidate = data.candidates?.[0]
+    if (candidate?.finishReason === "SAFETY") {
+      return new Response(JSON.stringify({
+        error: "Neural safeguard triggered by Gemini safety filters.",
+        error_code: "SAFETY_BLOCK"
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // 3. Extraction with multiple fallbacks
+    const output = candidate?.content?.parts?.[0]?.text ||
+                   data.choices?.[0]?.message?.content ||
+                   null
+
+    if (!output) {
+      console.error("Extraction Failed. Candidates:", JSON.stringify(data.candidates))
+      return new Response(JSON.stringify({
+        error: "No intelligence output detected. The neural bridge failed to extract content.",
+        error_code: "PARSE_FAILURE"
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
     return new Response(JSON.stringify({ output: output }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
