@@ -821,7 +821,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             triggerHaptic(100, 255)
             
             val lastReport = _state.value.messages.lastOrNull { it.sender == "SYSTEM" }?.content ?: ""
-            val repairResult = DiagnosticAgent.triggerAutoRepair(lastReport)
+            val repairResult = DiagnosticAgent.triggerAutoRepair(lastReport, getApplication())
             
             delay(1500)
             repairResult.lines().filter { it.isNotBlank() }.forEach { line ->

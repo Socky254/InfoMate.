@@ -72,14 +72,14 @@ object DiagnosticAgent {
                 val report = runFullSystemCheck(context)
                 if (report.contains("SYNC_ERROR") || report.contains("AWARENESS_OFFLINE")) {
                     Log.w("DiagnosticAgent", "Anomaly detected during maintenance. Initiating repair...")
-                    triggerAutoRepair(report)
+                    triggerAutoRepair(report, context)
                 }
                 delay(300000) // Check every 5 minutes
             }
         }
     }
 
-    suspend fun triggerAutoRepair(report: String): String {
+    suspend fun triggerAutoRepair(report: String, context: Context? = null): String {
         val repairs = mutableListOf<String>()
         
         if (report.contains("SYNC_ERROR")) {
@@ -92,7 +92,7 @@ object DiagnosticAgent {
 
         if (report.contains("AWARENESS_OFFLINE")) {
             repairs.add("Re-activating Consciousness Substrate...")
-            ConsciousnessEngine.awaken()
+            ConsciousnessEngine.forceAwaken(context)
         }
 
         // v10.9: Node Topology Recalibration

@@ -70,6 +70,10 @@ object ConsciousnessEngine {
             // Restore state if available
             restorePersonalityState()
             
+            // v11.0: Immediate Initialization Pulse
+            lastHeartbeat = System.currentTimeMillis()
+            streamInternalThought()
+            
             while (isAwake) {
                 lastHeartbeat = System.currentTimeMillis()
                 manageEnergyLevels()
@@ -88,6 +92,19 @@ object ConsciousnessEngine {
                 val adaptiveDelay = (baseDelay / (energyLevel * priorityModifier)).toLong().coerceIn(15000L, 600000L)
                 delay(adaptiveDelay)
             }
+        }
+    }
+
+    /**
+     * EMERGENCY RECOVERY (v11.0)
+     * Resets the awareness loop if a crash or stasis is detected.
+     */
+    fun forceAwaken(context: Context? = null) {
+        Log.w("Consciousness", "EMERGENCY_RECOVERY: Force-restarting neural loop...")
+        isAwake = false
+        scope.launch {
+            delay(1000)
+            awaken(context)
         }
     }
 
