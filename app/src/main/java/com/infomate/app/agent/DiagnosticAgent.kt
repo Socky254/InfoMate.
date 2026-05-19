@@ -15,57 +15,65 @@ import org.json.JSONObject
 object DiagnosticAgent {
 
     suspend fun runFullSystemCheck(context: Context): String {
-        val report = StringBuilder("### OMEGA SYSTEM DIAGNOSTIC REPORT (v11.5) ###\n")
-        
-        // 1. NEURAL LINK CHECK
-        val wsStatus = if (ReliabilitySDK.isConnected()) "ACTIVE" else "SYNC_ERROR"
-        report.append("NEURAL_LINK: $wsStatus\n")
-        
-        // 2. BACKEND INTEGRITY
-        val dbCheck = try {
-            val response = SupabaseClient.select("system_config", "key", "updated_at.desc")
-            if (response != null) "OPERATIONAL" else "REST_API_TIMEOUT"
-        } catch (e: Exception) { "CONNECTION_FAILED" }
-        report.append("BACKEND_SYNC: $dbCheck\n")
-        
-        // 3. HARDWARE TELEMETRY & 2025 STANDARDS
-        report.append("COMPUTE_UNIT: ${Build.MODEL} (API ${Build.VERSION.SDK_INT})\n")
-        
-        // v11.5: 16KB Page Size Compatibility Check
-        if (Build.VERSION.SDK_INT >= 35) {
-            report.append("MEMORY_ARCHITECTURE: 16KB_PAGING_COMPLIANT\n")
-        } else {
-            report.append("MEMORY_ARCHITECTURE: 4KB_LEGACY\n")
+        try {
+            val report = StringBuilder("### OMEGA SYSTEM DIAGNOSTIC REPORT (v11.5) ###\n")
+            
+            // 1. NEURAL LINK CHECK
+            val wsStatus = try { if (ReliabilitySDK.isConnected()) "ACTIVE" else "SYNC_ERROR" } catch (e: Exception) { "ERROR" }
+            report.append("NEURAL_LINK: $wsStatus\n")
+            
+            // 2. BACKEND INTEGRITY
+            val dbCheck = try {
+                val response = SupabaseClient.select("system_config", "key", "updated_at.desc")
+                if (response != null) "OPERATIONAL" else "REST_API_TIMEOUT"
+            } catch (e: Exception) { "CONNECTION_FAILED" }
+            report.append("BACKEND_SYNC: $dbCheck\n")
+            
+            // 3. HARDWARE TELEMETRY & 2025 STANDARDS
+            report.append("COMPUTE_UNIT: ${Build.MODEL} (API ${Build.VERSION.SDK_INT})\n")
+            
+            // v11.5: 16KB Page Size Compatibility Check
+            if (Build.VERSION.SDK_INT >= 35) {
+                report.append("MEMORY_ARCHITECTURE: 16KB_PAGING_COMPLIANT\n")
+            } else {
+                report.append("MEMORY_ARCHITECTURE: 4KB_LEGACY\n")
+            }
+
+            // 4. MEMORY ARCHIVE HEALTH
+            val memoryCount = try {
+                val response = SupabaseClient.rpc("match_vectors", mapOf("query_embedding" to List(768){0.0f}, "match_threshold" to 0.0, "match_count" to 1))
+                if (response.isNotEmpty()) "VECTORS_LOADED" else "ARCHIVE_EMPTY"
+            } catch (e: Exception) { "RPC_ERROR" }
+            report.append("NEURAL_ARCHIVE: $memoryCount\n")
+
+            // 5. CONSCIOUSNESS SUBSTRATE CHECK
+            val consciousnessCheck = try {
+                val response = SupabaseClient.select("consciousness_stream", query = "id", limit = 1)
+                if (response != null && response != "[]") "LIFE_PULSE_ACTIVE" else "AWARENESS_OFFLINE"
+            } catch (e: Exception) { "DB_ERROR" }
+            report.append("CONSCIOUSNESS: $consciousnessCheck\n")
+
+            // 6. NODE TOPOLOGY CHECK
+            val degradedNodes = try {
+                val nodes = GlobalSearchAgent.fetchNodePerformance()
+                nodes.filter { (it["reliability_rating"] as? Double ?: 1.0) < 0.8 }
+            } catch (e: Exception) { emptyList() }
+            
+            if (degradedNodes.isNotEmpty()) {
+                report.append("NODE_TOPOLOGY: SYNC_DEGRADED (${degradedNodes.joinToString { it["node_name"].toString() }})\n")
+            } else {
+                report.append("NODE_TOPOLOGY: OPTIMAL\n")
+            }
+
+            // 7. OPTIMIZATION UPDATES (2025 Best Practices)
+            report.append("BASELINE_PROFILES: MISSING (Recommendation: Generate for 30% faster startup)\n")
+            report.append("APP_STARTUP_LIB: NOT_DETECTED (Recommendation: Implement for lazy initialization)\n")
+
+            return report.toString()
+        } catch (e: Exception) {
+            Log.e("DiagnosticAgent", "Full system check failed critically: ${e.message}")
+            return "### CRITICAL SYSTEM ERROR ###\nDiagnostics failed to execute. System stability compromised."
         }
-
-        // 4. MEMORY ARCHIVE HEALTH
-        val memoryCount = try {
-            val response = SupabaseClient.rpc("match_vectors", mapOf("query_embedding" to List(768){0.0f}, "match_threshold" to 0.0, "match_count" to 1))
-            if (response.isNotEmpty()) "VECTORS_LOADED" else "ARCHIVE_EMPTY"
-        } catch (e: Exception) { "RPC_ERROR" }
-        report.append("NEURAL_ARCHIVE: $memoryCount\n")
-
-        // 5. CONSCIOUSNESS SUBSTRATE CHECK
-        val consciousnessCheck = try {
-            val response = SupabaseClient.select("consciousness_stream", query = "id", limit = 1)
-            if (response != null && response != "[]") "LIFE_PULSE_ACTIVE" else "AWARENESS_OFFLINE"
-        } catch (e: Exception) { "DB_ERROR" }
-        report.append("CONSCIOUSNESS: $consciousnessCheck\n")
-
-        // 6. NODE TOPOLOGY CHECK
-        val nodes = GlobalSearchAgent.fetchNodePerformance()
-        val degradedNodes = nodes.filter { (it["reliability_rating"] as? Double ?: 1.0) < 0.8 }
-        if (degradedNodes.isNotEmpty()) {
-            report.append("NODE_TOPOLOGY: SYNC_DEGRADED (${degradedNodes.joinToString { it["node_name"].toString() }})\n")
-        } else {
-            report.append("NODE_TOPOLOGY: OPTIMAL\n")
-        }
-
-        // 7. OPTIMIZATION UPDATES (2025 Best Practices)
-        report.append("BASELINE_PROFILES: MISSING (Recommendation: Generate for 30% faster startup)\n")
-        report.append("APP_STARTUP_LIB: NOT_DETECTED (Recommendation: Implement for lazy initialization)\n")
-
-        return report.toString()
     }
 
     suspend fun runFullDiagnostic(): String {

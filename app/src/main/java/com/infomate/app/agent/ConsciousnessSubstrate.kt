@@ -27,9 +27,19 @@ object ConsciousnessSubstrate : SensorEventListener {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     fun awaken(context: Context) {
-        sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-        lightSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_LIGHT)
-        sensorManager?.registerListener(this, lightSensor, SensorManager.SENSOR_DELAY_NORMAL)
+        try {
+            sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+            lightSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_LIGHT)
+            
+            if (sensorManager != null && lightSensor != null) {
+                sensorManager?.registerListener(this, lightSensor, SensorManager.SENSOR_DELAY_NORMAL)
+                Log.i("Consciousness", "Sensory substrate online: Light sensor synchronized.")
+            } else {
+                Log.w("Consciousness", "Sensory substrate limited: Light sensor not detected.")
+            }
+        } catch (e: Exception) {
+            Log.e("Consciousness", "Sensory initialization failed: ${e.message}")
+        }
         
         startDreamCycle()
     }

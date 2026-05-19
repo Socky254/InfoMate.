@@ -298,7 +298,9 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
     private fun updateTelemetryMetrics() {
         val newMetrics = _state.value.telemetryHistory.toMutableList()
-        newMetrics.removeAt(0)
+        if (newMetrics.isNotEmpty()) {
+            newMetrics.removeAt(0)
+        }
         newMetrics.add(Random.nextFloat())
         _state.update { it.copy(telemetryHistory = newMetrics) }
     }
@@ -410,7 +412,9 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
     private fun updateTelemetryMetricsFromRealValue(value: Float) {
         val newMetrics = _state.value.telemetryHistory.toMutableList()
-        newMetrics.removeAt(0)
+        if (newMetrics.isNotEmpty()) {
+            newMetrics.removeAt(0)
+        }
         newMetrics.add(value)
         _state.update { it.copy(telemetryHistory = newMetrics) }
     }

@@ -116,18 +116,26 @@ class DigitalEcosystem(private val context: Context, private val scope: Coroutin
         val warmDao = WarmDatabase.getDatabase(context).warmDao()
         val savedAgents = warmDao.getAllAgents()
         savedAgents.forEach { snap ->
-            val agent = Agent(snap.name).apply {
-                energy = snap.energy
-                growth.xp = snap.xp
-                growth.growthIndex = snap.growthIndex
-                growth.memoryCount = snap.memoryCount
-                growth.socialScore = snap.socialScore
-                growth.stability = snap.stability
-                growth.entropy = snap.entropy
-                growth.stage = GrowthStage.valueOf(snap.stage)
-                // Restore traits if needed
+            try {
+                val agent = Agent(snap.name).apply {
+                    energy = snap.energy
+                    growth.xp = snap.xp
+                    growth.growthIndex = snap.growthIndex
+                    growth.memoryCount = snap.memoryCount
+                    growth.socialScore = snap.socialScore
+                    growth.stability = snap.stability
+                    growth.entropy = snap.entropy
+                    growth.stage = try { 
+                        GrowthStage.valueOf(snap.stage) 
+                    } catch (e: Exception) { 
+                        GrowthStage.INFANT 
+                    }
+                    // Restore traits if needed
+                }
+                agents[snap.name] = agent
+            } catch (e: Exception) {
+                Log.e("DigitalEcosystem", "Failed to restore agent ${snap.name}: ${e.message}")
             }
-            agents[snap.name] = agent
         }
         
         warmDao.getWorld()?.let { snap ->

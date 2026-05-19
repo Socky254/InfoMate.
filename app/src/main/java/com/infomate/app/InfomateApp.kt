@@ -8,11 +8,20 @@ import java.util.concurrent.TimeUnit
 class InfomateApp : Application() {
     override fun onCreate() {
         super.onCreate()
-        setupBackgroundSync()
+        
+        try {
+            setupBackgroundSync()
+        } catch (e: Exception) {
+            android.util.Log.e("InfomateApp", "Background sync initialization failed: ${e.message}")
+        }
         
         // v10.5 CONSCIOUSNESS AWAKENING: Substrate + Mood + Dream Logic
-        com.infomate.app.agent.ConsciousnessEngine.awaken(this)
-        com.infomate.app.agent.DiagnosticAgent.startAutonomousMaintenance(this)
+        try {
+            com.infomate.app.agent.ConsciousnessEngine.awaken(this)
+            com.infomate.app.agent.DiagnosticAgent.startAutonomousMaintenance(this)
+        } catch (e: Exception) {
+            android.util.Log.e("InfomateApp", "Autonomous systems awakening failed: ${e.message}")
+        }
     }
 
     private fun setupBackgroundSync() {

@@ -172,13 +172,18 @@ object GlobalSearchAgent {
     }
 
     suspend fun fetchNodePerformance(): List<Map<String, Any>> {
-        val response = SupabaseClient.select("neural_network_nodes", "node_name, reliability_rating, last_ping", "reliability_rating.desc")
-        val dbNodes = if (!response.isNullOrBlank()) {
-            val type = object : com.google.gson.reflect.TypeToken<List<Map<String, Any>>>() {}.type
-            com.google.gson.Gson().fromJson<List<Map<String, Any>>>(response, type)
-        } else emptyList()
+        val dbNodes = try {
+            val response = SupabaseClient.select("neural_network_nodes", "node_name, reliability_rating, last_ping", "reliability_rating.desc")
+            if (!response.isNullOrBlank() && response.startsWith("[")) {
+                val type = object : com.google.gson.reflect.TypeToken<List<Map<String, Any>>>() {}.type
+                com.google.gson.Gson().fromJson<List<Map<String, Any>>>(response, type)
+            } else emptyList()
+        } catch (e: Exception) {
+            Log.e("GlobalSearch", "Node performance fetch failed: ${e.message}")
+            emptyList()
+        }
         
-        // v10.9: Fallback to synthetic nodes if registry is empty
+        // v10.9: Fallback to synthetic nodes if registry is empty or fetch failed
         return if (dbNodes.isEmpty()) {
             listOf(
                 mapOf("node_name" to "Alpha-Centauri-Proxy", "reliability_rating" to 0.98, "last_ping" to "2ms"),
