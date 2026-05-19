@@ -116,6 +116,47 @@ fun MasterDashboard(state: UIState, vm: AgentViewModel, onDismiss: () -> Unit) {
                     ProceedingRow("EDGE_FALLBACK", "STANDBY", "Gemini Nano weights loaded")
                 }
                 
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Identity Section
+                DashboardSection(title = "OPERATOR IDENTITY") {
+                    Text(
+                        "Primary Email: ${state.userEmail}",
+                        color = SilverText,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = { vm.revalidateCredentials() },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                        modifier = Modifier.border(1.dp, CyberCyan.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                    ) {
+                        Text("RE-VALIDATE CREDENTIALS", color = CyberCyan, fontSize = 12.sp)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Advanced Controls
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    DashboardActionCard(
+                        icon = Icons.Default.DeleteForever,
+                        label = "PURGE CACHE",
+                        color = Color.Red.copy(alpha = 0.8f),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        vm.purgeNeuralCache()
+                    }
+                    DashboardActionCard(
+                        icon = Icons.Default.Update,
+                        label = "FORCE UPGRADE",
+                        color = CyberCyan,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        vm.triggerSystemUpdateCheck()
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(40.dp))
             }
         }

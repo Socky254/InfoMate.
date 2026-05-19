@@ -481,6 +481,40 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         _state.update { it.copy(showManualKnowledgeDialog = show) }
     }
 
+    fun purgeNeuralCache() {
+        viewModelScope.launch {
+            _state.update { it.copy(status = "INITIATING CACHE PURGE...") }
+            triggerHaptic(100, 200)
+            
+            try {
+                // 1. Clear local UI for immediate feedback
+                _state.update { it.copy(messages = emptyList()) }
+                
+                // 2. Call RPC to clear server-side cache
+                SupabaseClient.rpc("purge_system_cache", emptyMap())
+                
+                _state.update { it.copy(status = "NEURAL BUFFERS PURGED") }
+                pulseSuccess()
+            } catch (e: Exception) {
+                Log.e("PURGE_CACHE", "Failed: ${e.message}")
+                _state.update { it.copy(status = "CACHE PURGE FAILED") }
+            }
+        }
+    }
+
+    fun revalidateCredentials() {
+        viewModelScope.launch {
+            _state.update { it.copy(status = "RE-VALIDATING AUTH...") }
+            loadSessionData()
+            _state.update { it.copy(status = "AUTH SYNC COMPLETE") }
+            pulseSuccess()
+        }
+    }
+
+    fun triggerSystemUpdateCheck() {
+        checkForSystemUpdates()
+    }
+
     fun toggleMasterDashboard(show: Boolean) {
         if (_state.value.isMaster) {
             if (show) {
