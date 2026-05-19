@@ -294,6 +294,14 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     }
 
     override fun onError(error: String) {
+        // If we have an active thinking job or are waiting for a response, 
+        // try to trigger a fallback instead of showing a raw error.
+        if (_state.value.brainState == InfomateState.THINKING) {
+            Log.w("INFOMATE_ERROR", "Neural link error: $error. Attempting emergency fallback...")
+            triggerEmergencyFallback(_state.value.input)
+            return
+        }
+
         activeThinkingJob?.cancel()
         activeThinkingJob = null
         
@@ -304,6 +312,30 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                 status = "CORE: ERROR",
                 brainState = InfomateState.ERROR
             ) }
+        }
+    }
+
+    private fun triggerEmergencyFallback(query: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(status = "RE-ROUTING NEURAL PATHWAYS...") }
+            
+            // Try EdgeBrain as the ultimate fail-safe
+            val edgeResponse = EdgeBrain.processLocally(query, getApplication())
+            if (!edgeResponse.isNullOrBlank()) {
+                onToken(edgeResponse)
+                onComplete(edgeResponse)
+                return@launch
+            }
+            
+            // If even Edge fails, try a simple heuristic if it's the Master
+            if (_state.value.isMaster) {
+                val simpleMsg = "I am experiencing a severe neural disconnect, Socrates. I am still here, but my advanced synthesis is currently offline."
+                onToken(simpleMsg)
+                onComplete(simpleMsg)
+            } else {
+                val errorMessage = ChatMessage(content = "SYSTEM: CRITICAL FAILURE - All neural entities offline.", sender = "SYSTEM")
+                _state.update { it.copy(messages = it.messages + errorMessage, brainState = InfomateState.ERROR) }
+            }
         }
     }
 
@@ -979,7 +1011,8 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                 if (_state.value.brainState == InfomateState.THINKING || _state.value.brainState == InfomateState.RESPONDING) {
                     if (StreamController.state != AIState.IDLE) {
                         StreamController.terminateStream()
-                        onError("Neural link failure: AI session exceeded performance threshold.")
+                        // Instead of a raw error, try a final fallback
+                        triggerEmergencyFallback(userInput)
                     }
                 }
             } catch (e: Exception) {
