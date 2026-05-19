@@ -146,7 +146,7 @@ fun NavIcon(icon: ImageVector, tab: DashboardTab, isSelected: Boolean, onSelect:
 
 @Composable
 fun MainChatLayout(state: UIState, vm: AgentViewModel, mediaPickerLauncher: androidx.activity.result.ActivityResultLauncher<PickVisualMediaRequest>) {
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().imePadding()) {
         // Minimal Premium Header
         HeaderSection(
             status = state.status,
@@ -1008,108 +1008,91 @@ fun InputSection(
     vm: AgentViewModel
 ) {
     val isError = state.brainState == com.infomate.core.ui.components.InfomateState.ERROR
+    val isStop = state.brainState == com.infomate.core.ui.components.InfomateState.THINKING || state.brainState == com.infomate.core.ui.components.InfomateState.RESPONDING || state.isSpeaking
 
     Surface(
         color = Obsidian,
         modifier = Modifier.navigationBarsPadding()
     ) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Bottom,
             modifier = Modifier
-                .padding(12.dp)
+                .padding(horizontal = 8.dp, vertical = 8.dp)
                 .fillMaxWidth()
         ) {
-            Surface(
-                color = when {
-                    isError -> CyberCyan.copy(alpha = 0.05f)
-                    isListening -> CyberCyan.copy(alpha = 0.1f)
-                    else -> SilverText.copy(alpha = 0.08f)
-                },
-                shape = RoundedCornerShape(28.dp),
-                border = if (isError) androidx.compose.foundation.BorderStroke(0.5.dp, CyberCyan.copy(alpha = 0.3f)) else null,
-                modifier = Modifier.weight(1f)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 4.dp)
-                ) {
-                    if (!isListening) {
-                        var showMenu by remember { mutableStateOf(false) }
-                        
-                        Box {
-                            IconButton(onClick = { 
-                                if (isError) vm.searchGoogle(input) else showMenu = true 
-                            }) {
-                                Icon(
-                                    imageVector = if (isError) Icons.Default.AutoAwesome else Icons.Filled.Add, 
-                                    contentDescription = "Action", 
-                                    tint = if (isError) CyberCyan else SilverText.copy(alpha = 0.6f)
-                                )
-                            }
-                            
-                            if (!isError) {
-                                DropdownMenu(
-                                    expanded = showMenu,
-                                    onDismissRequest = { showMenu = false },
-                                    modifier = Modifier.background(Obsidian).border(androidx.compose.foundation.BorderStroke(0.5.dp, CyberCyan.copy(alpha = 0.2f)), RoundedCornerShape(8.dp))
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text("Image/Video", color = SilverText) },
-                                        leadingIcon = { Icon(Icons.Filled.Image, contentDescription = null, tint = CyberCyan) },
-                                        onClick = { 
-                                            showMenu = false
-                                            onMediaClick() 
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Manual Knowledge", color = SilverText) },
-                                        leadingIcon = { Icon(Icons.Filled.PostAdd, contentDescription = null, tint = CyberCyan) },
-                                        onClick = { 
-                                            showMenu = false
-                                            vm.setManualKnowledgeDialog(true)
-                                        }
-                                    )
-                                }
-                            }
-                        }
+            // Attachment & Actions
+            if (!isListening) {
+                var showMenu by remember { mutableStateOf(false) }
+                Box {
+                    IconButton(
+                        onClick = { if (isError) vm.searchGoogle(input) else showMenu = true },
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isError) Icons.Default.AutoAwesome else Icons.Default.Add,
+                            contentDescription = "Attach",
+                            tint = if (isError) CyberCyan else SilverText.copy(alpha = 0.6f)
+                        )
                     }
                     
+                    if (!isError) {
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false },
+                            modifier = Modifier.background(Obsidian).border(androidx.compose.foundation.BorderStroke(0.5.dp, CyberCyan.copy(alpha = 0.2f)), RoundedCornerShape(12.dp))
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Image/Video", color = SilverText) },
+                                leadingIcon = { Icon(Icons.Default.Image, contentDescription = null, tint = CyberCyan) },
+                                onClick = { 
+                                    showMenu = false
+                                    onMediaClick() 
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Manual Knowledge", color = SilverText) },
+                                leadingIcon = { Icon(Icons.Default.PostAdd, contentDescription = null, tint = CyberCyan) },
+                                onClick = { 
+                                    showMenu = false
+                                    vm.setManualKnowledgeDialog(true)
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Message Input
+            Surface(
+                color = SilverText.copy(alpha = 0.08f),
+                shape = RoundedCornerShape(24.dp),
+                border = if (isError) androidx.compose.foundation.BorderStroke(0.5.dp, CyberCyan.copy(alpha = 0.3f)) else null,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 4.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.Bottom,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+                ) {
                     TextField(
                         value = if (isListening) "Listening to neural input..." else input,
                         onValueChange = { if (!isListening) onInputChange(it) },
                         modifier = Modifier.weight(1f),
                         placeholder = { 
                             Text(
-                                if (isError) "AI Stabilizing: Global Sync active..." else "Directive...", 
+                                if (isError) "AI Stabilizing: Global Sync active..." else "Message...", 
                                 color = (if (isError) CyberCyan else SilverText).copy(alpha = 0.4f), 
                                 fontSize = 16.sp
                             ) 
                         },
                         readOnly = isListening,
-                        trailingIcon = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (input.isNotEmpty() && !isListening) {
-                                    if (!isError) {
-                                        IconButton(onClick = { vm.searchGoogle(input) }) {
-                                            Icon(
-                                                imageVector = Icons.Default.TravelExplore, 
-                                                contentDescription = "Global Search", 
-                                                tint = CyberCyan.copy(alpha = 0.6f), 
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                        }
-                                    }
-                                    IconButton(onClick = { onInputChange("") }) {
-                                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = SilverText.copy(alpha = 0.4f), modifier = Modifier.size(16.dp))
-                                    }
-                                }
-                            }
-                        },
+                        maxLines = 6,
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
                             unfocusedContainerColor = Color.Transparent,
-                            focusedTextColor = if (isError) CyberCyan else if (isListening) CyberCyan else SilverText,
-                            unfocusedTextColor = if (isError) CyberCyan else if (isListening) CyberCyan else SilverText,
+                            focusedTextColor = if (isError) CyberCyan else SilverText,
+                            unfocusedTextColor = if (isError) CyberCyan else SilverText,
                             focusedIndicatorColor = Color.Transparent,
                             unfocusedIndicatorColor = Color.Transparent
                         )
@@ -1117,27 +1100,19 @@ fun InputSection(
 
                     if (input.isEmpty() && !isListening && !isError) {
                         IconButton(onClick = onCameraClick) {
-                            Icon(Icons.Filled.CameraAlt, contentDescription = "Camera", tint = SilverText.copy(alpha = 0.6f))
+                            Icon(Icons.Default.CameraAlt, contentDescription = "Camera", tint = SilverText.copy(alpha = 0.4f))
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(4.dp))
 
-            val isSend = input.isNotBlank() && !isListening
-            val isStop = state.brainState == com.infomate.core.ui.components.InfomateState.THINKING || state.brainState == com.infomate.core.ui.components.InfomateState.RESPONDING || state.isSpeaking
-            
-            val icon = if (isError) Icons.Default.AutoAwesome
-                      else if (isStop) Icons.Default.Stop 
-                      else if (isSend) Icons.AutoMirrored.Filled.Send
-                      else if (isListening) Icons.Filled.Stop 
-                      else Icons.Filled.Mic
-            
+            // Pulse Animation for Mic
             val infiniteTransition = rememberInfiniteTransition(label = "pulse")
             val pulseScale by infiniteTransition.animateFloat(
                 initialValue = 1f,
-                targetValue = if (input.isEmpty() && !isListening && !isStop) 1.05f else 1f,
+                targetValue = if (input.isEmpty() && !isListening && !isStop) 1.1f else 1f,
                 animationSpec = infiniteRepeatable(
                     animation = tween(1500, easing = FastOutSlowInEasing),
                     repeatMode = RepeatMode.Reverse
@@ -1145,31 +1120,33 @@ fun InputSection(
                 label = "scale"
             )
 
-            IconButton(
+            FloatingActionButton(
                 onClick = {
                     if (isError) vm.searchGoogle(input)
                     else if (isStop) vm.stopAI()
-                    else if (isSend) onSend() 
+                    else if (input.isNotBlank()) onSend() 
                     else onMicToggle()
                 },
+                containerColor = when {
+                    isListening || isStop -> Color.Red
+                    else -> CyberCyan
+                },
+                contentColor = Obsidian,
+                shape = CircleShape,
                 modifier = Modifier
                     .size(48.dp)
                     .graphicsLayer {
                         scaleX = pulseScale
                         scaleY = pulseScale
                     }
-                    .background(
-                        brush = Brush.linearGradient(
-                            when {
-                                isError -> listOf(CyberCyan, NeonBlue)
-                                isListening || isStop -> listOf(Color.Red, Color(0xFFFF5252))
-                                else -> listOf(CyberCyan, NeonBlue)
-                            }
-                        ),
-                        shape = CircleShape
-                    )
             ) {
-                Icon(icon, contentDescription = "Action", tint = Obsidian)
+                val icon = when {
+                    isStop -> Icons.Default.Stop 
+                    input.isNotBlank() && !isListening -> Icons.AutoMirrored.Filled.Send
+                    isListening -> Icons.Default.Stop 
+                    else -> Icons.Default.Mic
+                }
+                Icon(icon, contentDescription = "Action")
             }
         }
     }
@@ -1181,6 +1158,9 @@ fun MessageCard(message: ChatMessage, vm: AgentViewModel) {
     val isSystem = message.sender == "SYSTEM"
     val clipboardManager = LocalClipboardManager.current
     
+    val sdf = remember { java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()) }
+    val timeString = remember(message.timestamp) { sdf.format(java.util.Date(message.timestamp)) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1196,72 +1176,98 @@ fun MessageCard(message: ChatMessage, vm: AgentViewModel) {
     ) {
         Column(
             horizontalAlignment = if (isFromUser) Alignment.End else Alignment.Start,
-            modifier = Modifier.widthIn(max = 320.dp)
+            modifier = Modifier.widthIn(max = 300.dp)
         ) {
             Surface(
                 shape = RoundedCornerShape(
-                    topStart = 24.dp, 
-                    topEnd = 24.dp, 
-                    bottomStart = if (isFromUser) 24.dp else 4.dp,
-                    bottomEnd = if (isFromUser) 4.dp else 24.dp
+                    topStart = 20.dp, 
+                    topEnd = 20.dp, 
+                    bottomStart = if (isFromUser) 20.dp else 2.dp,
+                    bottomEnd = if (isFromUser) 2.dp else 20.dp
                 ),
-                color = if (isFromUser) SilverText.copy(alpha = 0.1f) else if (isSystem) Color.Red.copy(alpha = 0.1f) else Color.Transparent,
+                color = when {
+                    isFromUser -> SilverText.copy(alpha = 0.08f)
+                    isSystem -> Color.Red.copy(alpha = 0.1f)
+                    else -> Obsidian
+                },
                 border = androidx.compose.foundation.BorderStroke(
-                    1.dp,
-                    if (isFromUser) Brush.linearGradient(listOf(SilverText.copy(alpha = 0.2f), Color.Transparent))
-                    else if (isSystem) Brush.linearGradient(listOf(Color.Red.copy(alpha = 0.5f), Color.Transparent))
-                    else Brush.linearGradient(listOf(CyberCyan.copy(alpha = 0.5f), NeonBlue.copy(alpha = 0.2f)))
-                ),
-                modifier = if (!isFromUser && !isSystem) Modifier.background(
-                    Brush.radialGradient(
-                        colors = listOf(CyberCyan.copy(alpha = 0.15f), Color.Transparent),
-                        center = Offset(0f, 0f),
-                        radius = 800f
-                    ),
-                    shape = RoundedCornerShape(24.dp)
-                ) else Modifier
+                    0.5.dp,
+                    when {
+                        isFromUser -> SilverText.copy(alpha = 0.15f)
+                        isSystem -> Color.Red.copy(alpha = 0.3f)
+                        else -> CyberCyan.copy(alpha = 0.3f)
+                    }
+                )
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    if (message.type != MessageType.TEXT && message.mediaUri != null) {
-                        AsyncImage(
-                            model = message.mediaUri,
-                            contentDescription = "Shared Media",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp)
-                                .clip(RoundedCornerShape(12.dp)),
-                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                    } else if (message.type != MessageType.TEXT) {
-                        MediaPlaceholder(message.type)
-                        Spacer(modifier = Modifier.height(12.dp))
+                Column(modifier = Modifier.padding(12.dp)) {
+                    if (message.mediaUri != null) {
+                        Box(modifier = Modifier.clip(RoundedCornerShape(12.dp))) {
+                            AsyncImage(
+                                model = message.mediaUri,
+                                contentDescription = "Shared Media",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 240.dp),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                            )
+                            if (message.type == MessageType.VIDEO) {
+                                Icon(
+                                    Icons.Default.PlayCircleOutline,
+                                    contentDescription = "Video",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(48.dp).align(Alignment.Center)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
                     
                     Text(
                         text = message.content,
                         color = if (isSystem) Color(0xFFFF5252) else SilverText,
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            lineHeight = 24.sp,
-                            letterSpacing = 0.2.sp
+                            lineHeight = 22.sp,
+                            fontSize = 15.sp
                         )
                     )
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
+                    Row(
+                        modifier = Modifier.align(Alignment.End),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = timeString,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = SilverText.copy(alpha = 0.3f),
+                            fontSize = 9.sp
+                        )
+                        if (isFromUser) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                Icons.Default.DoneAll,
+                                contentDescription = null,
+                                tint = CyberCyan.copy(alpha = 0.5f),
+                                modifier = Modifier.size(12.dp)
+                            )
+                        }
+                    }
                 }
             }
             
-            Spacer(modifier = Modifier.height(6.dp))
-            
-            Text(
-                text = message.sender,
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
-                    shadow = Shadow(color = Color.Black, blurRadius = 2f)
-                ),
-                color = if (isFromUser) SilverText.copy(alpha = 0.3f) else if (isSystem) Color.Red.copy(alpha = 0.5f) else CyberCyan.copy(alpha = 0.5f),
-                fontSize = 8.sp,
-                modifier = Modifier.padding(horizontal = 8.dp)
-            )
+            if (!isFromUser && !isSystem) {
+                Text(
+                    text = message.sender,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    ),
+                    color = CyberCyan.copy(alpha = 0.4f),
+                    fontSize = 8.sp,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
         }
     }
 }

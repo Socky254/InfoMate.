@@ -65,7 +65,8 @@ object StreamController {
                 }
                 "error", "phx_error" -> {
                     terminateStream()
-                    UIRenderer.onError(payload?.optString("message", "Neural Link Protocol Error"))
+                    val errorMessage = payload?.optString("message", "Neural Link Protocol Error") ?: "Neural Link Protocol Error"
+                    UIRenderer.onError(errorMessage)
                 }
             }
         } catch (e: Exception) {
