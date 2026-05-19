@@ -75,51 +75,68 @@ object LLMClient {
     }
 
     private fun extractContent(json: JSONObject): String {
-        // Strategy A: Direct fields
-        var content = json.optString("output", "")
-            .ifBlank { json.optString("text", "") }
-            .ifBlank { json.optString("response", "") }
-            .ifBlank { json.optString("message", "") }
-            .ifBlank { json.optString("content", "") }
+        // Strategy 0: Log entire JSON for debugging
+        Log.d("INFOMATE_PARSER", "Attempting extraction from: ${json.toString()}")
 
-        if (content.isNotBlank()) return content
+        // Strategy A: Direct fields (most common for simple custom bridges)
+        val directFields = listOf("output", "text", "response", "message", "content", "result")
+        for (field in directFields) {
+            val value = json.optString(field, "")
+            if (value.isNotBlank() && value != "null") return value
+        }
 
-        // Strategy B: Google Gemini Structure
+        // Strategy B: Google Gemini Structure (candidates[0].content.parts[0].text)
         val candidates = json.optJSONArray("candidates")
         if (candidates != null && candidates.length() > 0) {
             val firstCandidate = candidates.optJSONObject(0)
             val contentObj = firstCandidate?.optJSONObject("content")
             val parts = contentObj?.optJSONArray("parts")
             if (parts != null && parts.length() > 0) {
-                return parts.optJSONObject(0)?.optString("text", "") ?: ""
+                val text = parts.optJSONObject(0)?.optString("text", "") ?: ""
+                if (text.isNotBlank()) return text
             }
         }
 
-        // Strategy C: OpenAI Structure
+        // Strategy C: OpenAI Structure (choices[0].message.content or choices[0].text)
         val choices = json.optJSONArray("choices")
         if (choices != null && choices.length() > 0) {
-            val message = choices.optJSONObject(0)?.optJSONObject("message")
-            return message?.optString("content", "") ?: ""
+            val firstChoice = choices.optJSONObject(0)
+            
+            // Chat Completion (message.content)
+            val message = firstChoice?.optJSONObject("message")
+            val content = message?.optString("content", "") ?: ""
+            if (content.isNotBlank()) return content
+            
+            // Legacy Completion (text)
+            val text = firstChoice?.optString("text", "") ?: ""
+            if (text.isNotBlank()) return text
         }
+
+        // Strategy D: Nested data field (some bridges wrap everything in 'data')
+        val data = json.optJSONObject("data")
+        if (data != null) return extractContent(data)
 
         return ""
     }
 
     private fun validateOutput(text: String): String {
-        // 1. Trim and Remove common identity prefixes (Case Insensitive Regex)
-        // We use a more aggressive approach to strip any leading identity markers or noise
+        // 1. Log the text we are validating
+        Log.d("INFOMATE_VALIDATOR", "Validating: $text")
+
+        // 2. Trim and Remove common identity prefixes (Case Insensitive Regex)
         val cleaned = text.trim()
             .replace(Regex("^(?i)(infomate|iris|system|assistant|ai):\\s*", RegexOption.MULTILINE), "")
             .trim()
         
-        // 2. Detect and handle identity loops or empty responses
+        // 3. Detect and handle identity loops or empty responses
         val lowerCleaned = cleaned.lowercase()
         if (lowerCleaned == "infomate" || lowerCleaned == "iris" || lowerCleaned == "ai" || cleaned.isBlank()) {
+            Log.w("INFOMATE_VALIDATOR", "Detected identity-only or empty response. Triggering fallback.")
             return "My neural link is stable and I am fully synchronized, Socrates. I am ready for your next directive or search request."
         }
 
-        // 3. Ensure response has meaningful substance
-        return if (cleaned.length > 2) {
+        // 4. Ensure response has meaningful substance
+        return if (cleaned.length > 1) {
             cleaned
         } else {
             "I'm here and operational, Socrates. How can I assist you further?"

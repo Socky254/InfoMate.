@@ -10,7 +10,9 @@ serve(async (req) => {
 
   try {
     const { prompt } = await req.json()
-    const apiKey = Deno.env.get('AI_API_KEY')
+    const apiKey = Deno.env.get('GEMINI_API_KEY') || Deno.env.get('AI_API_KEY')
+
+    console.log(`Processing prompt: ${prompt?.substring(0, 50)}...`)
 
     // Gemini API v1beta endpoint
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
