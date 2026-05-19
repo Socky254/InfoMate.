@@ -8,11 +8,19 @@ import com.infomate.app.agent.HealthSeverity
 import org.json.JSONObject
 
 object LLMClient {
+    private val responseCache = mutableMapOf<String, String>()
+
     /**
      * Highly resilient generator that handles various AI API structures.
      * Prevents "No intelligent output detected" by using a multi-strategy parsing approach.
      */
     suspend fun generate(prompt: String): String {
+        // 0. Cache Lookup
+        if (responseCache.containsKey(prompt)) {
+            Log.d("INFOMATE_CACHE", "Returning cached response for prompt")
+            return responseCache[prompt]!!
+        }
+
         val params = mapOf("prompt" to prompt)
         val response = SupabaseClient.callFunction("infomate-brain", params)
         
@@ -59,14 +67,19 @@ object LLMClient {
             // 4. MULTI-STRATEGY CONTENT EXTRACTION
             val result = extractContent(json)
 
-            if (result.isNotBlank()) {
-                HealthManager.logHealth(HealthManager.CAT_PARSER, HealthState.ONLINE, "Defensive Parsing Successful", HealthSeverity.STABLE)
-                validateOutput(result)
-            } else {
-                Log.w("INFOMATE_PARSING", "Could not extract text from JSON. Raw: $trimmedResponse")
-                HealthManager.logHealth(HealthManager.CAT_PARSER, HealthState.DEGRADED, "ERR_PARSE_NULL: Content fields empty", HealthSeverity.CRITICAL)
-                "INFOMATE: The neural output was malformed. Diagnostic code: ERR_PARSE_NULL"
-            }
+                val finalOutput = if (result.isNotBlank()) {
+                    HealthManager.logHealth(HealthManager.CAT_PARSER, HealthState.ONLINE, "Defensive Parsing Successful", HealthSeverity.STABLE)
+                    validateOutput(result)
+                } else {
+                    Log.w("INFOMATE_PARSING", "Could not extract text from JSON. Raw: $trimmedResponse")
+                    HealthManager.logHealth(HealthManager.CAT_PARSER, HealthState.DEGRADED, "ERR_PARSE_NULL: Content fields empty", HealthSeverity.CRITICAL)
+                    "INFOMATE: The neural output was malformed. Diagnostic code: ERR_PARSE_NULL"
+                }
+
+                if (!finalOutput.contains("ERROR") && !finalOutput.contains("malformed")) {
+                    responseCache[prompt] = finalOutput
+                }
+                return finalOutput
         } catch (e: Exception) {
             Log.e("INFOMATE_PARSING", "JSON Parsing Exception: ${e.message}")
             HealthManager.logHealth(HealthManager.CAT_PARSER, HealthState.DEGRADED, "ERR_JSON_FAIL: ${e.message}", HealthSeverity.CRITICAL)

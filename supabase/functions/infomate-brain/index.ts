@@ -14,8 +14,8 @@ serve(async (req) => {
 
     console.log(`Processing prompt: ${prompt?.substring(0, 50)}...`)
 
-    // Upgraded to Gemini 2.0 Flash for superior performance and stability
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`
+    // Upgraded to Gemini 2.0 Flash Lite for best cost/performance and free tier stability
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`
 
     const response = await fetch(url, {
       method: 'POST',
