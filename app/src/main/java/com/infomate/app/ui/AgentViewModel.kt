@@ -22,6 +22,7 @@ import com.infomate.app.core.network.SupabaseClient
 import com.infomate.app.ai.sdk.AIEventsListener
 import com.infomate.app.ai.sdk.AIState
 import com.infomate.app.ai.sdk.ReliabilitySDK
+import com.infomate.app.ai.sdk.StreamController
 import com.infomate.app.ai.sdk.UIRenderer
 import com.infomate.app.core.config.Config
 import com.infomate.core.brain.ReasoningEngine
