@@ -34,7 +34,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil3.compose.AsyncImage
+import coil.compose.AsyncImage
 import com.infomate.core.ui.components.BrainVisualizer
 import com.infomate.core.ui.components.LiveThinkingView
 import com.infomate.core.ui.theme.*
