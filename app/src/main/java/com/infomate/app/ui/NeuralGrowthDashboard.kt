@@ -61,7 +61,7 @@ fun NeuralGrowthDashboard(state: UIState, onDismiss: () -> Unit) {
             Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
                 NeuralDensityCircle(state.neuralDensity)
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("${(state.neuralDensity * 100).toInt()}%", color = CyberCyan, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+                    Text("${(state.neuralDensity * 100f).toInt()}%", color = CyberCyan, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
                     Text("NEURAL DENSITY", color = CyberCyan.copy(alpha = 0.5f), style = MaterialTheme.typography.labelSmall)
                 }
             }

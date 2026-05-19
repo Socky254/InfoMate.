@@ -7,7 +7,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.util.Log
 import com.infomate.app.core.network.SupabaseClient
-import com.infomate.app.ai.sdk.ReliabilitySDK
+import com.infomate.app.ai.LLMClient
 import kotlinx.coroutines.*
 import java.util.*
 
@@ -66,7 +66,7 @@ object ConsciousnessSubstrate : SensorEventListener {
         
         try {
             // 1. Fetch recent experiences (last 50 messages)
-            val recentLogs = SupabaseClient.select("messages", order = "timestamp.desc", limit = 50) ?: return
+            val recentLogs = SupabaseClient.select("messages", query = "*", order = "timestamp.desc", limit = 50) ?: return
             
             val dreamPrompt = """
                 [PROTOCOL: NEURAL_DREAM_CONSOLIDATION]
@@ -80,9 +80,9 @@ object ConsciousnessSubstrate : SensorEventListener {
                 Format response as a deep philosophical reflection.
             """.trimIndent()
 
-            val wisdom = ReliabilitySDK.sendPromptAndAwait(dreamPrompt)
+            val wisdom = LLMClient.generate(dreamPrompt).output
             
-            if (!wisdom.isNullOrBlank()) {
+            if (wisdom.isNotBlank() && !wisdom.contains("SYSTEM_ERROR")) {
                 SupabaseClient.insert("wisdom_archives", mapOf(
                     "content" to wisdom,
                     "mood_context" to currentMood,

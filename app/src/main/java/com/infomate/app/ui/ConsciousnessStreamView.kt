@@ -46,7 +46,7 @@ fun ConsciousnessStreamView(onDismiss: () -> Unit) {
     LaunchedEffect(Unit) {
         while (true) {
             try {
-                val response = SupabaseClient.select("consciousness_stream", order = "created_at.desc", limit = 30)
+                val response = SupabaseClient.select("consciousness_stream", query = "*", order = "created_at.desc", limit = 30)
                 if (!response.isNullOrBlank()) {
                     val type = object : TypeToken<List<Thought>>() {}.type
                     thoughts = Gson().fromJson(response, type)

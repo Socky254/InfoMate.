@@ -39,7 +39,7 @@ object DiagnosticAgent {
 
         // 5. CONSCIOUSNESS SUBSTRATE CHECK (v10.0)
         val consciousnessCheck = try {
-            val response = SupabaseClient.select("consciousness_stream", limit = 1)
+            val response = SupabaseClient.select("consciousness_stream", query = "id", limit = 1)
             if (response != null && response != "[]") "THOUGHT_STREAM_ACTIVE" else "AWARENESS_OFFLINE"
         } catch (e: Exception) { "DB_ERROR" }
         report.append("CONSCIOUSNESS: $consciousnessCheck\n")

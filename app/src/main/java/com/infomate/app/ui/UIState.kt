@@ -59,7 +59,6 @@ data class UIState(
     val onConfirmAction: (() -> Unit)? = null,
     val terminalLogs: List<SystemLog> = emptyList(),
     val neuralDensity: Float = 0.0f, // 0.0 to 1.0
-    val neuralDensity: Float = 0.0f, // 0.0 to 1.0
     val totalInsights: Int = 0,
     val syntheticPersonalityLevel: Int = 1, // Evolution stage
     val telemetryHistory: List<Float> = List(10) { 0.5f }, // For charts

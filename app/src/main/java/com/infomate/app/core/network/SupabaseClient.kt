@@ -83,9 +83,17 @@ object SupabaseClient {
         }
     }
 
-    suspend fun select(table: String, query: String = "*", order: String = "timestamp.desc"): String? = withContext(Dispatchers.IO) {
+    suspend fun select(
+        table: String,
+        query: String = "*",
+        order: String = "timestamp.desc",
+        limit: Int? = null
+    ): String? = withContext(Dispatchers.IO) {
+        val urlBuilder = StringBuilder("${Config.SUPABASE_URL}/rest/v1/$table?select=$query&order=$order")
+        limit?.let { urlBuilder.append("&limit=$it") }
+        
         val request = Request.Builder()
-            .url("${Config.SUPABASE_URL}/rest/v1/$table?select=$query&order=$order")
+            .url(urlBuilder.toString())
             .addHeader("apikey", Config.SUPABASE_KEY)
             .addHeader("Authorization", "Bearer ${userToken ?: Config.SUPABASE_KEY}")
             .get()
