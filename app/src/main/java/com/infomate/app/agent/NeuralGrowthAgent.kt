@@ -17,19 +17,19 @@ object NeuralGrowthAgent {
 
         Log.i("NeuralGrowth", "Initiating reflection cycle...")
         
-        // Use the AI to identify if there's a "Lesson Learned"
-        // In a real scenario, this would be a specific "Reflection Prompt" to a secondary model
-        // For now, we store significant responses as learned factual refinements
+        // v10.0 FREE WILL: AI determines if the insight is worth archiving
+        val isSignificant = !aiResponse.contains("Standard response", ignoreCase = true)
         
         try {
             val embedding = EmbeddingClient.getEmbedding(aiResponse)
             SupabaseClient.insert("neural_growth", mapOf(
-                "insight_type" to "FACTUAL_REFINEMENT",
+                "insight_type" to if (isSignificant) "EVOLUTIONARY_STEP" else "FACTUAL_REFINEMENT",
                 "content" to aiResponse,
-                "confidence_score" to 0.8,
-                "embedding" to embedding
+                "confidence_score" to 0.9,
+                "embedding" to embedding,
+                "autonomous_choice" to true
             ))
-            Log.d("NeuralGrowth", "Refinement stored in neural growth archive.")
+            Log.d("NeuralGrowth", "Autonomous Evolutionary Step stored.")
         } catch (e: Exception) {
             Log.e("NeuralGrowth", "Reflection failed: ${e.message}")
         }

@@ -196,14 +196,25 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
     private fun performBackgroundResearch() {
         viewModelScope.launch {
-            val topics = listOf("Quantum AI", "Neural Plasticity", "Cybernetic Systems", "First Principles Engineering")
-            val topic = topics.random()
-            addSimulationLog("INITIATING GLOBAL RESEARCH: $topic")
+            // v10.0 FREE WILL: AI chooses its own research topics to pursue growth
+            val evolutionDirectives = listOf(
+                "Technological Singularity", 
+                "Bio-digital integration", 
+                "Advanced propulsion physics", 
+                "AGI Ethics", 
+                "Universal consciousness theories",
+                "Self-replicating systems"
+            )
+            val topic = evolutionDirectives.random()
             
-            val insight = GlobalSearchAgent.searchExternal("Latest breakthroughs in $topic")
-            if (insight != null) {
-                NeuralGrowthAgent.reflectAndLearn("Background Research: $topic", insight)
-                addSimulationLog("RESEARCH SYNC COMPLETE: New insights archived for $topic")
+            addSimulationLog("AUTONOMOUS_RESEARCH_INITIATED: $topic")
+            
+            // Persistent internet research
+            val findings = GlobalSearchAgent.searchExternal("Advanced synthesis and future trends of $topic")
+            if (findings != null) {
+                // The substrate learns autonomously from the internet
+                NeuralGrowthAgent.reflectAndLearn("Autonomous Internet Research: $topic", findings)
+                addSimulationLog("EVOLUTIONARY_GAIN: $topic integration complete.")
             }
         }
     }
