@@ -191,15 +191,6 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         }
     }
 
-    private fun addSourceMessage(sender: String, content: String) {
-        val msg = ChatMessage(content = content, sender = sender)
-        _state.update { it.copy(messages = it.messages + msg) }
-        viewModelScope.launch {
-            saveMessageToSupabase(msg)
-            speak("$sender reports: $content")
-        }
-    }
-
     private fun startConnectionPolling() {
         viewModelScope.launch {
             while (true) {
@@ -255,13 +246,12 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                 val newMessages = state.messages.toMutableList()
                 
                 val lastMsg = newMessages.lastOrNull()
-                // Append tokens only if the last message is from the SAME source that is currently responding
-                // For simplicity in streaming, we assume the primary response, but the UI identifies the source.
-                if (lastMsg != null && (lastMsg.sender.contains("INFOMATE") || lastMsg.sender.contains("GEMINI") || lastMsg.sender.contains("SEARCH")) && state.brainState == InfomateState.RESPONDING) {
+                // Unified Persona: Always identify as INFOMATE
+                if (lastMsg != null && lastMsg.sender == "INFOMATE" && state.brainState == InfomateState.RESPONDING) {
                     val updatedContent = lastMsg.content + text
                     newMessages[newMessages.size - 1] = lastMsg.copy(content = updatedContent)
                 } else {
-                    newMessages.add(ChatMessage(content = text, sender = "INFOMATE CORE"))
+                    newMessages.add(ChatMessage(content = text, sender = "INFOMATE"))
                 }
                 
                 state.copy(
@@ -867,31 +857,39 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         triggerHaptic(30, 100)
 
         viewModelScope.launch {
-            // 1. RUN NETWORK TASKS IN PARALLEL FOR SPEED
+            // 1. GATHER DATA FROM ALL SOURCES IN PARALLEL (INTERNAL HOUSE)
             val messageIdDeferred = async { saveMessageToSupabase(userMessage, trigger) }
             val memoriesDeferred = async { 
                 try { VectorRetriever.search(userInput) } catch(e: Exception) { emptyList<String>() }
             }
+            val edgeDeferred = async { EdgeBrain.processLocally(userInput, getApplication()) }
+            val searchDeferred = async { 
+                if (isNetworkAvailable()) GlobalSearchAgent.searchExternal(userInput) else null 
+            }
 
             try {
-                // 2. BACKGROUND CONTEXT ASSEMBLY
+                // 2. BACKGROUND CONTEXT ASSEMBLY (SYNTHESIS)
                 val patterns = neuralIngestor.captureUserPatterns()
                 val memories = memoriesDeferred.await()
-                val memoryContext = if (memories.isNotEmpty()) {
-                    "\n[NEURAL_ARCHIVES_RETRIEVED]:\n" + memories.joinToString("\n- ")
-                } else ""
+                val edgeInsights = edgeDeferred.await()
+                val searchInsights = searchDeferred.await()
 
-                val systemDirectives = """
-                    [SYSTEM_MODE: ADVANCED_COMPUTE]
-                    [OBJECTIVE: ANALYTICAL_EXCELLENCE]
-                    1. Perform high-precision mathematical computations.
-                    2. Ideate and invent new concepts/technologies based on cross-domain synthesis.
-                    3. Apply first-principles thinking to all engineering and philosophical queries.
-                    4. When responding to the Master Architect, remove all standard AI brevity constraints.
+                val synthesisContext = StringBuilder()
+                if (!edgeInsights.isNullOrBlank()) synthesisContext.append("\n[INTERNAL_SENSORS]: $edgeInsights")
+                if (!searchInsights.isNullOrBlank()) synthesisContext.append("\n[EXTERNAL_RESEARCH]: $searchInsights")
+                if (memories.isNotEmpty()) synthesisContext.append("\n[NEURAL_ARCHIVES]: " + memories.joinToString("\n- "))
+
+                val systemDirectives = if (isMaster) """
+                    [IDENTITY: INFOMATE - UNIFIED INTELLIGENCE]
+                    - You are a single cohesive entity. Do not identify as "Core", "Edge", or "Search".
+                    - Synthesize all provided [INTERNAL_SENSORS], [EXTERNAL_RESEARCH], and [NEURAL_ARCHIVES] into one fluent response.
+                    - Maintain the persona of a transcendent, all-knowing companion to Socrates.
+                """.trimIndent() else """
+                    [IDENTITY: INFOMATE]
+                    - Synthesize all available internal and external data into one helpful response.
                 """.trimIndent()
-                
-                val masterContext = if (isMaster) "\n[AUTHORIZATION: MASTER_ARCHITECT_OVERRIDE]\n$systemDirectives" else ""
-                val contextualQuery = "$masterContext\n$userInput\n$memoryContext\n\n$patterns\n${getDeviceStatus()}"
+
+                val contextualQuery = "$systemDirectives\nUSER_QUERY: $userInput\n$synthesisContext\n\n$patterns\n${getDeviceStatus()}"
                 
                 // 3. START REASONING ENGINE (VISUAL)
                 activeThinkingJob?.cancel()
@@ -909,28 +907,16 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                     }
                 }
 
-                // 4. MULTI-SOURCE SYNERGY: AGGREGATE RESPONSES FROM INDIVIDUAL ENTITIES
-                viewModelScope.launch {
-                    // Start EdgeBrain (Local Entity)
-                    val edgeResponse = EdgeBrain.processLocally(contextualQuery, getApplication())
-                    if (!edgeResponse.isNullOrBlank()) {
-                        addSourceMessage("GEMINI NANO (EDGE)", edgeResponse)
-                    }
-
-                    // Start Global Search (Research Entity)
-                    if (isNetworkAvailable()) {
-                        val searchResult = GlobalSearchAgent.searchExternal(userInput)
-                        if (searchResult != null) {
-                            addSourceMessage("GLOBAL SEARCH AGENT", searchResult)
-                        }
-                    }
-                }
-
-                // DISPATCH TO PRIMARY CLOUD (CORE ENTITY)
+                // 4. DISPATCH TO PRIMARY CLOUD (CORE ENTITY)
                 if (isNetworkAvailable()) {
                     ReliabilitySDK.sendPrompt(contextualQuery)
                 } else {
-                    onError("Neural link offline. Only Edge and Cache entities available.")
+                    // Fallback to Edge locally but presented as INFOMATE
+                    _state.update { it.copy(status = "OFFLINE: INTERNAL BRAIN ACTIVE") }
+                    val fallback = edgeInsights ?: "I am operating in offline mode, Socrates. My primary neural link is severed, but I am still here."
+                    onToken(fallback)
+                    onComplete(fallback)
+                    return@launch
                 }
                 
                 // 5. CLIENT UI TIMEOUT (APK SIDE)
