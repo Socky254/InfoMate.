@@ -466,7 +466,22 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
     fun toggleMasterDashboard(show: Boolean) {
         if (_state.value.isMaster) {
-            _state.update { it.copy(showMasterDashboard = show) }
+            if (show) {
+                _state.update { it.copy(showPinEntry = true) }
+            } else {
+                _state.update { it.copy(showMasterDashboard = false, showPinEntry = false) }
+            }
+        }
+    }
+
+    fun verifyMasterPin(pin: String): Boolean {
+        return if (pin == _state.value.masterPin) {
+            _state.update { it.copy(showMasterDashboard = true, showPinEntry = false) }
+            pulseSuccess()
+            true
+        } else {
+            triggerHaptic(200, 255)
+            false
         }
     }
 

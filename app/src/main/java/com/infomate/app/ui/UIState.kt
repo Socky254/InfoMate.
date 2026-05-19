@@ -38,5 +38,7 @@ data class UIState(
     val userEmail: String? = null,
     val pendingUpdate: com.infomate.app.core.UpdateInfo? = null,
     val showManualKnowledgeDialog: Boolean = false,
-    val showMasterDashboard: Boolean = false
+    val showMasterDashboard: Boolean = false,
+    val showPinEntry: Boolean = false,
+    val masterPin: String = "kiprutoArtK194!!"
 )

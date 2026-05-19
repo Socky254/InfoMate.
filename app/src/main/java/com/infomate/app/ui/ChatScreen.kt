@@ -265,6 +265,13 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                     onDismiss = { vm.toggleMasterDashboard(false) }
                 )
             }
+
+            if (state.showPinEntry) {
+                PinEntryDialog(
+                    onVerify = { pin -> vm.verifyMasterPin(pin) },
+                    onDismiss = { vm.toggleMasterDashboard(false) }
+                )
+            }
         }
     }
 }
