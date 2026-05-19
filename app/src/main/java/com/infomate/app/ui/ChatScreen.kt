@@ -843,14 +843,6 @@ fun InputSection(
                                         vm.setManualKnowledgeDialog(true)
                                     }
                                 )
-                                DropdownMenuItem(
-                                    text = { Text("Rate App", color = SilverText) },
-                                    leadingIcon = { Icon(Icons.Filled.Star, contentDescription = null, tint = CyberCyan) },
-                                    onClick = {
-                                        showMenu = false
-                                        vm.rateApp()
-                                    }
-                                )
                             }
                         }
                     }

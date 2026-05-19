@@ -19,8 +19,6 @@ import android.speech.tts.UtteranceProgressListener
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import android.util.Log
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableStateFlow
 import com.infomate.app.agent.AgentOrchestrator
 import com.infomate.app.agent.EdgeBrain
 import com.infomate.app.core.NeuralIngestor
@@ -520,24 +518,6 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     fun completeOnboarding() {
         com.infomate.app.storage.PersistenceManager.setOnboardingComplete(getApplication(), true)
         _state.update { it.copy(needsOnboarding = false) }
-    }
-
-    fun rateApp() {
-        val packageName = getApplication<Application>().packageName
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            data = android.net.Uri.parse("market://details?id=$packageName")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        try {
-            getApplication<Application>().startActivity(intent)
-        } catch (e: Exception) {
-            // Fallback to browser if Play Store is not installed
-            val webIntent = Intent(Intent.ACTION_VIEW).apply {
-                data = android.net.Uri.parse("https://play.google.com/store/apps/details?id=$packageName")
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            getApplication<Application>().startActivity(webIntent)
-        }
     }
 
     fun setManualKnowledgeDialog(show: Boolean) {

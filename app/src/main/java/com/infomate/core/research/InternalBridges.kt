@@ -16,8 +16,6 @@ object LLMClient {
     }
 }
 
-import kotlinx.coroutines.runBlocking
-
 object MemoryRepository {
     private var archive: CognitiveArchive? = null
     
@@ -25,8 +23,8 @@ object MemoryRepository {
         archive = cognitiveArchive
     }
 
-    fun getAll(): List<String> = runBlocking {
-        archive?.getRecentTopics() ?: emptyList()
+    fun getAll(): List<String> {
+        return archive?.getRecentTopicsDetailed()?.map { it.concept } ?: emptyList()
     }
 
     fun search(query: String): String {

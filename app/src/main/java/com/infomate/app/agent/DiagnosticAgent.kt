@@ -40,10 +40,6 @@ object DiagnosticAgent {
         return report.toString()
     }
 
-    suspend fun runFullDiagnostic(): String {
-        return "NEURAL_LINK: ACTIVE\nBACKEND_SYNC: OPERATIONAL\nNEURAL_ARCHIVE: SYNCED\nPROACTIVE_COGNITION: ENABLED\nVOICE_SYNTHESIS: OPTIMIZED"
-    }
-
     suspend fun triggerAutoRepair(report: String): String {
         val repairs = mutableListOf<String>()
         
