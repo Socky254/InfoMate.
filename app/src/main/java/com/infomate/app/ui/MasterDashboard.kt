@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -366,4 +367,58 @@ fun PinEntryDialog(onVerify: (String) -> Unit, onDismiss: () -> Unit) {
         containerColor = Obsidian,
         shape = RoundedCornerShape(24.dp)
     )
+}
+
+@Composable
+fun DashboardSection(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White.copy(alpha = 0.03f), RoundedCornerShape(16.dp))
+            .border(0.5.dp, CyberCyan.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
+            .padding(20.dp)
+    ) {
+        Text(
+            title,
+            color = CyberCyan.copy(alpha = 0.7f),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 1.sp
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        content()
+    }
+}
+
+@Composable
+fun DashboardActionCard(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, color: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        color = Color.White.copy(alpha = 0.05f),
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, color.copy(alpha = 0.3f)),
+        modifier = modifier
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(label, color = color, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+fun HealthMetric(label: String, value: String, color: Color) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, color = SilverText, style = MaterialTheme.typography.bodySmall)
+        Text(value, color = color, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+    }
 }
