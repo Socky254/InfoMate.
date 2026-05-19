@@ -147,9 +147,15 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         viewModelScope.launch {
             while (true) {
                 if (_state.value.showMasterDashboard) {
+                    val engine = com.infomate.app.agent.ConsciousnessEngine
                     _state.update { it.copy(
-                        isSubstrateAwake = com.infomate.app.agent.ConsciousnessEngine.isAwake,
-                        substrateLastPulse = com.infomate.app.agent.ConsciousnessEngine.lastHeartbeat
+                        isSubstrateAwake = engine.isAwake,
+                        substrateLastPulse = engine.lastHeartbeat,
+                        personalityTraits = engine.personality.mapValues { t -> t.value.level },
+                        energyLevel = engine.energyLevel,
+                        evolutionStage = engine.evolutionStage,
+                        experiencePoints = engine.totalExperiences,
+                        discoveriesCount = engine.totalDiscoveries
                     ) }
                 }
                 delay(2000)
@@ -869,6 +875,12 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     fun toggleEvolutionLog(show: Boolean) {
         if (_state.value.isMaster) {
             _state.update { it.copy(showEvolutionLog = show) }
+        }
+    }
+
+    fun toggleVitalSigns(show: Boolean) {
+        if (_state.value.isMaster) {
+            _state.update { it.copy(showVitalSigns = show) }
         }
     }
 

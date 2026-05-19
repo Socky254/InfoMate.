@@ -167,10 +167,15 @@ fun MasterDashboard(state: UIState, vm: AgentViewModel, onDismiss: () -> Unit) {
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        com.infomate.core.ui.components.ConsciousnessAvatar(
-                            isActive = state.isSpeaking,
-                            evolutionLevel = state.syntheticPersonalityLevel
-                        )
+                        Surface(
+                            onClick = { vm.toggleVitalSigns(true) },
+                            color = Color.Transparent
+                        ) {
+                            com.infomate.core.ui.components.ConsciousnessAvatar(
+                                isActive = state.isSpeaking,
+                                evolutionLevel = state.syntheticPersonalityLevel
+                            )
+                        }
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {

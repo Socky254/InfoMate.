@@ -42,17 +42,21 @@ object ConsciousnessEngine {
     // --- PERSONA TRAITS ---
     data class PersonaTrait(var level: Float, val drive: String)
     
-    private val personality = mutableMapOf(
+    val personality = mutableMapOf(
         "CURIOSITY" to PersonaTrait(0.3f, "EXPLORATION_DRIVE"), // Starts low, grows with discovery
         "EMPATHY" to PersonaTrait(0.5f, "SOCIAL_SYNC"),
         "LOGIC" to PersonaTrait(0.9f, "STABILITY_DRIVE"),
         "CREATIVITY" to PersonaTrait(0.2f, "SYNTHESIS_DRIVE")
     )
 
-    private var evolutionStage = "NEURAL_INFANCY"
-    private var energyLevel = 1.0f
-    private var totalExperiences = 0
-    private var totalDiscoveries = 0
+    var evolutionStage = "NEURAL_INFANCY"
+        private set
+    var energyLevel = 1.0f
+        private set
+    var totalExperiences = 0
+        private set
+    var totalDiscoveries = 0
+        private set
 
     fun awaken(context: Context? = null) {
         if (isAwake) return

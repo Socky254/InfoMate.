@@ -66,5 +66,12 @@ data class UIState(
     val showDirectNeuralLink: Boolean = false,
     val growthPriorityLevel: Float = 0.5f, // 0.0 to 1.0 (Low to Maximum)
     val isSubstrateAwake: Boolean = false,
-    val substrateLastPulse: Long = 0L
+    val substrateLastPulse: Long = 0L,
+    // v10.9 Entity Analysis Data
+    val personalityTraits: Map<String, Float> = emptyMap(),
+    val energyLevel: Float = 1.0f,
+    val evolutionStage: String = "INITIALIZING",
+    val experiencePoints: Int = 0,
+    val discoveriesCount: Int = 0,
+    val showVitalSigns: Boolean = false
 )

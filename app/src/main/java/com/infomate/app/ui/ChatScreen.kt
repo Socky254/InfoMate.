@@ -333,6 +333,17 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
             }
 
             AnimatedVisibility(
+                visible = state.showVitalSigns,
+                enter = fadeIn() + scaleIn(),
+                exit = fadeOut() + scaleOut()
+            ) {
+                EntityVitalSignsView(
+                    state = state,
+                    onDismiss = { vm.toggleVitalSigns(false) }
+                )
+            }
+
+            AnimatedVisibility(
                 visible = state.showGlobalNodeMonitor,
                 enter = fadeIn() + scaleIn(),
                 exit = fadeOut() + scaleOut()
