@@ -3,6 +3,8 @@ package com.infomate.app.ui
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
@@ -18,6 +20,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import android.util.Log
 import com.infomate.app.agent.AgentOrchestrator
+import com.infomate.app.agent.EdgeBrain
 import com.infomate.app.core.NeuralIngestor
 import com.infomate.app.core.network.SupabaseClient
 import com.infomate.app.ai.sdk.AIEventsListener
@@ -26,6 +29,7 @@ import com.infomate.app.ai.sdk.ReliabilitySDK
 import com.infomate.app.ai.sdk.StreamController
 import com.infomate.app.ai.sdk.UIRenderer
 import com.infomate.app.core.config.Config
+import com.infomate.app.rag.VectorRetriever
 import com.infomate.core.brain.ReasoningEngine
 import com.infomate.core.ui.components.InfomateState
 import com.google.gson.Gson
@@ -91,6 +95,18 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         val level = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
         val time = java.text.SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
         return "[SYSTEM_CONTEXT: Battery $level%, Time $time, ComputeProfile: HIGH_PRECISION]"
+    }
+
+    private fun isNetworkAvailable(): Boolean {
+        val connectivityManager = getApplication<Application>().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = connectivityManager.activeNetwork ?: return false
+        val activeNetwork = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return when {
+            activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> true
+            activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> true
+            activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> true
+            else -> false
+        }
     }
 
     private var activeThinkingJob: Job? = null
@@ -231,6 +247,10 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             }
             _state.update { it.copy(status = status) }
         }
+    }
+
+    override fun onQuotaUpdate(quota: QuotaInfo) {
+        _state.update { it.copy(quota = quota) }
     }
 
     private fun loadSessionData() {
@@ -374,7 +394,9 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             messages = it.messages + assistantMessage,
             brainState = InfomateState.RESPONDING
         ) }
-        saveMessageToSupabase(assistantMessage, "Hey Infomate")
+        viewModelScope.launch {
+            saveMessageToSupabase(assistantMessage, "Hey Infomate")
+        }
         speak(greeting)
     }
 
@@ -438,6 +460,37 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         _state.update { it.copy(needsOnboarding = false) }
     }
 
+    fun setManualKnowledgeDialog(show: Boolean) {
+        _state.update { it.copy(showManualKnowledgeDialog = show) }
+    }
+
+    fun toggleMasterDashboard(show: Boolean) {
+        if (_state.value.isMaster) {
+            _state.update { it.copy(showMasterDashboard = show) }
+        }
+    }
+
+    fun saveManualKnowledge(title: String, content: String) {
+        if (content.isBlank()) return
+        
+        viewModelScope.launch {
+            _state.update { it.copy(status = "ARCHIVING MANUAL DATA...", showManualKnowledgeDialog = false) }
+            
+            try {
+                SupabaseClient.insert("manual_knowledge", mapOf(
+                    "title" to title,
+                    "content" to content,
+                    "created_at" to System.currentTimeMillis()
+                ))
+                
+                _state.update { it.copy(status = "DATA ARCHIVED SUCCESSFULLY") }
+                pulseSuccess()
+            } catch (e: Exception) {
+                onError("Failed to archive knowledge: ${e.message}")
+            }
+        }
+    }
+
     private fun startSpectrumAnimation() {
         spectrumJob?.cancel()
         // Use a dedicated low-priority interval for UI eye-candy
@@ -496,7 +549,9 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             mediaUri = uri
         )
         _state.update { it.copy(messages = it.messages + mediaMessage) }
-        saveMessageToSupabase(mediaMessage)
+        viewModelScope.launch {
+            saveMessageToSupabase(mediaMessage)
+        }
 
         if (type == MessageType.IMAGE) {
             analyzeVisualInput(uri)
@@ -629,11 +684,17 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         
         triggerHaptic(30, 100)
 
-        saveMessageToSupabase(userMessage, trigger)
-
         viewModelScope.launch {
+            val messageId = saveMessageToSupabase(userMessage, trigger)
+
             try {
-                // Background Context Gathering
+                // 1. Semantic Retrieval (RAG)
+                val memories = VectorRetriever.search(userInput)
+                val memoryContext = if (memories.isNotEmpty()) {
+                    "\n[NEURAL_ARCHIVES_RETRIEVED]:\n" + memories.joinToString("\n- ")
+                } else ""
+
+                // 2. Background Context Gathering
                 val patterns = neuralIngestor.captureUserPatterns()
                 val isMaster = _state.value.userEmail == "socratesart@live"
                 
@@ -648,15 +709,35 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                 """.trimIndent()
                 
                 val masterContext = if (isMaster) "\n[AUTHORIZATION: MASTER_ARCHITECT_OVERRIDE]\n$systemDirectives" else ""
-                val contextualQuery = "$masterContext\n$userInput\n\n$patterns\n${getDeviceStatus()}"
+                val contextualQuery = "$masterContext\n$userInput\n$memoryContext\n\n$patterns\n${getDeviceStatus()}"
                 
                 activeThinkingJob?.cancel()
                 activeThinkingJob = launch {
+                    var stepCount = 0
                     reasoningEngine.streamReasoning(userInput).collect { step ->
                         triggerHaptic(5, 30) 
                         _state.update { s ->
                             s.copy(cognitiveSteps = s.cognitiveSteps + step)
                         }
+                        
+                        // Save cognitive log to Supabase
+                        if (messageId != null) {
+                            saveCognitiveLog(messageId, step, stepCount++)
+                        }
+                    }
+                }
+
+                // 3. Edge Fallback Logic (v10.0 INVINCIBLE)
+                if (!isNetworkAvailable()) {
+                    _state.update { it.copy(status = "OFFLINE: EDGE BRAIN ACTIVE") }
+                    val edgeResponse = EdgeBrain.processLocally(contextualQuery, getApplication())
+                    if (edgeResponse != null) {
+                        onToken(edgeResponse)
+                        onComplete(edgeResponse)
+                        return@launch
+                    } else {
+                        onError("Neural link offline and Edge Brain data missing.")
+                        return@launch
                     }
                 }
 
@@ -702,16 +783,34 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         }
     }
 
-    private fun saveMessageToSupabase(message: ChatMessage, trigger: String? = null) {
-        viewModelScope.launch {
-            SupabaseClient.insert("messages", mapOf(
-                "content" to message.content,
-                "sender" to message.sender,
-                "message_type" to message.type.name,
-                "trigger_phrase" to (trigger ?: ""),
-                "timestamp" to message.timestamp
-            ))
+    private suspend fun saveMessageToSupabase(message: ChatMessage, trigger: String? = null): String? {
+        val response = SupabaseClient.insert("messages", mapOf(
+            "content" to message.content,
+            "sender" to message.sender,
+            "message_type" to message.type.name,
+            "trigger_phrase" to (trigger ?: ""),
+            "timestamp" to message.timestamp
+        ))
+        
+        return try {
+            if (response != null) {
+                val listType = object : TypeToken<List<Map<String, Any>>>() {}.type
+                val results: List<Map<String, Any>> = gson.fromJson(response, listType)
+                results.firstOrNull()?.get("id") as? String
+            } else null
+        } catch (e: Exception) {
+            null
         }
+    }
+
+    private suspend fun saveCognitiveLog(messageId: String, step: com.infomate.core.brain.ThoughtStep, index: Int) {
+        SupabaseClient.insert("cognitive_logs", mapOf(
+            "message_id" to messageId,
+            "step_title" to step.title,
+            "step_content" to step.description,
+            "step_index" to index,
+            "duration_ms" to (step.duration ?: 0)
+        ))
     }
 
     override fun onCleared() {

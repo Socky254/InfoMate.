@@ -23,6 +23,7 @@ object StreamController {
         try {
             if (!raw.trim().startsWith("{")) {
                 // Handle raw text as a token if it's not JSON
+                accumulateToken(raw)
                 UIRenderer.onToken(raw)
                 return
             }
@@ -33,26 +34,38 @@ object StreamController {
                     state = AIState.STREAMING
                 }
                 "stream_ping", "token_ping" -> {
-                    // FIX 3 — AI Heartbeat received. Resetting local wait timers.
                     android.util.Log.d("StreamController", "Neural Heartbeat: AI is still synthesizing...")
                 }
                 "token" -> {
-                    val chunk = msg.optString("chunk", "")
+                    val chunk = msg.optString("chunk", msg.optString("text", ""))
                     if (chunk.isNotEmpty()) {
-                        SessionManager.partialResponse.append(chunk)
-                        SessionManager.lastSequence++
-                        
-                        // 3.6 Crash Safe State Persistence
-                        appContext?.let {
-                            PersistenceManager.savePartialResponse(it, SessionManager.partialResponse.toString())
-                        }
-                        
+                        accumulateToken(chunk)
                         UIRenderer.onToken(chunk)
                     }
                 }
                 "stream_end" -> {
+                    val quotaJson = msg.optJSONObject("quota")
+                    quotaJson?.let {
+                        val quota = com.infomate.app.ui.QuotaInfo(
+                            requestsUsed = it.optInt("requestsUsed"),
+                            requestsLimit = it.optInt("requestsLimit"),
+                            tokensUsed = it.optLong("tokensUsed")
+                        )
+                        UIRenderer.onQuotaUpdate(quota)
+                    }
                     terminateStream()
                     UIRenderer.onComplete(SessionManager.partialResponse.toString())
+                }
+                "quota_update" -> {
+                    val quotaJson = msg.optJSONObject("quota")
+                    quotaJson?.let {
+                        val quota = com.infomate.app.ui.QuotaInfo(
+                            requestsUsed = it.optInt("requestsUsed"),
+                            requestsLimit = it.optInt("requestsLimit"),
+                            tokensUsed = it.optLong("tokensUsed")
+                        )
+                        UIRenderer.onQuotaUpdate(quota)
+                    }
                 }
                 "error" -> {
                     terminateStream()
@@ -60,7 +73,19 @@ object StreamController {
                 }
             }
         } catch (e: Exception) {
-            UIRenderer.onError("Stream parse error")
+            // Fallback: If it fails to parse as JSON but has content, treat as raw token
+            accumulateToken(raw)
+            UIRenderer.onToken(raw)
+        }
+    }
+
+    private fun accumulateToken(token: String) {
+        SessionManager.partialResponse.append(token)
+        SessionManager.lastSequence++
+        
+        // 3.6 Crash Safe State Persistence
+        appContext?.let {
+            PersistenceManager.savePartialResponse(it, SessionManager.partialResponse.toString())
         }
     }
 

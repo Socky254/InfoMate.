@@ -58,7 +58,7 @@ fun LiveThinkingView(steps: List<ThoughtStep>, modifier: Modifier = Modifier) {
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = step.step.uppercase(),
+                            text = step.title.uppercase(),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 color = SilverText,
                                 fontWeight = FontWeight.Bold,
@@ -66,7 +66,7 @@ fun LiveThinkingView(steps: List<ThoughtStep>, modifier: Modifier = Modifier) {
                             )
                         )
                         Text(
-                            text = step.detail,
+                            text = step.description,
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = SilverText.copy(alpha = 0.5f),
                                 fontSize = 10.sp,

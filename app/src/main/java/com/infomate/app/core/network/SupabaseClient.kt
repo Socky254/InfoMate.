@@ -30,7 +30,7 @@ object SupabaseClient {
     private val gson = Gson()
     private val mediaType = "application/json; charset=utf-8".toMediaType()
 
-    suspend fun insert(table: String, data: Map<String, Any>) = withContext(Dispatchers.IO) {
+    suspend fun insert(table: String, data: Map<String, Any>): String? = withContext(Dispatchers.IO) {
         val json = gson.toJson(data)
         val body = json.toRequestBody(mediaType)
         
@@ -38,17 +38,23 @@ object SupabaseClient {
             .url("${Config.SUPABASE_URL}/rest/v1/$table")
             .addHeader("apikey", Config.SUPABASE_KEY)
             .addHeader("Authorization", "Bearer ${userToken ?: Config.SUPABASE_KEY}")
+            .addHeader("Prefer", "return=representation")
             .post(body)
             .build()
 
         try {
             client.newCall(request).execute().use { response ->
+                val responseBody = response.body?.string()
                 if (!response.isSuccessful) {
-                    Log.e("SUPABASE_INSERT", "Failed: ${response.code} - ${response.body?.string()}")
+                    Log.e("SUPABASE_INSERT", "Failed: ${response.code} - $responseBody")
+                    null
+                } else {
+                    responseBody
                 }
             }
         } catch (e: Exception) {
             Log.e("SUPABASE_INSERT", "Exception: ${e.message}")
+            null
         }
     }
 

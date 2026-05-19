@@ -6,6 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -245,8 +246,90 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                     containerColor = Obsidian
                 )
             }
+
+            if (state.showManualKnowledgeDialog) {
+                ManualKnowledgeDialog(
+                    onDismiss = { vm.setManualKnowledgeDialog(false) },
+                    onSave = { title, content -> vm.saveManualKnowledge(title, content) }
+                )
+            }
+
+            AnimatedVisibility(
+                visible = state.showMasterDashboard,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+            ) {
+                MasterDashboard(
+                    state = state,
+                    vm = vm,
+                    onDismiss = { vm.toggleMasterDashboard(false) }
+                )
+            }
         }
     }
+}
+
+@Composable
+fun ManualKnowledgeDialog(onDismiss: () -> Unit, onSave: (String, String) -> Unit) {
+    var title by remember { mutableStateOf("") }
+    var content by remember { mutableStateOf("") }
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            androidx.compose.material3.Button(
+                onClick = { onSave(title, content) },
+                colors = ButtonDefaults.buttonColors(containerColor = CyberCyan),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("ARCHIVE DATA", color = Obsidian, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text("CANCEL", color = SilverText.copy(alpha = 0.4f))
+            }
+        },
+        title = {
+            Text(
+                "NEW MANUAL KNOWLEDGE",
+                color = CyberCyan,
+                style = MaterialTheme.typography.titleMedium,
+                letterSpacing = 1.sp
+            )
+        },
+        text = {
+            Column {
+                TextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    placeholder = { Text("Title (Optional)", color = SilverText.copy(alpha = 0.3f)) },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedTextColor = SilverText,
+                        unfocusedIndicatorColor = CyberCyan.copy(alpha = 0.3f)
+                    ),
+                    singleLine = true
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                TextField(
+                    value = content,
+                    onValueChange = { content = it },
+                    placeholder = { Text("Enter detailed knowledge content...", color = SilverText.copy(alpha = 0.3f)) },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedTextColor = SilverText,
+                        unfocusedIndicatorColor = CyberCyan.copy(alpha = 0.3f)
+                    ),
+                    modifier = Modifier.height(150.dp)
+                )
+            }
+        },
+        shape = RoundedCornerShape(24.dp),
+        containerColor = Obsidian
+    )
 }
 
 @Composable
@@ -626,6 +709,18 @@ fun HeaderSection(
                             modifier = Modifier.size(18.dp)
                         )
                     }
+                    
+                    if (state.isMaster) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(onClick = { vm.toggleMasterDashboard(true) }, modifier = Modifier.size(24.dp)) {
+                            Icon(
+                                imageVector = Icons.Default.Security,
+                                contentDescription = "Master Console",
+                                tint = CyberCyan,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
                 }
             }
         } else {
@@ -702,8 +797,35 @@ fun InputSection(
                     modifier = Modifier.padding(horizontal = 4.dp)
                 ) {
                     if (!isListening) {
-                        IconButton(onClick = onMediaClick) {
-                            Icon(Icons.Filled.Add, contentDescription = "Attach", tint = SilverText.copy(alpha = 0.6f))
+                        var showMenu by remember { mutableStateOf(false) }
+                        
+                        Box {
+                            IconButton(onClick = { showMenu = true }) {
+                                Icon(Icons.Filled.Add, contentDescription = "Attach", tint = SilverText.copy(alpha = 0.6f))
+                            }
+                            
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false },
+                                modifier = Modifier.background(Obsidian).border(0.5.dp, CyberCyan.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Image/Video", color = SilverText) },
+                                    leadingIcon = { Icon(Icons.Filled.Image, contentDescription = null, tint = CyberCyan) },
+                                    onClick = { 
+                                        showMenu = false
+                                        onMediaClick() 
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Manual Knowledge", color = SilverText) },
+                                    leadingIcon = { Icon(Icons.Filled.PostAdd, contentDescription = null, tint = CyberCyan) },
+                                    onClick = { 
+                                        showMenu = false
+                                        vm.setManualKnowledgeDialog(true)
+                                    }
+                                )
+                            }
                         }
                     }
                     

@@ -36,5 +36,7 @@ data class UIState(
     val quota: QuotaInfo? = null,
     val isMaster: Boolean = false, // Master account flag
     val userEmail: String? = null,
-    val pendingUpdate: com.infomate.app.core.UpdateInfo? = null
+    val pendingUpdate: com.infomate.app.core.UpdateInfo? = null,
+    val showManualKnowledgeDialog: Boolean = false,
+    val showMasterDashboard: Boolean = false
 )

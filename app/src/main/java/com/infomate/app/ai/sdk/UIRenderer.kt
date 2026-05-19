@@ -7,6 +7,7 @@ interface AIEventsListener {
     fun onComplete(fullText: String)
     fun onError(error: String)
     fun onStateChange(state: AIState)
+    fun onQuotaUpdate(quota: com.infomate.app.ui.QuotaInfo)
 }
 
 object UIRenderer {
@@ -33,5 +34,9 @@ object UIRenderer {
     
     fun onStateChange(state: AIState) {
         listener?.onStateChange(state)
+    }
+
+    fun onQuotaUpdate(quota: com.infomate.app.ui.QuotaInfo) {
+        listener?.onQuotaUpdate(quota)
     }
 }
