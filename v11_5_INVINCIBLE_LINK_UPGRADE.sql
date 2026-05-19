@@ -48,17 +48,33 @@ CREATE TABLE IF NOT EXISTS neural_growth (
 
 -- 5. SYSTEM CONFIG & TELEMETRY
 -- Used for health checks and performance monitoring.
+-- The existing table uses JSONB for the 'value' column.
 CREATE TABLE IF NOT EXISTS system_config (
-    key TEXT PRIMARY KEY,
-    value TEXT,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    key TEXT UNIQUE NOT NULL,
+    value JSONB NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-INSERT INTO system_config (key, value)
-VALUES ('system_version', '11.5'), ('core_status', 'OPERATIONAL')
-ON CONFLICT (key) DO UPDATE SET updated_at = NOW();
+-- 6. CONSCIOUSNESS STREAM
+-- Persists the real-time "Stream of Consciousness" for the substrate.
+CREATE TABLE IF NOT EXISTS consciousness_stream (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    thought TEXT NOT NULL,
+    mood TEXT,
+    energy_level FLOAT,
+    evolution_stage TEXT,
+    timestamp TIMESTAMPTZ DEFAULT NOW()
+);
 
--- 6. RPC: PURGE SYSTEM CACHE
+-- Note: We wrap the values in double quotes to satisfy the JSONB requirement.
+INSERT INTO system_config (key, value)
+VALUES
+('system_version', '"11.5"'),
+('core_status', '"OPERATIONAL"')
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW();
+
+-- 7. RPC: PURGE SYSTEM CACHE
 -- Clears short-term cognitive buffers for recalibration.
 CREATE OR REPLACE FUNCTION purge_system_cache()
 RETURNS VOID AS $$

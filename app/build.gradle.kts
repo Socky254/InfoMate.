@@ -60,12 +60,12 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.java.websocket)
     implementation(libs.gson)
-    implementation(libs.androidx.work.runtime-ktx)
+    implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.coil.compose)
     // 9.5 INVINCIBLE EDGE: Gemini Nano / On-Device LLM
-    implementation(libs.mediapipe.tasks-genai)
+    implementation(libs.mediapipe.tasks.genai)
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
