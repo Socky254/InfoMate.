@@ -540,11 +540,11 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
                 ReliabilitySDK.sendPrompt(searchPrompt)
                 
-                // STEP 4 — Add timeout handling
-                delay(45000)
+                // FIX 1 & 4 — Increased timeout for deep archival scans
+                delay(120000)
                 if (_state.value.brainState == InfomateState.THINKING) {
                     StreamController.terminateStream()
-                    onError("Neural search timed out. Verify your connection.")
+                    onError("Neural search timed out. Neural archives are currently high-latency.")
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(status = "SEARCH_ERROR: ${e.message}") }
@@ -617,12 +617,13 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
                 ReliabilitySDK.sendPrompt(contextualQuery)
                 
-                // STEP 4 — Add timeout handling
-                delay(45000)
+                // FIX 1 & 4 — Increase AI timeout to 120s (Master Architect Standard)
+                // We allow the AI more time for complex "Advanced Compute" tasks
+                delay(120000) 
                 if (_state.value.brainState == InfomateState.THINKING || _state.value.brainState == InfomateState.RESPONDING) {
                     if (StreamController.state != AIState.IDLE) {
                         StreamController.terminateStream()
-                        onError("Neural bridge timeout: AI failed to respond in time.")
+                        onError("Neural bridge timeout: The system is under heavy load. Please re-initiate.")
                     }
                 }
             } catch (e: Exception) {

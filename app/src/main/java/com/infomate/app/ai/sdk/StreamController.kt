@@ -32,6 +32,10 @@ object StreamController {
                 "stream_start" -> {
                     state = AIState.STREAMING
                 }
+                "token_ping" -> {
+                    // FIX 3 — AI Heartbeat received. Resetting local wait timers.
+                    android.util.Log.d("StreamController", "Neural Heartbeat: AI is still synthesizing...")
+                }
                 "token" -> {
                     val chunk = msg.optString("chunk", "")
                     if (chunk.isNotEmpty()) {
