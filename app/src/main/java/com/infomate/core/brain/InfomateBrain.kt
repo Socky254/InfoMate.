@@ -10,6 +10,7 @@ import com.infomate.core.brain.v7.*
 import com.infomate.core.brain.v8.*
 import kotlinx.coroutines.flow.toList
 import android.util.Log
+import com.infomate.core.network.InfomateCloud
 
 data class InfomateResponse(
     val output: String,
@@ -19,8 +20,6 @@ data class InfomateResponse(
     val media: List<MediaOutput> = emptyList(),
     val sensoryFeedback: String? = null
 )
-
-import com.infomate.core.network.InfomateCloud
 
 class InfomateBrain(archive: CognitiveArchive, private val cloud: InfomateCloud? = null) {
     private val reasoning = ReasoningEngine()

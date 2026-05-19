@@ -25,6 +25,14 @@ class InfomateCloud(private val serverUri: URI) {
     private var onComplete: ((String) -> Unit)? = null
     private var onError: ((String) -> Unit)? = null
 
+    fun connect(onToken: (String) -> Unit, onDone: (String) -> Unit, onFail: (String) -> Unit) {
+        this.onTokenReceived = onToken
+        this.onComplete = onDone
+        this.onError = onFail
+        
+        createNewClient()
+    }
+
     suspend fun performCloudSynthesis(prompt: String): String = suspendCancellableCoroutine { cont ->
         val requestId = "req_${System.currentTimeMillis()}"
         var fullResponse = ""
