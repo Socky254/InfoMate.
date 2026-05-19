@@ -191,6 +191,15 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         }
     }
 
+    private fun addSourceMessage(sender: String, content: String) {
+        val msg = ChatMessage(content = content, sender = sender)
+        _state.update { it.copy(messages = it.messages + msg) }
+        viewModelScope.launch {
+            saveMessageToSupabase(msg)
+            speak("$sender reports: $content")
+        }
+    }
+
     private fun startConnectionPolling() {
         viewModelScope.launch {
             while (true) {
@@ -232,10 +241,8 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         if (text.isEmpty()) return
         lastTokenTime = System.currentTimeMillis()
         
-        // Immediate cancel to free UI cycles for response streaming
         activeThinkingJob?.cancel()
         
-        // Sentence-based streaming speech for "Almost Natural" feel
         currentSentence.append(text)
         if (text.contains(".") || text.contains("?") || text.contains("!")) {
             val sentence = currentSentence.toString()
@@ -243,19 +250,18 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             currentSentence.clear()
         }
 
-        // Offload string manipulation to Default dispatcher, only update State on Main
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
             _state.update { state ->
                 val newMessages = state.messages.toMutableList()
                 
-                // CRITICAL FIX: Ensure tokens are appended to the CURRENT response, not old history
                 val lastMsg = newMessages.lastOrNull()
-                if (lastMsg != null && lastMsg.sender == "INFOMATE" && state.brainState == InfomateState.RESPONDING) {
+                // Append tokens only if the last message is from the SAME source that is currently responding
+                // For simplicity in streaming, we assume the primary response, but the UI identifies the source.
+                if (lastMsg != null && (lastMsg.sender.contains("INFOMATE") || lastMsg.sender.contains("GEMINI") || lastMsg.sender.contains("SEARCH")) && state.brainState == InfomateState.RESPONDING) {
                     val updatedContent = lastMsg.content + text
                     newMessages[newMessages.size - 1] = lastMsg.copy(content = updatedContent)
                 } else {
-                    // Start a new AI message if we haven't already
-                    newMessages.add(ChatMessage(content = text, sender = "INFOMATE"))
+                    newMessages.add(ChatMessage(content = text, sender = "INFOMATE CORE"))
                 }
                 
                 state.copy(
@@ -903,23 +909,29 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                     }
                 }
 
-                // 4. EDGE FALLBACK / CLOUD DISPATCH
-                if (!isNetworkAvailable()) {
-                    _state.update { it.copy(status = "OFFLINE: EDGE BRAIN ACTIVE") }
+                // 4. MULTI-SOURCE SYNERGY: AGGREGATE RESPONSES FROM INDIVIDUAL ENTITIES
+                viewModelScope.launch {
+                    // Start EdgeBrain (Local Entity)
                     val edgeResponse = EdgeBrain.processLocally(contextualQuery, getApplication())
                     if (!edgeResponse.isNullOrBlank()) {
-                        _state.update { it.copy(brainState = InfomateState.RESPONDING) }
-                        onToken(edgeResponse)
-                        onComplete(edgeResponse)
-                        return@launch
-                    } else {
-                        onError("Neural link offline and Edge Brain data missing.")
-                        return@launch
+                        addSourceMessage("GEMINI NANO (EDGE)", edgeResponse)
+                    }
+
+                    // Start Global Search (Research Entity)
+                    if (isNetworkAvailable()) {
+                        val searchResult = GlobalSearchAgent.searchExternal(userInput)
+                        if (searchResult != null) {
+                            addSourceMessage("GLOBAL SEARCH AGENT", searchResult)
+                        }
                     }
                 }
 
-                // DISPATCH TO CLOUD
-                ReliabilitySDK.sendPrompt(contextualQuery)
+                // DISPATCH TO PRIMARY CLOUD (CORE ENTITY)
+                if (isNetworkAvailable()) {
+                    ReliabilitySDK.sendPrompt(contextualQuery)
+                } else {
+                    onError("Neural link offline. Only Edge and Cache entities available.")
+                }
                 
                 // 5. CLIENT UI TIMEOUT (APK SIDE)
                 var timeoutCounter = 0
