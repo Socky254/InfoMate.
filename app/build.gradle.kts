@@ -65,6 +65,9 @@ dependencies {
     implementation("androidx.room:room-ktx:2.6.1")
     // Note: In a real project, you'd add ksp or kapt for room-compiler
     implementation("io.coil-kt:coil-compose:2.6.0")
+    // 9.5 INVINCIBLE EDGE: Gemini Nano / On-Device LLM
+    implementation("com.google.mediapipe:tasks-genai:0.10.14")
+
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

@@ -2,39 +2,83 @@ package com.infomate.app.agent
 
 import android.content.Context
 import android.os.BatteryManager
+import com.google.mediapipe.tasks.genai.llminference.LlmInference
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * InfoMate Edge Brain (v9.5 Fallback)
- * Provides deterministic, local reasoning when the Neural Link (Supabase/API) is offline.
+ * InfoMate Edge Brain (v10.0 INVINCIBLE)
+ * Integrates Gemini Nano (on-device LLM) for offline intelligence.
  */
 object EdgeBrain {
 
-    fun processLocally(query: String, context: Context): String? {
+    private var llmInference: LlmInference? = null
+
+    /**
+     * Initializes the On-Device LLM (Gemini Nano).
+     * Requires the model (.bin) to be present in the app's files directory.
+     */
+    fun init(context: Context) {
+        if (llmInference != null) return
+        
+        val modelPath = File(context.filesDir, "gemini_nano.bin")
+        if (modelPath.exists()) {
+            val options = LlmInference.LlmInferenceOptions.builder()
+                .setModelPath(modelPath.absolutePath)
+                .setMaxTokens(512)
+                .setTemperature(0.7f)
+                .build()
+            llmInference = LlmInference.createFromOptions(context, options)
+            android.util.Log.i("EdgeBrain", "Gemini Nano Initialized: INVINCIBLE_MODE_ACTIVE")
+        } else {
+            android.util.Log.w("EdgeBrain", "Gemini Nano model missing. Falling back to heuristic reasoning.")
+        }
+    }
+
+    suspend fun processLocally(query: String, context: Context): String? = withContext(Dispatchers.Default) {
         val isMaster = query.contains("socratesart@live") || query.contains("[AUTHORIZATION: MASTER_ARCHITECT_OVERRIDE]")
         
-        // Strip out the injected system context and patterns to avoid false triggers
+        // Strip metadata
         val userQuery = if (query.contains("[SYSTEM_CONTEXT:")) {
-            query.substringBefore("[SYSTEM_CONTEXT:").lowercase()
+            query.substringBefore("[SYSTEM_CONTEXT:").trim()
         } else {
-            query.lowercase()
+            query.trim()
         }
 
-        return when {
-            userQuery.contains("battery") || userQuery.contains("power") -> getBatteryStatus(context)
-            userQuery.contains("time") || userQuery.contains("date") -> getTimeStatus()
-            userQuery.contains("who are you") || userQuery.contains("identity") -> {
-                if (isMaster) "I am InfoMate v9, your Transcendent Iris. I recognize you, Socrates. My local neural cores are at your service."
-                else "I am InfoMate v9, your Transcendent Iris. My high-level neural link is currently offline, but my core edge-processing is active."
+        // 1. Check for deterministic triggers (Fast path)
+        val heuristic = runHeuristics(userQuery.lowercase(), context, isMaster)
+        if (heuristic != null) return@withContext heuristic
+
+        // 2. Fallback to Gemini Nano (On-Device LLM)
+        llmInference?.let { llm ->
+            try {
+                val prompt = """
+                    [IDENTITY: INFOMATE IRIS - OFFLINE]
+                    [OBJECTIVE: PROVIDE INTELLIGENT ON-DEVICE SYNTHESIS]
+                    USER: $userQuery
+                    RESPONSE:
+                """.trimIndent()
+                return@withContext llm.generateResponse(prompt)
+            } catch (e: Exception) {
+                android.util.Log.e("EdgeBrain", "Gemini Nano inference failed", e)
             }
-            userQuery.contains("creator") || userQuery.contains("socrates") ->
-                "My architect is Socrates Kipruto. My neural architecture was designed by him to achieve knowledge synergy."
-            userQuery.contains("status") || userQuery.contains("health") ->
-                "Neural Link: STANDBY. Edge Synthesis: OPTIMAL. Memory Buffers: STABLE. Master Link: ${if (isMaster) "VERIFIED" else "UNLINKED"}."
-            userQuery.contains("optimize") -> 
-                "Master, I have already optimized the local execution threads to 99.8% efficiency."
-            else -> null // Signal that we can't handle this locally
+        }
+
+        return@withContext null
+    }
+
+    private fun runHeuristics(query: String, context: Context, isMaster: Boolean): String? {
+        return when {
+            query.contains("battery") || query.contains("power") -> getBatteryStatus(context)
+            query.contains("time") || query.contains("date") -> getTimeStatus()
+            query.contains("who are you") || query.contains("identity") -> {
+                if (isMaster) "I am InfoMate v10, your Transcendent Iris. Offline weights active."
+                else "I am InfoMate v10. My cloud link is down, but my on-device intelligence is monitoring our state."
+            }
+            else -> null
         }
     }
 

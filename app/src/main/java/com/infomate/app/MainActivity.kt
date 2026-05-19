@@ -24,6 +24,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // 10.0 INVINCIBLE EDGE: Initialize Gemini Nano
+        com.infomate.app.agent.EdgeBrain.init(this)
+
         setContent {
             val vm: AgentViewModel = viewModel()
             val state by vm.state.collectAsState()

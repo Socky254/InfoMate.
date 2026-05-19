@@ -7,6 +7,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 
 import com.infomate.core.network.InfomateCloud
+import com.infomate.core.network.WorkstationClient
 
 class GlobalCoordinator(
     private val memory: GlobalMemory,
@@ -14,12 +15,13 @@ class GlobalCoordinator(
 ) {
     private val router = TaskRouter()
     private val consensus = ConsensusEngine()
+    private val workstation = WorkstationClient()
 
     suspend fun coordinate(profile: TaskProfile, query: String, localResultProvider: suspend (String) -> String): String = coroutineScope {
         // 1. Split into distributed jobs
         val jobs = router.split(profile, query)
 
-        // 2. Dispatch to nodes (Real Cloud Integration)
+        // 2. Dispatch to nodes (Real Multi-Node Coordination)
         val results = jobs.map { job ->
             async {
                 when (job.targetNodeType) {
@@ -28,14 +30,14 @@ class GlobalCoordinator(
                         NodeResult(job.id, "LocalDevice", output, 0.95f)
                     }
                     NodeType.CLOUD -> {
-                        // Use real cloud synthesis with the optimal timeouts
                         val cloudOutput = cloud?.performCloudSynthesis(job.description) 
                             ?: "[CLOUD_OFFLINE] Fallback to heuristic."
                         NodeResult(job.id, "CloudNode-Gamma", cloudOutput, 0.98f)
                     }
                     NodeType.DESKTOP -> {
-                        delay(800) // Desktop latency (still simulated)
-                        NodeResult(job.id, "Workstation-Alpha", "[DEEP_COMPUTE] Resource-intensive simulation successful.", 0.99f)
+                        // 9.5 Bridge: Live Desktop/Workstation Node
+                        val desktopOutput = workstation.executeDeepCompute(job.description)
+                        NodeResult(job.id, "Workstation-Alpha", desktopOutput, 0.99f)
                     }
                 }
             }

@@ -33,7 +33,7 @@ class AgentOrchestrator(private val androidContext: Context? = null) {
             return AgentResponse("Neural cache purged. Cognitive buffers are now clean, Socrates.")
         }
 
-        // 3. Edge Fallback
+        // 3. Edge Fallback (v10.0 Invincible)
         androidContext?.let { ctx ->
             val edgeResponse = EdgeBrain.processLocally(fullQuery, ctx)
             if (edgeResponse != null) return AgentResponse(edgeResponse)
