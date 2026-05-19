@@ -109,13 +109,35 @@ fun MasterDashboard(state: UIState, vm: AgentViewModel, onDismiss: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // DATA ARCHIVE ACCESS
+                // SYSTEM PROCEEDINGS
                 DashboardSection(title = "SYSTEM PROCEEDINGS") {
                     ProceedingRow("USER_INGESTION", "SUCCESS", "Patterns analyzed from contacts/SMS")
                     ProceedingRow("VECTOR_SYNC", "ACTIVE", "768-dim embeddings synchronized")
+                    ProceedingRow("NEURAL_GROWTH", "EXPANDING", "New insights archived from recent dialogues")
                     ProceedingRow("EDGE_FALLBACK", "STANDBY", "Gemini Nano weights loaded")
                 }
-                
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // NEURAL GROWTH & PROPOSALS
+                DashboardSection(title = "NEURAL EVOLUTION (LEARNING)") {
+                    Text(
+                        "The AI is currently refining its knowledge base without modifying core binary code.",
+                        color = SilverText.copy(alpha = 0.6f),
+                        fontSize = 10.sp,
+                        lineHeight = 14.sp
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    Button(
+                        onClick = { /* TODO: Open Proposal Review Screen */ },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                        modifier = Modifier.border(1.dp, CyberCyan.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                    ) {
+                        Text("REVIEW SYSTEM PROPOSALS", color = CyberCyan, fontSize = 10.sp)
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Identity Section

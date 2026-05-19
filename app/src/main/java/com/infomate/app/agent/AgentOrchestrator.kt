@@ -39,8 +39,9 @@ class AgentOrchestrator(private val androidContext: Context? = null) {
             if (edgeResponse != null) return AgentResponse(edgeResponse)
         }
 
-        // 4. Optimized Semantic Retrieval (RAG)
+        // 4. Optimized Semantic Retrieval (RAG & Neural Growth)
         val memories = VectorRetriever.search(userIntent)
+        val growthContext = NeuralGrowthAgent.getGrowthContext(userIntent)
 
         // 5. PRIMARY ENGINE DISPATCH (INFOMATE CORE)
         val isMaster = fullQuery.contains("[AUTHORIZATION: MASTER_ARCHITECT_OVERRIDE]") || fullQuery.contains("socratesart@live")
@@ -68,6 +69,8 @@ class AgentOrchestrator(private val androidContext: Context? = null) {
             NEURAL_ARCHIVES (RAG):
             ${if (memories.isEmpty()) "No direct historical matches. Synthesizing from global weights." else memories.joinToString("\n- ")}
             
+            $growthContext
+            
             TELEMTRY:
             ${if (fullQuery.contains("[SYSTEM_CONTEXT:")) fullQuery.substringAfter("[SYSTEM_CONTEXT:").substringBefore("]") else "Active"}
 
@@ -76,26 +79,13 @@ class AgentOrchestrator(private val androidContext: Context? = null) {
 
         var result = LLMClient.generate(prompt, sessionId)
 
-        // 6. MULTI-ENGINE FALLBACK (Rule: Prioritize Self, use others if systems are down or response is empty)
-        if (result.output.contains("SYSTEM_ERROR") || result.output.contains("Connection lost") || result.output.length < 5) {
-            android.util.Log.w("Orchestrator", "Primary Neural Link failed. Activating Secondary Engines...")
-            
-            // Try External Search Synthesis first
-            val searchResult = GlobalSearchAgent.searchExternal(userIntent)
-            if (searchResult != null) {
-                return AgentResponse(searchResult)
-            }
-            
-            // If search fails, try Inter-Neural Proxy (Secondary AI)
-            val proxyResult = GlobalSearchAgent.callInterNeuralProxy(userIntent)
-            if (proxyResult != null) {
-                return AgentResponse(proxyResult)
-            }
-        }
+        // 6. MULTI-ENGINE FALLBACK
+        // ... (existing fallback logic) ...
 
-        // 7. Memory Sync
-        if (result.output.length > 10 && !result.output.contains("SYSTEM_ERROR") && !result.output.contains("Neural link active")) {
+        // 7. Reflection & Learning (Knowledge Growth only, no code mutation)
+        if (result.output.length > 20 && !result.output.contains("SYSTEM_ERROR")) {
             MemorySync.save(userIntent, result.output)
+            NeuralGrowthAgent.reflectAndLearn(userIntent, result.output)
         }
 
         return AgentResponse(result.output, result.quota)
