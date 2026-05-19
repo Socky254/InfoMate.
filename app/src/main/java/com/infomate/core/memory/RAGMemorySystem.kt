@@ -36,8 +36,11 @@ class RAGMemorySystem(private val archive: CognitiveArchive) {
         if (scoredNodes.isEmpty()) return "[SYSTEM_INFO]: No high-confidence historical links found."
 
         val contextBuilder = StringBuilder("[RANKED HISTORICAL CONTEXT (Top-${scoredNodes.size})]\n")
-        scoredNodes.forEachIndexed { index, (node, score) ->
-            contextBuilder.append("${index + 1}. CONCEPT: ${node.concept} [Score: ${"%.2f".format(score)}] -> Connections: ${node.connections.joinToString(", ")}\n")
+        scoredNodes.forEachIndexed { index, pair ->
+            val node = pair.first
+            val score = pair.second
+            val displayIndex = index + 1
+            contextBuilder.append("$displayIndex. CONCEPT: ${node.concept} [Score: ${"%.2f".format(score)}] -> Connections: ${node.connections.joinToString(", ")}\n")
         }
         
         return contextBuilder.toString()

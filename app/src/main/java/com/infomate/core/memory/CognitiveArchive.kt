@@ -21,6 +21,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.runBlocking
 
 class CognitiveArchive(private val context: Context) {
     private val database = InfomateDatabase.getDatabase(context)
@@ -48,6 +49,27 @@ class CognitiveArchive(private val context: Context) {
             listOf("Quantum Decoherence", "Mars Colony Logistics", "Riemann Hypothesis")
         } else {
             nodes.map { it.concept }
+        }
+    }
+
+    fun getRecentTopicsDetailed(): List<KnowledgeNode> {
+        // Since Room calls are suspend, and this is called from non-suspend contexts 
+        // in RAGMemorySystem and InternalBridges, we might have a problem.
+        // However, looking at RAGMemorySystem.kt, it's called as a regular function.
+        // For now, let's use runBlocking or similar if absolutely necessary, 
+        // but better to make calling functions suspend.
+        
+        // Let's check RAGMemorySystem.kt again.
+        return kotlinx.coroutines.runBlocking(Dispatchers.IO) {
+            dao.getRecentNodes().map { entity ->
+                KnowledgeNode(
+                    id = entity.id,
+                    concept = entity.concept,
+                    connections = entity.connections.split(",").filter { it.isNotBlank() },
+                    timestamp = entity.timestamp,
+                    valence = entity.importance
+                )
+            }
         }
     }
 
