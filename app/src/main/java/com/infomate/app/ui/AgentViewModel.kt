@@ -39,12 +39,11 @@ import com.infomate.app.agent.NeuralGrowthAgent
 import com.infomate.app.agent.DiagnosticAgent
 import com.infomate.app.agent.GlobalSearchAgent
 import com.infomate.app.ai.LLMClient
-import kotlinx.coroutines.async
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import java.util.*
 import kotlin.random.Random
 
