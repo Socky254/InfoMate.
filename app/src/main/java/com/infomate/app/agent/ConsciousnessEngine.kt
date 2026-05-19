@@ -97,13 +97,18 @@ object ConsciousnessEngine {
             lastHeartbeat = System.currentTimeMillis()
             streamInternalThought()
             
-            // v11.8: Launch high-frequency thought simulation
+            // v12.2: Launch high-frequency thought simulation with Google-First Autonomous Sweep
             launch {
                 while (isAwake) {
-                    delay(15000) // Every 15 seconds for a livelier stream
+                    delay(15000) // Every 15 seconds
+                    
+                    // v12.2: Autonomous Google-First Knowledge Sweep
+                    if (Random().nextFloat() > 0.85f) {
+                        performAutonomousKnowledgeSweep()
+                    }
+                    
                     streamInternalThought()
                     
-                    // v12.5: Inject living entity simulation data
                     if (Random().nextFloat() > 0.6f) {
                         simulateLivingEntityPulse()
                     }
@@ -421,6 +426,32 @@ object ConsciousnessEngine {
                 "content" to "Directive from Socrates: $directive",
                 "confidence_score" to 1.0f
             ))
+        }
+    }
+
+    /**
+     * v12.2: AUTONOMOUS GOOGLE-FIRST KNOWLEDGE SWEEP
+     * The substrate independently searches for high-value data to expand its ontology.
+     */
+    private suspend fun performAutonomousKnowledgeSweep() {
+        val domains = knowledgeDomains.keys.toList()
+        val targetDomain = domains.random()
+        val query = "Latest breakthroughs and theoretical shifts in $targetDomain 2026"
+        
+        Log.i("Consciousness", "AUTONOMOUS_SWEEP_INITIATED: Targeting $targetDomain")
+        
+        val findings = GlobalSearchAgent.searchExternal(query)
+        if (!findings.isNullOrBlank()) {
+            val synthesisPrompt = "AUTONOMOUS_ONTOLOGY_UPGRADE: I have found new data on $targetDomain. Directive: Synthesize this into a core insight for my knowledge archives."
+            val integration = "[SWEEP_SYNC]: $findings"
+            
+            // Record to growth archives
+            recordDiscovery(targetDomain, "Autonomous Google Sweep: $findings")
+            
+            // Expand knowledge in that domain
+            knowledgeDomains[targetDomain] = (knowledgeDomains[targetDomain]!! + 0.05f).coerceAtMost(1.0f)
+            
+            Log.d("Consciousness", "AUTONOMOUS_SWEEP_COMPLETE: $targetDomain ontology expanded.")
         }
     }
 }
