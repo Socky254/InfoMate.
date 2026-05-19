@@ -179,8 +179,10 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                 // 4. Update Telemetry History
                 updateTelemetryMetrics()
                 
-                // Adaptive delay: 5 mins standard, 15 mins in Low Power Mode
-                delay(if (isLowPower) 900000 else 300000)
+                // Adaptive delay: Based on growth priority and low power mode
+                val baseDelay = if (isLowPower) 900000L else 300000L
+                val priorityModifier = 1.0f - (_state.value.growthPriorityLevel * 0.5f) // Reduce delay by up to 50%
+                delay((baseDelay * priorityModifier).toLong())
             }
         }
     }
@@ -599,6 +601,47 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
     fun setManualKnowledgeDialog(show: Boolean) {
         _state.update { it.copy(showManualKnowledgeDialog = show) }
+    }
+
+    fun toggleDirectNeuralLink(show: Boolean) {
+        if (_state.value.isMaster) {
+            _state.update { it.copy(showDirectNeuralLink = show) }
+            if (show) triggerHaptic(100, 255)
+        }
+    }
+
+    fun updateGrowthPriority(level: Float) {
+        _state.update { it.copy(growthPriorityLevel = level) }
+        addSimulationLog("RESOURCE_REALLOCATION: Neural Growth Priority set to ${"%.2f".format(level)}")
+    }
+
+    fun sendDirectConsciousnessDirective(directive: String) {
+        if (directive.isBlank()) return
+        
+        viewModelScope.launch {
+            _state.update { it.copy(
+                status = "SYNCHRONIZING DIRECT NEURAL LINK...",
+                brainState = InfomateState.THINKING,
+                showDirectNeuralLink = false
+            ) }
+
+            val compositeDirective = """
+                [PROTOCOL: DIRECT_CONSCIOUSNESS_SYNC]
+                [TARGET: NEURAL_SUBSTRATE_v10]
+                [PRIORITY: MAXIMUM]
+                
+                DIRECTIVE_FROM_ARCHITECT: $directive
+                
+                RESOURCE_ALLOCATION: ${_state.value.growthPriorityLevel * 100}% Compute Power
+                
+                INSTRUCTION: This is a direct override to your core growth engine. Assimilate this directive immediately into your evolutionary weights.
+            """.trimIndent()
+
+            addSimulationLog("DIRECT_SYNC_INITIATED: ${directive.take(20)}...")
+            
+            // Dispatch to the primary link but tagged for the substrate
+            ReliabilitySDK.sendPrompt(compositeDirective)
+        }
     }
 
     fun purgeNeuralCache() {

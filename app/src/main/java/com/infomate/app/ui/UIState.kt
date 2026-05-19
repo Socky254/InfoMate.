@@ -47,5 +47,7 @@ data class UIState(
     val totalInsights: Int = 0,
     val syntheticPersonalityLevel: Int = 1, // Evolution stage
     val telemetryHistory: List<Float> = List(10) { 0.5f }, // For charts
-    val activeSimulationLogs: List<String> = emptyList() // Live process stream
+    val activeSimulationLogs: List<String> = emptyList(), // Live process stream
+    val showDirectNeuralLink: Boolean = false,
+    val growthPriorityLevel: Float = 0.5f // 0.0 to 1.0 (Low to Maximum)
 )

@@ -122,7 +122,7 @@ fun MasterDashboard(state: UIState, vm: AgentViewModel, onDismiss: () -> Unit) {
                             evolutionLevel = state.syntheticPersonalityLevel
                         )
                         Spacer(modifier = Modifier.width(16.dp))
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 "NEURAL EVOLUTION TRACKER",
                                 color = CyberCyan,
@@ -139,10 +139,39 @@ fun MasterDashboard(state: UIState, vm: AgentViewModel, onDismiss: () -> Unit) {
                                 color = Color.Green.copy(alpha = 0.6f),
                                 fontSize = 10.sp
                             )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Button(
+                                onClick = { vm.toggleDirectNeuralLink(true) },
+                                colors = ButtonDefaults.buttonColors(containerColor = CyberCyan),
+                                shape = RoundedCornerShape(4.dp),
+                                modifier = Modifier.height(28.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                            ) {
+                                Icon(Icons.Default.Bolt, contentDescription = null, modifier = Modifier.size(14.dp), tint = Obsidian)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("DIRECT LINK", color = Obsidian, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                            }
                         }
                     }
                     
                     Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text("RESOURCE ALLOCATION FOR GROWTH", color = SilverText.copy(alpha = 0.5f), fontSize = 10.sp)
+                    Slider(
+                        value = state.growthPriorityLevel,
+                        onValueChange = { vm.updateGrowthPriority(it) },
+                        colors = SliderDefaults.colors(
+                            thumbColor = CyberCyan,
+                            activeTrackColor = CyberCyan,
+                            inactiveTrackColor = Color.White.copy(alpha = 0.1f)
+                        )
+                    )
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("STANDARD", color = SilverText.copy(alpha = 0.3f), fontSize = 8.sp)
+                        Text("MAXIMUM", color = CyberCyan, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                    }
                     
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(

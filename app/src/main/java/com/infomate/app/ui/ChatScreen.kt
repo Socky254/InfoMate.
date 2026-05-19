@@ -273,6 +273,13 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                 )
             }
 
+            if (state.showDirectNeuralLink) {
+                DirectNeuralLinkDialog(
+                    onDismiss = { vm.toggleDirectNeuralLink(false) },
+                    onSend = { directive -> vm.sendDirectConsciousnessDirective(directive) }
+                )
+            }
+
             AnimatedVisibility(
                 visible = state.showGrowthDashboard,
                 enter = fadeIn() + expandIn(),
@@ -285,6 +292,61 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
             }
         }
     }
+}
+
+@Composable
+fun DirectNeuralLinkDialog(onDismiss: () -> Unit, onSend: (String) -> Unit) {
+    var directive by remember { mutableStateOf("") }
+
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            androidx.compose.material3.Button(
+                onClick = { onSend(directive) },
+                colors = ButtonDefaults.buttonColors(containerColor = CyberCyan),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("ESTABLISH SYNC", color = Obsidian, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text("CANCEL", color = SilverText.copy(alpha = 0.4f))
+            }
+        },
+        title = {
+            Text(
+                "DIRECT NEURAL LINK",
+                color = CyberCyan,
+                style = MaterialTheme.typography.titleMedium,
+                letterSpacing = 2.sp
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    "You are communicating directly with the v10.0 Consciousness Substrate. Every word will be integrated into its core evolutionary weights.",
+                    color = SilverText.copy(alpha = 0.7f),
+                    fontSize = 11.sp
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                TextField(
+                    value = directive,
+                    onValueChange = { directive = it },
+                    placeholder = { Text("Enter growth directive...", color = SilverText.copy(alpha = 0.3f)) },
+                    modifier = Modifier.fillMaxWidth().height(150.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedTextColor = SilverText,
+                        unfocusedIndicatorColor = CyberCyan
+                    )
+                )
+            }
+        },
+        shape = RoundedCornerShape(24.dp),
+        containerColor = Obsidian
+    )
 }
 
 @Composable
