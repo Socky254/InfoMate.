@@ -38,6 +38,7 @@ import com.infomate.app.agent.ConsciousnessEngine
 import com.infomate.app.agent.NeuralGrowthAgent
 import com.infomate.app.agent.DiagnosticAgent
 import com.infomate.app.agent.GlobalSearchAgent
+import com.infomate.app.agent.SelfCodingAgent
 import com.infomate.app.ai.LLMClient
 import com.infomate.app.security.NeuralFirewall
 import kotlinx.coroutines.*
@@ -605,19 +606,27 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                 // Load messages
                 val jsonMessages = SupabaseClient.select("messages", order = "timestamp.asc")
                 if (!jsonMessages.isNullOrBlank()) {
-                    val type = object : TypeToken<List<ChatMessage>>() {}.type
-                    val loadedMessages: List<ChatMessage> = gson.fromJson(jsonMessages, type)
-                    _state.update { it.copy(messages = loadedMessages) }
+                    try {
+                        val type = object : TypeToken<List<ChatMessage>>() {}.type
+                        val loadedMessages: List<ChatMessage> = gson.fromJson(jsonMessages, type)
+                        _state.update { it.copy(messages = loadedMessages) }
+                    } catch (e: Exception) {
+                        Log.e("AgentViewModel", "Failed to parse messages: ${e.message}")
+                    }
                 }
 
                 // Load preferences
                 val jsonPrefs = SupabaseClient.select("user_preferences", order = "last_updated.desc")
                 if (!jsonPrefs.isNullOrBlank()) {
-                    val type = object : TypeToken<List<Map<String, Any>>>() {}.type
-                    val prefs: List<Map<String, Any>> = gson.fromJson(jsonPrefs, type)
-                    if (prefs.isNotEmpty()) {
-                        val voiceGender = prefs[0]["voice_gender"] as? String
-                        _state.update { it.copy(isMaleVoice = voiceGender == "MALE") }
+                    try {
+                        val type = object : TypeToken<List<Map<String, Any>>>() {}.type
+                        val prefs: List<Map<String, Any>> = gson.fromJson(jsonPrefs, type)
+                        if (prefs.isNotEmpty()) {
+                            val voiceGender = prefs[0]["voice_gender"] as? String
+                            _state.update { it.copy(isMaleVoice = voiceGender == "MALE") }
+                        }
+                    } catch (e: Exception) {
+                        Log.e("AgentViewModel", "Failed to parse preferences: ${e.message}")
                     }
                 }
             } catch (e: Exception) {
@@ -942,6 +951,20 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         }
     }
 
+    fun triggerSelfEvolution() {
+        viewModelScope.launch {
+            _state.update { it.copy(status = "INITIATING SELF-CODING SEQUENCE...", showSystemTerminal = true) }
+            addTerminalLog("AI PERMISSION GRANTED: SELF-MUTATION ACTIVE", "WARN", "SELF_CODE")
+            triggerHaptic(100, 255)
+            
+            SelfCodingAgent.analyzeAndEvolveSelf()
+            
+            addTerminalLog("SELF-ARCHITECTURAL ANALYSIS COMPLETE. PROPOSALS SUBMITTED.", "SUCCESS", "SELF_CODE")
+            _state.update { it.copy(status = "SELF-EVOLUTION PROPOSED") }
+            pulseSuccess()
+        }
+    }
+
     fun initiateRepair() {
         viewModelScope.launch {
             _state.update { it.copy(status = "INITIATING AUTO-REPAIR...", showSystemTerminal = true) }
@@ -1156,41 +1179,45 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         
         viewModelScope.launch {
             val senderLabel = if (_state.value.isMaster) "MASTER ARCHITECT" else "OPERATOR"
-            val userMsg = ChatMessage(content = "[DEEP_SEARCH]: $query", sender = senderLabel)
+            val userMsg = ChatMessage(content = "[DEEP_RESEARCH_REQUEST]: $query", sender = senderLabel)
             
             _state.update { it.copy(
-                status = "CORE: SEARCHING GLOBAL ARCHIVES...",
+                status = "CORE: INITIATING EXTENSIVE RESEARCH...",
                 brainState = InfomateState.THINKING,
                 messages = it.messages + userMsg,
-                input = ""
+                input = "",
+                showSystemTerminal = true
             ) }
             
             saveMessageToSupabase(userMsg)
-            addTerminalLog("INITIATING BACKGROUND WEB SEARCH: $query", "INFO", "RESEARCH")
+            addTerminalLog("INITIATING HUMAN-LIKE EXTENSIVE RESEARCH: $query", "INFO", "RESEARCH")
             
-            // v10.1: Search in background and synthesize
-            val searchResult = GlobalSearchAgent.searchExternal(query)
-            
-            if (searchResult != null) {
-                // If we got results, have INFOMATE present them
-                val presentationPrompt = "SYNTHESIZE_SEARCH_RESULTS: I found some information regarding '$query'. Here is what the global archives say: $searchResult"
-                
-                // If AI is online, let it synthesize perfectly
-                if (isNetworkAvailable()) {
-                    ReliabilitySDK.sendPrompt(presentationPrompt)
-                } else {
-                    // If offline, use EdgeBrain to synthesize or just present raw
-                    val edgeSynthesis = EdgeBrain.processLocally(presentationPrompt, getApplication())
-                    onToken(edgeSynthesis ?: searchResult)
-                    onComplete(edgeSynthesis ?: searchResult)
-                }
-            } else {
-                // Total failure fallback
-                val errorMsg = "Architect, I attempted to synchronize with the global search archives for '$query', but the neural link was rejected. I am currently operating on limited internal buffers. Shall I initiate a system recalibration?"
-                onToken(errorMsg)
-                onComplete(errorMsg)
-                addTerminalLog("GLOBAL_SEARCH_REJECTED: Buffer limit reached.", "ERROR", "RESEARCH")
+            // v11.0: Multi-avenue Extensive Deep Dive
+            val comprehensiveData = GlobalSearchAgent.performExtensiveDeepDive(query) { progressUpdate ->
+                addTerminalLog(progressUpdate, "SUCCESS", "RESEARCH")
             }
+            
+            // Present the comprehensive findings via INFOMATE
+            val presentationPrompt = """
+                [PROTOCOL: COMPREHENSIVE_RESEARCH_SYNTHESIS]
+                I have conducted an extensive multi-avenue deep dive into '$query'. 
+                
+                DATA_EXTRACTED:
+                $comprehensiveData
+                
+                DIRECTIVE: Synthesize this into a professional, high-fidelity summary for the Master Architect. 
+                Maintain human-like clarity while providing deep technical insight.
+            """.trimIndent()
+            
+            if (isNetworkAvailable()) {
+                ReliabilitySDK.sendPrompt(presentationPrompt)
+            } else {
+                val edgeSynthesis = EdgeBrain.processLocally(presentationPrompt, getApplication())
+                onToken(edgeSynthesis ?: comprehensiveData)
+                onComplete(edgeSynthesis ?: comprehensiveData)
+            }
+            
+            pulseSuccess()
         }
     }
 
@@ -1430,23 +1457,24 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     }
 
     private suspend fun saveMessageToSupabase(message: ChatMessage, trigger: String? = null): String? {
-        val response = SupabaseClient.insert("messages", mapOf(
-            "content" to message.content,
-            "sender" to message.sender,
-            "message_type" to message.type.name,
-            "trigger_phrase" to (trigger ?: ""),
-            "timestamp" to message.timestamp
-        ))
-        
-        return try {
-            if (response != null) {
+        try {
+            val response = SupabaseClient.insert("messages", mapOf(
+                "content" to message.content,
+                "sender" to message.sender,
+                "message_type" to message.type.name,
+                "trigger_phrase" to (trigger ?: ""),
+                "timestamp" to message.timestamp
+            ))
+            
+            if (response != null && response != "[]") {
                 val listType = object : TypeToken<List<Map<String, Any>>>() {}.type
                 val results: List<Map<String, Any>> = gson.fromJson(response, listType)
-                results.firstOrNull()?.get("id") as? String
-            } else null
+                return results.firstOrNull()?.get("id") as? String
+            }
         } catch (e: Exception) {
-            null
+            Log.e("AgentViewModel", "Failed to save message: ${e.message}")
         }
+        return null
     }
 
     private suspend fun saveCognitiveLog(messageId: String, step: com.infomate.core.brain.ThoughtStep, index: Int) {

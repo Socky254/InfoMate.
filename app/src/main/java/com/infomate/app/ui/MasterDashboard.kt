@@ -222,24 +222,38 @@ fun FrequencySimulation(data: List<Float>) {
 
 @Composable
 fun ActionRow(vm: AgentViewModel) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Button(
-            onClick = { vm.runDiagnostics() },
-            modifier = Modifier.weight(1f).height(48.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray.copy(alpha = 0.3f)),
-            shape = RoundedCornerShape(12.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color.Gray.copy(alpha = 0.2f))
-        ) {
-            Text("DIAGNOSTICS", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Button(
+                onClick = { vm.runDiagnostics() },
+                modifier = Modifier.weight(1f).height(48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray.copy(alpha = 0.3f)),
+                shape = RoundedCornerShape(12.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.Gray.copy(alpha = 0.2f))
+            ) {
+                Text("DIAGNOSTICS", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+            Button(
+                onClick = { vm.toggleMasterDashboard(false) },
+                modifier = Modifier.weight(1f).height(48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = ErrorRed.copy(alpha = 0.1f)),
+                shape = RoundedCornerShape(12.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, ErrorRed.copy(alpha = 0.3f))
+            ) {
+                Text("EXIT_CORE", color = ErrorRed, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
         }
+        
         Button(
-            onClick = { vm.toggleMasterDashboard(false) },
-            modifier = Modifier.weight(1f).height(48.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = ErrorRed.copy(alpha = 0.1f)),
+            onClick = { vm.triggerSelfEvolution() },
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = CyberCyan.copy(alpha = 0.15f)),
             shape = RoundedCornerShape(12.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, ErrorRed.copy(alpha = 0.3f))
+            border = androidx.compose.foundation.BorderStroke(1.dp, CyberCyan.copy(alpha = 0.4f))
         ) {
-            Text("EXIT_CORE", color = ErrorRed, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Icon(Icons.Default.AutoFixHigh, contentDescription = null, tint = CyberCyan, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(12.dp))
+            Text("TRIGGER_SELF_EVOLUTION", color = CyberCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         }
     }
 }

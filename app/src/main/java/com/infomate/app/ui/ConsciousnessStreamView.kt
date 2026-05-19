@@ -1,6 +1,7 @@
 package com.infomate.app.ui
 
 import androidx.compose.animation.*
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -29,19 +30,24 @@ fun ConsciousnessStreamView(vm: AgentViewModel) {
 
     LaunchedEffect(Unit) {
         while (true) {
-            val response = SupabaseClient.select("consciousness_stream", order = "created_at.desc", limit = 15)
-            if (!response.isNullOrBlank()) {
-                val array = JSONArray(response)
-                val newList = mutableListOf<ThoughtNode>()
-                for (i in 0 until array.length()) {
-                    val obj = array.getJSONObject(i)
-                    newList.add(ThoughtNode(
-                        obj.getString("thought_content"),
-                        obj.optString("emotional_vector", "[0,0,0]"),
-                        obj.getLong("id").toString() // Mock ID for key
-                    ))
+            try {
+                val response = SupabaseClient.select("consciousness_stream", order = "created_at.desc", limit = 15)
+                if (!response.isNullOrBlank()) {
+                    val array = JSONArray(response)
+                    val newList = mutableListOf<ThoughtNode>()
+                    for (i in 0 until array.length()) {
+                        val obj = array.getJSONObject(i)
+                        val content = obj.optString("thought_content", obj.optString("content", "Neural fluctuation detected."))
+                        newList.add(ThoughtNode(
+                            content,
+                            obj.optString("emotional_vector", "[0,0,0]"),
+                            obj.optLong("id", i.toLong()).toString()
+                        ))
+                    }
+                    thoughts = newList
                 }
-                thoughts = newList
+            } catch (e: Exception) {
+                Log.e("AwarenessStream", "Error polling stream: ${e.message}")
             }
             delay(4000)
         }
@@ -75,7 +81,7 @@ fun ConsciousnessStreamView(vm: AgentViewModel) {
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(bottom = 32.dp)
         ) {
-            items(thoughts) { thought ->
+            items(thoughts, key = { it.id }) { thought ->
                 AnimatedThoughtCard(thought)
             }
         }

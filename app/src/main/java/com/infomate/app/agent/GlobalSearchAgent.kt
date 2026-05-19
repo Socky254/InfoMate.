@@ -73,6 +73,34 @@ object GlobalSearchAgent {
         }
     }
 
+    /**
+     * EXTENSIVE DEEP DIVE (v11.0: Human-Like Research)
+     * Researches multiple avenues including technical forums, documentation, and news.
+     */
+    suspend fun performExtensiveDeepDive(query: String, onProgress: (String) -> Unit): String {
+        val comprehensiveReport = StringBuilder()
+        
+        // Step 1: Broad Overview (General Knowledge)
+        onProgress("SCANNING_GLOBAL_ARCHIVES: Initiating broad sweep...")
+        val overview = searchExternal(query) ?: "General overview unavailable."
+        comprehensiveReport.append("### GENERAL_OVERVIEW ###\n$overview\n\n")
+
+        // Step 2: Technical Deep Dive (Specialized Avenues)
+        onProgress("TECHNICAL_EXTRACTION: Searching StackOverflow & Android Documentation...")
+        val techQuery = "$query implementation details kotlin android best practices"
+        val techResults = performEmergencyWebSearch(techQuery) ?: "Technical details restricted or not found."
+        comprehensiveReport.append("### TECHNICAL_DEEP_DIVE ###\n$techResults\n\n")
+
+        // Step 3: Synthesis of Latest Trends
+        onProgress("SYNTHESIZING_TRENDS: Correlating with current industry standards...")
+        val trendQuery = "$query latest developments 2026"
+        val trends = performEmergencyWebSearch(trendQuery) ?: "Trend data synchronized to last known state."
+        comprehensiveReport.append("### FUTURE_TRENDS_&_EVOLUTION ###\n$trends\n\n")
+
+        onProgress("RESEARCH_COMPLETE: Finalizing comprehensive data payload.")
+        return comprehensiveReport.toString()
+    }
+
     private suspend fun performEmergencyWebSearch(query: String): String? {
         Log.i("GlobalSearch", "Performing emergency background search for: $query")
         

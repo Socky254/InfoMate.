@@ -83,13 +83,18 @@ object ReliabilitySDK {
     }
 
     private fun startStreamService() {
-        appContext?.let {
-            val intent = Intent(it, StreamService::class.java)
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                it.startForegroundService(intent)
-            } else {
-                it.startService(intent)
+        try {
+            appContext?.let {
+                val intent = Intent(it, StreamService::class.java)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    it.startForegroundService(intent)
+                } else {
+                    it.startService(intent)
+                }
             }
+        } catch (e: Exception) {
+            // Android 12+ Background Start Restriction or other Service issues
+            android.util.Log.w("ReliabilitySDK", "StreamService start deferred: ${e.message}")
         }
     }
 

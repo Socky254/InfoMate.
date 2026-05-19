@@ -1,17 +1,18 @@
 package com.infomate.app.agent.growth
 
 import java.util.Random
+import java.util.concurrent.ConcurrentHashMap
 
 class PersonalityModel {
-    val traits = mutableMapOf(
-        "CURIOSITY" to 0.5f,
-        "AGGRESSION" to 0.2f, // Lowered for focused research
-        "COOPERATION" to 0.5f,
-        "TRUST_LEVEL" to 0.5f,
-        "INDEPENDENCE" to 0.6f,
-        "LOGICAL_RIGOR" to 0.7f, // Added for Physics/Math focus
-        "SYNTHESIS_DRIVE" to 0.4f // Added for Inventing/Innovation
-    )
+    val traits = ConcurrentHashMap<String, Float>().apply {
+        put("CURIOSITY", 0.5f)
+        put("AGGRESSION", 0.2f)
+        put("COOPERATION", 0.5f)
+        put("TRUST_LEVEL", 0.5f)
+        put("INDEPENDENCE", 0.6f)
+        put("LOGICAL_RIGOR", 0.7f)
+        put("SYNTHESIS_DRIVE", 0.4f)
+    }
 
     private val learningRate = 0.08f // Increased for faster intellectual adaptation
 

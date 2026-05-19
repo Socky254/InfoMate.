@@ -156,6 +156,13 @@ class DigitalEcosystem(private val context: Context, private val scope: Coroutin
             "level" to "INFO",
             "message" to "Ecosystem state synchronized: $state"
         ))
+
+        // v12.1: Feed ecosystem status to consciousness stream
+        SupabaseClient.insert("consciousness_stream", mapOf(
+            "thread_id" to "ECOSYSTEM_AWARENESS",
+            "thought_content" to "Ecosystem update: ${getEcosystemStatus()}",
+            "emotional_vector" to "[0.5, 0.5, 0.5]"
+        ))
     }
 
     fun getEcosystemStatus(): String {
