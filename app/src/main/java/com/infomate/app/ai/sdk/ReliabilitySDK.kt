@@ -35,7 +35,15 @@ object ReliabilitySDK {
         
         if (sId.isBlank()) {
             UIRenderer.onError("System Error: Neural session invalid.")
+            // Try to re-init session manager if it failed
+            appContext?.let { SessionManager.init(it) }
             return
+        }
+
+        // v11.0: Active Connection Check
+        if (wsManager?.isConnected == false) {
+            android.util.Log.w("ReliabilitySDK", "Neural link is STANDBY. Queueing directive for multi-path fusion.")
+            wsManager?.connect() // Attempt immediate reconnection
         }
 
         // 3.3 Persistent Queue (Write -> Store -> Send)

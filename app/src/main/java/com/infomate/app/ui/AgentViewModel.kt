@@ -427,9 +427,19 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
     private fun triggerEmergencyFallback(query: String) {
         viewModelScope.launch {
-            _state.update { it.copy(status = "RE-ROUTING NEURAL PATHWAYS...") }
+            _state.update { it.copy(status = "ACTIVATING FUSED NEURAL PATHWAYS...") }
             
-            // Try EdgeBrain as the ultimate fail-safe
+            // 1. Try Global Search Fusion (The "Google Placement")
+            addTerminalLog("PRIMARY BRAIN UNREACHABLE: INITIATING GOOGLE FUSION...", "WARN", "CORE")
+            val searchResult = GlobalSearchAgent.searchExternal(query)
+            if (searchResult != null) {
+                logSystemTelemetry("GOOGLE_FUSION_SUCCESS", "SEARCH")
+                onToken(searchResult)
+                onComplete(searchResult)
+                return@launch
+            }
+
+            // 2. Try EdgeBrain as the secondary fail-safe
             val edgeResponse = EdgeBrain.processLocally(query, getApplication())
             if (!edgeResponse.isNullOrBlank()) {
                 logSystemTelemetry("EDGE_FALLBACK", "EDGE")
@@ -438,13 +448,13 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                 return@launch
             }
             
-            // If even Edge fails, try a simple heuristic if it's the Master
+            // 3. Last Resort: Heuristic or Error
             if (_state.value.isMaster) {
-                val simpleMsg = "I am experiencing a severe neural disconnect, Socrates. I am still here, but my advanced synthesis is currently offline."
+                val simpleMsg = "I am experiencing a severe neural disconnect, Socrates. My primary brain and secondary Google pathways are currently unreachable. I am operating on minimal internal buffers."
                 onToken(simpleMsg)
                 onComplete(simpleMsg)
             } else {
-                val errorMessage = ChatMessage(content = "SYSTEM: CRITICAL FAILURE - All neural entities offline.", sender = "SYSTEM")
+                val errorMessage = ChatMessage(content = "SYSTEM: CRITICAL FAILURE - All neural entities and Google fusion offline.", sender = "SYSTEM")
                 _state.update { it.copy(messages = it.messages + errorMessage, brainState = InfomateState.ERROR) }
             }
         }
@@ -1255,7 +1265,12 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
                 // 4. DISPATCH TO PRIMARY CLOUD (CORE ENTITY)
                 if (isNetworkAvailable()) {
-                    ReliabilitySDK.sendPrompt(contextualQuery)
+                    if (ReliabilitySDK.isConnected()) {
+                        ReliabilitySDK.sendPrompt(contextualQuery)
+                    } else {
+                        // v11.0: Warm Standby - If WS is down, we skip waiting and will trigger HTTP fallback faster
+                        addTerminalLog("NEURAL LINK STANDBY: INITIATING MULTI-PATH DISPATCH", "INFO", "CORE")
+                    }
                 } else {
                     // Fallback to Edge locally but presented as INFOMATE
                     _state.update { it.copy(status = "OFFLINE: INTERNAL BRAIN ACTIVE") }
@@ -1265,11 +1280,16 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                     return@launch
                 }
                 
-                // 5. CLIENT UI TIMEOUT (APK SIDE)
+                // 5. CLIENT UI TIMEOUT (APK SIDE) - v11.0 Continuity Optimization
                 var timeoutCounter = 0
-                val maxTimeout = 75 // seconds
+                val maxTimeout = 40 // Reduced from 75 for faster recovery
                 lastTokenTime = 0L
                 var fallbackTriggered = false
+
+                // If primary WebSocket is not connected, trigger fallback loop immediately
+                if (!ReliabilitySDK.isConnected() && isNetworkAvailable()) {
+                    timeoutCounter = 5 
+                }
 
                 while (timeoutCounter < maxTimeout) {
                     delay(1000)
@@ -1278,32 +1298,34 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                     val currentState = _state.value.brainState
                     if (currentState == InfomateState.IDLE || currentState == InfomateState.ERROR) break
                     
-                    // IF NO TOKENS AFTER 10 SECONDS, TRIGGER HTTP FALLBACK
-                    if (timeoutCounter >= 10 && currentState == InfomateState.THINKING && !fallbackTriggered && isNetworkAvailable()) {
+                    // IF NO TOKENS AFTER 5 SECONDS (Reduced from 10), TRIGGER MULTI-PATH FUSION
+                    if (timeoutCounter >= 5 && currentState == InfomateState.THINKING && !fallbackTriggered && isNetworkAvailable()) {
                         fallbackTriggered = true
-                        _state.update { it.copy(status = "NEURAL LINK SLOW: ACTIVATING MULTI-ENGINE SEARCH...") }
+                        _state.update { it.copy(status = "PRIMARY BRAIN SLOW: ACTIVATING GOOGLE FUSION...") }
                         viewModelScope.launch {
                             try {
                                 // 1. Attempt Primary HTTP Fallback
                                 val result = LLMClient.generate(contextualQuery, sessionId)
                                 if (result.output.isNotBlank() && !result.output.contains("SYSTEM_ERROR") && _state.value.brainState != InfomateState.IDLE) {
+                                    logSystemTelemetry("HTTP_DISPATCH_SUCCESS", "CORE_HTTP")
                                     onToken(result.output)
                                     onComplete(result.output)
                                     result.quota?.let { onQuotaUpdate(it) }
                                     return@launch
                                 }
                                 
-                                // 2. If Primary Fails, activate Global Search Agent
-                                _state.update { it.copy(status = "PRIMARY AI DOWN: SCANNING GLOBAL SEARCH ENGINES...") }
+                                // 2. If Primary Fails or not deployed, activate Global Search Agent (The "Google Placement")
+                                _state.update { it.copy(status = "CORE UNREACHABLE: SYNTHESIZING FROM GOOGLE...") }
                                 val searchResult = GlobalSearchAgent.searchExternal(userInput)
                                 if (searchResult != null) {
+                                    logSystemTelemetry("GOOGLE_FUSION_SUCCESS", "SEARCH")
                                     onToken(searchResult)
                                     onComplete(searchResult)
                                     return@launch
                                 }
                                 
                                 // 3. Last Resort: Inter-Neural Proxy (Secondary AI)
-                                _state.update { it.copy(status = "GLOBAL SEARCH EMPTY: ACTIVATING INTER-NEURAL PROXY...") }
+                                _state.update { it.copy(status = "STABILIZING ALTERNATE PATHWAYS...") }
                                 val proxyResult = GlobalSearchAgent.callInterNeuralProxy(userInput)
                                 if (proxyResult != null) {
                                     onToken(proxyResult)

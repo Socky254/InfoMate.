@@ -44,7 +44,8 @@ object LLMClient {
 
                     // v10.9: Handle missing Edge Function error gracefully
                     if (response.contains("not found", true) || response.contains("NOT_FOUND")) {
-                        return GenerationResult("SYSTEM_ERROR: Primary Neural Core (infomate-brain) not deployed. Activating local fail-safe...")
+                        Log.w("INFOMATE_CORE", "Primary brain function not found. Triggering alternate neural route...")
+                        return GenerationResult("SYSTEM_ERROR: PRIMARY_CORE_NOT_FOUND")
                     }
 
                     val json = JSONObject(response)
