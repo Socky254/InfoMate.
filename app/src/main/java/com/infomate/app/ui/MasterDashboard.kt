@@ -129,12 +129,21 @@ fun MasterDashboard(state: UIState, vm: AgentViewModel, onDismiss: () -> Unit) {
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     
-                    Button(
-                        onClick = { /* TODO: Open Proposal Review Screen */ },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                        modifier = Modifier.border(1.dp, CyberCyan.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                    ) {
-                        Text("REVIEW SYSTEM PROPOSALS", color = CyberCyan, fontSize = 10.sp)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { vm.toggleGrowthDashboard(true) },
+                            colors = ButtonDefaults.buttonColors(containerColor = CyberCyan.copy(alpha = 0.1f)),
+                            modifier = Modifier.weight(1f).border(1.dp, CyberCyan.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                        ) {
+                            Text("VIEW EVOLUTION TAB", color = CyberCyan, fontSize = 10.sp)
+                        }
+                        Button(
+                            onClick = { /* TODO: Open Proposal Review Screen */ },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                            modifier = Modifier.weight(1f).border(1.dp, SilverText.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                        ) {
+                            Text("REVIEW PROPOSALS", color = SilverText, fontSize = 10.sp)
+                        }
                     }
                 }
 

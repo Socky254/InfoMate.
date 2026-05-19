@@ -34,6 +34,7 @@ import com.infomate.core.brain.ReasoningEngine
 import com.infomate.core.ui.components.InfomateState
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.infomate.app.agent.NeuralGrowthAgent
 import com.infomate.app.agent.DiagnosticAgent
 import com.infomate.app.agent.GlobalSearchAgent
 import com.infomate.app.ai.LLMClient
@@ -133,6 +134,44 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
         checkForSystemUpdates()
         startConnectionPolling()
+        startNeuralEvolutionMonitoring()
+    }
+
+    private fun startNeuralEvolutionMonitoring() {
+        viewModelScope.launch {
+            while (true) {
+                // 1. Update Growth Metrics
+                val metrics = NeuralGrowthAgent.fetchGrowthMetrics()
+                _state.update { it.copy(
+                    totalInsights = metrics["totalInsights"] as Int,
+                    neuralDensity = metrics["density"] as Float,
+                    syntheticPersonalityLevel = metrics["personalityLevel"] as Int
+                ) }
+
+                // 2. Autonomous Thought Evaluation (Master Architect Only)
+                if (_state.value.isMaster && _state.value.brainState == InfomateState.IDLE) {
+                    val autonomousMsg = NeuralGrowthAgent.evaluateAutonomousThought(getDeviceStatus())
+                    if (autonomousMsg != null) {
+                        handleAutonomousMessage(autonomousMsg)
+                    }
+                }
+                
+                delay(300000) // Check every 5 minutes for autonomous activity
+            }
+        }
+    }
+
+    private fun handleAutonomousMessage(content: String) {
+        viewModelScope.launch {
+            val assistantMessage = ChatMessage(content = content, sender = "INFOMATE")
+            _state.update { it.copy(
+                messages = it.messages + assistantMessage,
+                brainState = InfomateState.RESPONDING,
+                status = "CORE: AUTONOMOUS REFLECTION"
+            ) }
+            saveMessageToSupabase(assistantMessage, "AUTONOMOUS_TRIGGER")
+            speak(content)
+        }
     }
 
     private fun startConnectionPolling() {
@@ -564,8 +603,14 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             if (show) {
                 _state.update { it.copy(showPinEntry = true) }
             } else {
-                _state.update { it.copy(showMasterDashboard = false, showPinEntry = false) }
+                _state.update { it.copy(showMasterDashboard = false, showPinEntry = false, showGrowthDashboard = false) }
             }
+        }
+    }
+
+    fun toggleGrowthDashboard(show: Boolean) {
+        if (_state.value.isMaster) {
+            _state.update { it.copy(showGrowthDashboard = show) }
         }
     }
 

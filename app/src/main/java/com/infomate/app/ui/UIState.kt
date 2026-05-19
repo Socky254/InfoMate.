@@ -41,5 +41,9 @@ data class UIState(
     val showMasterDashboard: Boolean = false,
     val showPinEntry: Boolean = false,
     val masterPin: String = "kiprutoArtK194!!",
-    val isConnected: Boolean = false
+    val isConnected: Boolean = false,
+    val showGrowthDashboard: Boolean = false,
+    val neuralDensity: Float = 0.0f, // 0.0 to 1.0
+    val totalInsights: Int = 0,
+    val syntheticPersonalityLevel: Int = 1 // Evolution stage
 )

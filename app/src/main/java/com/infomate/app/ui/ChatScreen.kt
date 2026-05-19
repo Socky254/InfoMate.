@@ -272,6 +272,17 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                     onDismiss = { vm.toggleMasterDashboard(false) }
                 )
             }
+
+            AnimatedVisibility(
+                visible = state.showGrowthDashboard,
+                enter = fadeIn() + expandIn(),
+                exit = fadeOut() + shrinkOut()
+            ) {
+                NeuralGrowthDashboard(
+                    state = state,
+                    onDismiss = { vm.toggleGrowthDashboard(false) }
+                )
+            }
         }
     }
 }
