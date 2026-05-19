@@ -62,6 +62,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     private val gson = Gson()
     private val bufferMutex = Mutex()
     private val tokenBuffer = mutableListOf<String>()
+    private var isProcessingBuffer = false
     private val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         val vibratorManager = application.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
         vibratorManager.defaultVibrator
@@ -413,8 +414,6 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         _state.update { it.copy(telemetryHistory = newMetrics) }
     }
 
-    private val tokenBuffer = mutableListOf<String>()
-    private var isProcessingBuffer = false
 
     override fun onToken(text: String) {
         if (text.isEmpty()) return

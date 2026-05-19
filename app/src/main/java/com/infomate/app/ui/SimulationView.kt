@@ -104,6 +104,7 @@ fun SimulationView(vm: AgentViewModel) {
                             lineHeight = 16.sp
                         )
                     }
+                }
                 item {
                     Spacer(modifier = Modifier.height(32.dp))
                 }

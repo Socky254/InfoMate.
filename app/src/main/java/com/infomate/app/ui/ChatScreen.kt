@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -131,6 +132,7 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
         }
     }
 }
+}
 
 @Composable
 fun PremiumBottomNav(selectedTab: DashboardTab, onTabSelect: (DashboardTab) -> Unit) {
@@ -161,7 +163,7 @@ fun PremiumBottomNav(selectedTab: DashboardTab, onTabSelect: (DashboardTab) -> U
 }
 
 @Composable
-fun NavIcon(icon: ImageVector, tab: DashboardTab, isSelected: Boolean, onSelect: (DashboardTab) -> Unit) {
+fun RowScope.NavIcon(icon: ImageVector, tab: DashboardTab, isSelected: Boolean, onSelect: (DashboardTab) -> Unit) {
     val color = if (isSelected) CyberCyan else SilverText.copy(alpha = 0.3f)
     val scale by animateFloatAsState(if (isSelected) 1.2f else 1.0f, label = "scale")
 
