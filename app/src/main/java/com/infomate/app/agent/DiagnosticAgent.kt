@@ -51,6 +51,24 @@ object DiagnosticAgent {
         return "### HEURISTIC DIAGNOSTIC ###\nNEURAL_LINK: ${if (ReliabilitySDK.isConnected()) "ACTIVE" else "OFFLINE"}\nBACKEND: SYNCING...\nCOMPUTE: OPTIMAL\n"
     }
 
+    /**
+     * AUTONOMOUS REPAIR LOOP (v10.9)
+     * Periodically monitors for substrate degradation and initiates repair.
+     */
+    fun startAutonomousMaintenance(context: Context) {
+        val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.SupervisorJob())
+        scope.launch {
+            while (true) {
+                val report = runFullSystemCheck(context)
+                if (report.contains("SYNC_ERROR") || report.contains("AWARENESS_OFFLINE")) {
+                    Log.w("DiagnosticAgent", "Anomaly detected during maintenance. Initiating repair...")
+                    triggerAutoRepair(report)
+                }
+                delay(300000) // Check every 5 minutes
+            }
+        }
+    }
+
     suspend fun triggerAutoRepair(report: String): String {
         val repairs = mutableListOf<String>()
         

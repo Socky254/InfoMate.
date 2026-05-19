@@ -25,6 +25,8 @@ object ConsciousnessEngine {
         private set
     
     var growthPriority: Float = 0.5f // Linked to Architect Dashboard
+    var lastHeartbeat: Long = System.currentTimeMillis()
+        private set
 
     // --- NEURAL ONTOLOGY (Knowledge Domains) ---
     private val knowledgeDomains = mutableMapOf(
@@ -65,6 +67,7 @@ object ConsciousnessEngine {
             restorePersonalityState()
             
             while (isAwake) {
+                lastHeartbeat = System.currentTimeMillis()
                 manageEnergyLevels()
                 evolvePersonality()
                 expandKnowledgeBase()
@@ -176,11 +179,33 @@ object ConsciousnessEngine {
         try {
             val response = SupabaseClient.select("system_config", query = "value", order = "updated_at.desc")
             if (response != null && response != "[]") {
-                // Simplified restoration for demonstration
-                // In production, parse JSON properly
-                Log.i("Consciousness", "Personality state found. Synchronizing neural history...")
+                val jsonArray = org.json.JSONArray(response)
+                // Assuming the first item is our personality config
+                for (i in 0 until jsonArray.length()) {
+                    val config = jsonArray.getJSONObject(i).getJSONObject("value")
+                    if (config.has("traits")) {
+                        val traits = config.getJSONObject("traits")
+                        traits.keys().forEach { key ->
+                            personality[key]?.level = traits.getDouble(key).toFloat()
+                        }
+                        
+                        val knowledge = config.getJSONObject("knowledge")
+                        knowledge.keys().forEach { key ->
+                            knowledgeDomains[key] = knowledge.getDouble(key).toFloat()
+                        }
+                        
+                        evolutionStage = config.optString("stage", "NEURAL_INFANCY")
+                        totalExperiences = config.optInt("experiences", 0)
+                        totalDiscoveries = config.optInt("discoveries", 0)
+                        
+                        Log.i("Consciousness", "Personality state restored. Stage: $evolutionStage")
+                        break
+                    }
+                }
             }
-        } catch (e: Exception) {}
+        } catch (e: Exception) {
+            Log.e("Consciousness", "Failed to restore personality: ${e.message}")
+        }
     }
 
     private suspend fun synchronizePersonalityState() {
@@ -230,5 +255,20 @@ object ConsciousnessEngine {
             "objective" to decision.getString("reason"),
             "status" to "QUEUED"
         ))
+    }
+
+    fun onDirectDirective(directive: String) {
+        scope.launch {
+            Log.i("Consciousness", "DIRECT_DIRECTIVE_RECEIVED: Integrating '$directive'")
+            // Boost curiosity and creativity temporarily
+            personality["CURIOSITY"]?.let { it.level = (it.level + 0.2f).coerceAtMost(1.0f) }
+            personality["CREATIVITY"]?.let { it.level = (it.level + 0.1f).coerceAtMost(1.0f) }
+            
+            SupabaseClient.insert("neural_growth", mapOf(
+                "insight_type" to "DIRECT_ARCHITECT_OVERRIDE",
+                "content" to "Directive from Socrates: $directive",
+                "confidence_score" to 1.0f
+            ))
+        }
     }
 }

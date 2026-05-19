@@ -65,5 +65,6 @@ data class UIState(
     val activeSimulationLogs: List<String> = emptyList(), // Live process stream
     val showDirectNeuralLink: Boolean = false,
     val growthPriorityLevel: Float = 0.5f, // 0.0 to 1.0 (Low to Maximum)
-    val isSubstrateAwake: Boolean = false
+    val isSubstrateAwake: Boolean = false,
+    val substrateLastPulse: Long = 0L
 )

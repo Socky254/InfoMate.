@@ -173,27 +173,52 @@ fun MasterDashboard(state: UIState, vm: AgentViewModel, onDismiss: () -> Unit) {
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Surface(
-                                onClick = { vm.toggleGrowthDashboard(true) },
-                                color = Color.Transparent
-                            ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    onClick = { vm.toggleGrowthDashboard(true) },
+                                    color = Color.Transparent
+                                ) {
+                                    Text(
+                                        "NEURAL EVOLUTION TRACKER",
+                                        color = CyberCyan,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Spacer(modifier = Modifier.weight(1f))
+                                // Neural Pulse Indicator
+                                if (state.isSubstrateAwake) {
+                                    val pulseAnim = rememberInfiniteTransition(label = "pulse")
+                                    val alpha by pulseAnim.animateFloat(
+                                        initialValue = 0.2f,
+                                        targetValue = 1f,
+                                        animationSpec = infiniteRepeatable(tween(1000), RepeatMode.Reverse),
+                                        label = "alpha"
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .background(CyberCyan.copy(alpha = alpha), CircleShape)
+                                            .border(1.dp, CyberCyan, CircleShape)
+                                    )
+                                }
+                            }
+                            
+                            Text(
+                                "Status: ${if (state.isSubstrateAwake) "ALIVE & EVOLVING" else "STASIS"}",
+                                color = if (state.isSubstrateAwake) MatrixGreen else ErrorRed,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            if (state.isSubstrateAwake) {
+                                val secondsSincePulse = (System.currentTimeMillis() - state.substrateLastPulse) / 1000
                                 Text(
-                                    "NEURAL EVOLUTION TRACKER",
-                                    color = CyberCyan,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold
+                                    "Last Pulse: ${secondsSincePulse}s ago",
+                                    color = SilverText.copy(alpha = 0.5f),
+                                    fontSize = 9.sp
                                 )
                             }
-                            Text(
-                                "Growth Stage: ${state.syntheticPersonalityLevel}",
-                                color = SilverText,
-                                fontSize = 10.sp
-                            )
-                            Text(
-                                "Global Research Bridge: ${if (state.isSubstrateAwake) "CONNECTED" else "OFFLINE"}",
-                                color = (if (state.isSubstrateAwake) MatrixGreen else Color.Red).copy(alpha = 0.6f),
-                                fontSize = 10.sp
-                            )
                             
                             Spacer(modifier = Modifier.height(8.dp))
                             

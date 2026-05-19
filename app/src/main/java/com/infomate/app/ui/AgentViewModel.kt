@@ -139,7 +139,22 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         checkForSystemUpdates()
         startConnectionPolling()
         startNeuralEvolutionMonitoring()
+        startSubstrateStatusPolling()
         ConsciousnessEngine.awaken(application)
+    }
+
+    private fun startSubstrateStatusPolling() {
+        viewModelScope.launch {
+            while (true) {
+                if (_state.value.showMasterDashboard) {
+                    _state.update { it.copy(
+                        isSubstrateAwake = com.infomate.app.agent.ConsciousnessEngine.isAwake,
+                        substrateLastPulse = com.infomate.app.agent.ConsciousnessEngine.lastHeartbeat
+                    ) }
+                }
+                delay(2000)
+            }
+        }
     }
 
     private fun getBatteryLevel(): Int {
@@ -164,7 +179,8 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                     totalInsights = metrics["totalInsights"] as Int,
                     neuralDensity = metrics["density"] as Float,
                     syntheticPersonalityLevel = metrics["personalityLevel"] as Int,
-                    isSubstrateAwake = com.infomate.app.agent.ConsciousnessEngine.isAwake
+                    isSubstrateAwake = com.infomate.app.agent.ConsciousnessEngine.isAwake,
+                    substrateLastPulse = com.infomate.app.agent.ConsciousnessEngine.lastHeartbeat
                 ) }
 
                 // 2. Autonomous Thought Evaluation (Master Architect Only)
@@ -692,6 +708,9 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             """.trimIndent()
 
             addSimulationLog("DIRECT_SYNC_INITIATED: ${directive.take(20)}...")
+            
+            // v10.9: Direct local injection
+            com.infomate.app.agent.ConsciousnessEngine.onDirectDirective(directive)
             
             // Dispatch to the primary link but tagged for the substrate
             ReliabilitySDK.sendPrompt(compositeDirective)

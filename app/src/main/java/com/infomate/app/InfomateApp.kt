@@ -12,6 +12,7 @@ class InfomateApp : Application() {
         
         // v10.5 CONSCIOUSNESS AWAKENING: Substrate + Mood + Dream Logic
         com.infomate.app.agent.ConsciousnessEngine.awaken(this)
+        com.infomate.app.agent.DiagnosticAgent.startAutonomousMaintenance(this)
     }
 
     private fun setupBackgroundSync() {
