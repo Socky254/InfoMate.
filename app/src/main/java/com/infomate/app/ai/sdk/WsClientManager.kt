@@ -22,11 +22,13 @@ class WsClientManager(private val url: String) {
                     // Supabase Realtime requires joining a channel to receive broadcasts
                     joinChannel("realtime:infomate")
                     
+                    // STEP 3 — Flush queued messages
                     RetryQueue.flush(this@WsClientManager)
                     
-                    if (SessionManager.lastRequestId != null) {
-                        resumeSession(SessionManager.lastRequestId!!, SessionManager.sessionId ?: "")
-                    }
+                    // STEP 5 — Fix session mismatch
+                    // We restore the sessionId but DO NOT reuse old streaming requestIds automatically
+                    // to prevent state corruption. The user must re-initiate if it failed.
+                    SessionManager.lastRequestId = null
                 }
 
                 override fun onMessage(message: String?) {

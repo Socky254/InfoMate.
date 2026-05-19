@@ -540,9 +540,10 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
                 ReliabilitySDK.sendPrompt(searchPrompt)
                 
-                // Safety timeout
+                // STEP 4 — Add timeout handling
                 delay(45000)
                 if (_state.value.brainState == InfomateState.THINKING) {
+                    StreamController.terminateStream()
                     onError("Neural search timed out. Verify your connection.")
                 }
             } catch (e: Exception) {
@@ -616,10 +617,13 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
                 ReliabilitySDK.sendPrompt(contextualQuery)
                 
-                // Safety timeout for non-responding neural link
+                // STEP 4 — Add timeout handling
                 delay(45000)
-                if (_state.value.brainState == InfomateState.THINKING) {
-                    onError("Neural link timed out. Verify your connection.")
+                if (_state.value.brainState == InfomateState.THINKING || _state.value.brainState == InfomateState.RESPONDING) {
+                    if (StreamController.state != AIState.IDLE) {
+                        StreamController.terminateStream()
+                        onError("Neural bridge timeout: AI failed to respond in time.")
+                    }
                 }
             } catch (e: Exception) {
                 val errorMessage = ChatMessage(content = "SYSTEM: ERROR - ${e.message}", sender = "SYSTEM")

@@ -22,9 +22,20 @@ object ReliabilitySDK {
     }
 
     fun sendPrompt(prompt: String) {
+        // STEP 1 — Validate payload BEFORE sending
+        if (prompt.trim().isEmpty()) {
+            UIRenderer.onError("System Error: Empty directive rejected.")
+            return
+        }
+
         val reqId = UUID.randomUUID().toString()
         val sId = SessionManager.sessionId ?: ""
         
+        if (sId.isBlank()) {
+            UIRenderer.onError("System Error: Neural session invalid.")
+            return
+        }
+
         // 3.3 Persistent Queue (Write -> Store -> Send)
         appContext?.let {
             PersistenceManager.addPendingMessage(it, ChatMessage(prompt, "OPERATOR"))
@@ -38,10 +49,12 @@ object ReliabilitySDK {
         // Start Foreground Service for active stream
         startStreamService()
 
+        // STEP 2 — Fix JSON serialization (JSONObject is safe)
         val payload = JSONObject().apply {
             put("requestId", reqId)
             put("sessionId", sId)
             put("payload", JSONObject().put("prompt", prompt))
+            put("timestamp", System.currentTimeMillis())
         }
 
         wsManager?.send(payload.toString())

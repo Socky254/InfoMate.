@@ -47,18 +47,29 @@ object StreamController {
                     }
                 }
                 "stream_end" -> {
-                    state = AIState.DONE
-                    ReliabilitySDK.stopStreamService()
+                    terminateStream()
                     UIRenderer.onComplete(SessionManager.partialResponse.toString())
                 }
                 "error" -> {
-                    state = AIState.ERROR
-                    ReliabilitySDK.stopStreamService()
+                    terminateStream()
                     UIRenderer.onError(msg.optString("message", "Unknown error"))
                 }
             }
         } catch (e: Exception) {
             UIRenderer.onError("Stream parse error")
+        }
+    }
+
+    // STEP 4 — Add timeout handling / Safe Termination
+    fun terminateStream() {
+        if (state == AIState.IDLE) return
+        
+        state = AIState.IDLE
+        ReliabilitySDK.stopStreamService()
+        // Clear last request to prevent "ghost" resumes (STEP 5)
+        SessionManager.lastRequestId = null
+        appContext?.let {
+            SessionManager.save(it)
         }
     }
 }
