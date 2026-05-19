@@ -95,6 +95,33 @@ object SupabaseClient {
         }
     }
 
+    suspend fun rpc(function: String, params: Map<String, Any>): List<String> = withContext(Dispatchers.IO) {
+        val json = gson.toJson(params)
+        val body = json.toRequestBody(mediaType)
+        
+        val request = Request.Builder()
+            .url("${Config.SUPABASE_URL}/rest/v1/rpc/$function")
+            .addHeader("apikey", Config.SUPABASE_KEY)
+            .addHeader("Authorization", "Bearer ${userToken ?: Config.SUPABASE_KEY}")
+            .post(body)
+            .build()
+
+        try {
+            client.newCall(request).execute().use { response ->
+                val responseBody = response.body?.string()
+                Log.d("SUPABASE_RPC", "Function: $function, Response: $responseBody")
+                if (response.isSuccessful) {
+                    listOf(responseBody ?: "")
+                } else {
+                    emptyList()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("SUPABASE_RPC", "Exception: ${e.message}")
+            emptyList()
+        }
+    }
+
     suspend fun upsert(table: String, data: Map<String, Any>) = withContext(Dispatchers.IO) {
         val json = gson.toJson(data)
         val body = json.toRequestBody(mediaType)
