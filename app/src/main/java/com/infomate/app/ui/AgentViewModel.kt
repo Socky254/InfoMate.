@@ -34,6 +34,7 @@ import com.infomate.core.brain.ReasoningEngine
 import com.infomate.core.ui.components.InfomateState
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.infomate.app.agent.DiagnosticAgent
 import com.infomate.app.agent.GlobalSearchAgent
 import com.infomate.app.ai.LLMClient
 import kotlinx.coroutines.async
@@ -514,6 +515,48 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
     fun triggerSystemUpdateCheck() {
         checkForSystemUpdates()
+    }
+
+    fun runDiagnostics() {
+        viewModelScope.launch {
+            _state.update { it.copy(status = "RUNNING OMEGA DIAGNOSTICS...") }
+            triggerHaptic(50, 200)
+            
+            val report = DiagnosticAgent.runFullSystemCheck(getApplication())
+            
+            // Add to messages so Architect can see it
+            val diagMessage = ChatMessage(content = report, sender = "SYSTEM")
+            _state.update { it.copy(messages = it.messages + diagMessage, status = "DIAGNOSTICS COMPLETE") }
+            pulseSuccess()
+        }
+    }
+
+    fun initiateRepair() {
+        viewModelScope.launch {
+            _state.update { it.copy(status = "INITIATING AUTO-REPAIR...") }
+            triggerHaptic(100, 255)
+            
+            val lastReport = _state.value.messages.lastOrNull { it.sender == "SYSTEM" }?.content ?: ""
+            val repairResult = DiagnosticAgent.triggerAutoRepair(lastReport)
+            
+            val repairMsg = ChatMessage(content = repairResult, sender = "SYSTEM")
+            _state.update { it.copy(messages = it.messages + repairMsg, status = "SYSTEM RECALIBRATED") }
+            pulseSuccess()
+        }
+    }
+
+    fun performExtensiveResearch(topic: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(status = "DEEP RESEARCH ACTIVE...", brainState = InfomateState.THINKING) }
+            
+            val researchPrompt = "EXTENSIVE_RESEARCH_DIRECTIVE: Provide an OMEGA-level deep-dive analysis into '$topic'. Synthesize science, philosophy, and engineering. Assume the reader is the Master Architect."
+            
+            // Priority 1: Multi-Engine Search
+            val findings = GlobalSearchAgent.searchExternal(topic) ?: "Neural archives found no external data."
+            
+            // Priority 2: Synthesis via AI
+            ReliabilitySDK.sendPrompt("$researchPrompt\n\nRESEARCH_FINDINGS:\n$findings")
+        }
     }
 
     fun toggleMasterDashboard(show: Boolean) {

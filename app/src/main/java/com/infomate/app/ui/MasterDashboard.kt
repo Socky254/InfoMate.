@@ -140,20 +140,55 @@ fun MasterDashboard(state: UIState, vm: AgentViewModel, onDismiss: () -> Unit) {
                 // Advanced Controls
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     DashboardActionCard(
-                        icon = Icons.Default.DeleteForever,
-                        label = "PURGE CACHE",
-                        color = Color.Red.copy(alpha = 0.8f),
+                        icon = Icons.Default.BugReport,
+                        label = "DIAGNOSE",
+                        color = Color.Yellow,
                         modifier = Modifier.weight(1f)
                     ) {
-                        vm.purgeNeuralCache()
+                        vm.runDiagnostics()
+                    }
+                    DashboardActionCard(
+                        icon = Icons.Default.Build,
+                        label = "REPAIR",
+                        color = Color.Green,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        vm.initiateRepair()
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    DashboardActionCard(
+                        icon = Icons.Default.AutoGraph,
+                        label = "RESEARCH",
+                        color = CyberCyan,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        // Triggers research on the last topic or opens a prompt
+                        vm.performExtensiveResearch(state.messages.lastOrNull { it.sender != "INFOMATE" }?.content ?: "Future of AI")
                     }
                     DashboardActionCard(
                         icon = Icons.Default.Update,
-                        label = "FORCE UPGRADE",
+                        label = "UPGRADE",
                         color = CyberCyan,
                         modifier = Modifier.weight(1f)
                     ) {
                         vm.triggerSystemUpdateCheck()
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    DashboardActionCard(
+                        icon = Icons.Default.DeleteForever,
+                        label = "PURGE NEURAL CACHE",
+                        color = Color.Red.copy(alpha = 0.8f),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        vm.purgeNeuralCache()
                     }
                 }
 
