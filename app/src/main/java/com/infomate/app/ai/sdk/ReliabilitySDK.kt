@@ -14,6 +14,8 @@ object ReliabilitySDK {
     private var heartbeatTimer: Timer? = null
     private var appContext: Context? = null
 
+    fun isConnected(): Boolean = wsManager?.isConnected ?: false
+
     fun init(context: Context, url: String) {
         appContext = context.applicationContext
         SessionManager.init(appContext!!)

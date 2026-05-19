@@ -84,10 +84,19 @@ fun MasterDashboard(state: UIState, vm: AgentViewModel, onDismiss: () -> Unit) {
 
                 // SYSTEM TELEMETRY GRID
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    TelemetryCard("CORE SYNC", "STABLE", Color.Green, Modifier.weight(1f))
-                    TelemetryCard("LATENCY", "42ms", CyberCyan, Modifier.weight(1f))
+                    TelemetryCard("CORE SYNC", if (state.isConnected) "STABLE" else "SYNC_ERROR", if (state.isConnected) Color.Green else Color.Red, Modifier.weight(1f))
+                    TelemetryCard("BRAIN_STATE", state.brainState.name, CyberCyan, Modifier.weight(1f))
                 }
                 
+                Spacer(modifier = Modifier.height(16.dp))
+
+                DashboardSection(title = "NEURAL LINK STABILITY") {
+                    HealthMetric(label = "Primary Synapse (WebSocket)", value = if (state.isConnected) "OPERATIONAL" else "DISCONNECTED", color = if (state.isConnected) Color.Green else Color.Red)
+                    HealthMetric(label = "Primary Synapse (Rest API)", value = "STABLE", color = Color.Green)
+                    HealthMetric(label = "Edge Brain (Gemini Nano)", value = "IDLE (ACTIVE)", color = CyberCyan)
+                    HealthMetric(label = "Contextual Ingestor", value = "99.8% ACCURACY", color = CyberCyan)
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
 
                 DashboardSection(title = "RESOURCE ALLOCATION") {

@@ -40,5 +40,6 @@ data class UIState(
     val showManualKnowledgeDialog: Boolean = false,
     val showMasterDashboard: Boolean = false,
     val showPinEntry: Boolean = false,
-    val masterPin: String = "kiprutoArtK194!!"
+    val masterPin: String = "kiprutoArtK194!!",
+    val isConnected: Boolean = false
 )

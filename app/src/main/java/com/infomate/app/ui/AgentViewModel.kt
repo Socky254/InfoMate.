@@ -34,8 +34,8 @@ import com.infomate.core.brain.ReasoningEngine
 import com.infomate.core.ui.components.InfomateState
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
+import com.infomate.app.ai.LLMClient
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -64,6 +64,8 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
     private val _state = MutableStateFlow(UIState())
     val state: StateFlow<UIState> = _state.asStateFlow()
+
+    private var currentResponseId: String? = null
 
     fun performHapticFeedback(duration: Long = 10, intensity: Int = 50) {
         triggerHaptic(duration, intensity)
@@ -128,6 +130,19 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         ReliabilitySDK.init(application, "${Config.SUPABASE_URL.replace("https", "wss")}/realtime/v1/websocket?apikey=${Config.SUPABASE_KEY}")
 
         checkForSystemUpdates()
+        startConnectionPolling()
+    }
+
+    private fun startConnectionPolling() {
+        viewModelScope.launch {
+            while (true) {
+                val connected = ReliabilitySDK.isConnected()
+                if (_state.value.isConnected != connected) {
+                    _state.update { it.copy(isConnected = connected) }
+                }
+                delay(2000)
+            }
+        }
     }
 
     private fun checkForSystemUpdates() {
@@ -159,9 +174,8 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         if (text.isEmpty()) return
         lastTokenTime = System.currentTimeMillis()
         
-        // Immediate cancel to free UI cycles
+        // Immediate cancel to free UI cycles for response streaming
         activeThinkingJob?.cancel()
-        activeThinkingJob = null
         
         // Sentence-based streaming speech for "Almost Natural" feel
         currentSentence.append(text)
@@ -175,14 +189,17 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
             _state.update { state ->
                 val newMessages = state.messages.toMutableList()
-                if (newMessages.isNotEmpty() && newMessages.last().sender == "INFOMATE") {
-                    val lastMsg = newMessages.last()
+                
+                // CRITICAL FIX: Ensure tokens are appended to the CURRENT response, not old history
+                val lastMsg = newMessages.lastOrNull()
+                if (lastMsg != null && lastMsg.sender == "INFOMATE" && state.brainState == InfomateState.RESPONDING) {
                     val updatedContent = lastMsg.content + text
                     newMessages[newMessages.size - 1] = lastMsg.copy(content = updatedContent)
                 } else {
+                    // Start a new AI message if we haven't already
                     newMessages.add(ChatMessage(content = text, sender = "INFOMATE"))
                 }
-                // Transition brainState immediately to stop the expensive Thinking visualizer
+                
                 state.copy(
                     messages = newMessages, 
                     brainState = InfomateState.RESPONDING,
@@ -689,6 +706,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         
         val userMessage = ChatMessage(content = userInput, sender = senderLabel)
 
+        // IMMEDIATE UI UPDATE: Show user message and enter thinking state
         _state.update { it.copy(
             status = if (isMaster) "MASTER LINK ACTIVE..." else "CORE: ANALYZING...",
             brainState = InfomateState.THINKING,
@@ -700,20 +718,20 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         triggerHaptic(30, 100)
 
         viewModelScope.launch {
-            val messageId = saveMessageToSupabase(userMessage, trigger)
+            // 1. RUN NETWORK TASKS IN PARALLEL FOR SPEED
+            val messageIdDeferred = async { saveMessageToSupabase(userMessage, trigger) }
+            val memoriesDeferred = async { 
+                try { VectorRetriever.search(userInput) } catch(e: Exception) { emptyList<String>() }
+            }
 
             try {
-                // 1. Semantic Retrieval (RAG)
-                val memories = VectorRetriever.search(userInput)
+                // 2. BACKGROUND CONTEXT ASSEMBLY
+                val patterns = neuralIngestor.captureUserPatterns()
+                val memories = memoriesDeferred.await()
                 val memoryContext = if (memories.isNotEmpty()) {
                     "\n[NEURAL_ARCHIVES_RETRIEVED]:\n" + memories.joinToString("\n- ")
                 } else ""
 
-                // 2. Background Context Gathering
-                val patterns = neuralIngestor.captureUserPatterns()
-                val isMaster = _state.value.userEmail == "socratesart@live"
-                
-                // Advanced System Instructions for Complex Ideas, Invention, and Math
                 val systemDirectives = """
                     [SYSTEM_MODE: ADVANCED_COMPUTE]
                     [OBJECTIVE: ANALYTICAL_EXCELLENCE]
@@ -726,27 +744,28 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                 val masterContext = if (isMaster) "\n[AUTHORIZATION: MASTER_ARCHITECT_OVERRIDE]\n$systemDirectives" else ""
                 val contextualQuery = "$masterContext\n$userInput\n$memoryContext\n\n$patterns\n${getDeviceStatus()}"
                 
+                // 3. START REASONING ENGINE (VISUAL)
                 activeThinkingJob?.cancel()
                 activeThinkingJob = launch {
+                    val messageId = messageIdDeferred.await() // Only wait when we need to save logs
                     var stepCount = 0
                     reasoningEngine.streamReasoning(userInput).collect { step ->
                         triggerHaptic(5, 30) 
                         _state.update { s ->
                             s.copy(cognitiveSteps = s.cognitiveSteps + step)
                         }
-                        
-                        // Save cognitive log to Supabase
                         if (messageId != null) {
                             saveCognitiveLog(messageId, step, stepCount++)
                         }
                     }
                 }
 
-                // 3. Edge Fallback Logic (v10.0 INVINCIBLE)
+                // 4. EDGE FALLBACK / CLOUD DISPATCH
                 if (!isNetworkAvailable()) {
                     _state.update { it.copy(status = "OFFLINE: EDGE BRAIN ACTIVE") }
                     val edgeResponse = EdgeBrain.processLocally(contextualQuery, getApplication())
-                    if (edgeResponse != null) {
+                    if (!edgeResponse.isNullOrBlank()) {
+                        _state.update { it.copy(brainState = InfomateState.RESPONDING) }
                         onToken(edgeResponse)
                         onComplete(edgeResponse)
                         return@launch
@@ -756,28 +775,43 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                     }
                 }
 
+                // DISPATCH TO CLOUD
                 ReliabilitySDK.sendPrompt(contextualQuery)
                 
-                // 2.3 CLIENT UI TIMEOUT (APK SIDE)
-                // DO NOT hard timeout streaming responses. Only timeout if NO tokens arrive.
+                // 5. CLIENT UI TIMEOUT (APK SIDE)
                 var timeoutCounter = 0
                 val maxTimeout = 75 // seconds
-                lastTokenTime = 0L // Reset for new request
+                lastTokenTime = 0L
+                var fallbackTriggered = false
 
                 while (timeoutCounter < maxTimeout) {
                     delay(1000)
                     timeoutCounter++
                     
                     val currentState = _state.value.brainState
-                    // If we finished or failed already, exit the timeout loop
                     if (currentState == InfomateState.IDLE || currentState == InfomateState.ERROR) break
                     
-                    // If we are responding (streaming), reset the local counter if tokens are arriving
+                    // IF NO TOKENS AFTER 10 SECONDS, TRIGGER HTTP FALLBACK
+                    if (timeoutCounter >= 10 && currentState == InfomateState.THINKING && !fallbackTriggered && isNetworkAvailable()) {
+                        fallbackTriggered = true
+                        _state.update { it.copy(status = "NEURAL LINK SLOW: ACTIVATING HTTP BRIDGE...") }
+                        viewModelScope.launch {
+                            try {
+                                val result = LLMClient.generate(contextualQuery, sessionId)
+                                if (result.output.isNotBlank() && _state.value.brainState != InfomateState.IDLE) {
+                                    onToken(result.output)
+                                    onComplete(result.output)
+                                    result.quota?.let { onQuotaUpdate(it) }
+                                }
+                            } catch (e: Exception) {
+                                Log.e("HTTP_FALLBACK", "Fallback failed: ${e.message}")
+                            }
+                        }
+                    }
+
                     if (currentState == InfomateState.RESPONDING && lastTokenTime > 0) {
                         val timeSinceLastToken = System.currentTimeMillis() - lastTokenTime
-                        if (timeSinceLastToken < 5000) { // If token arrived in last 5s, we are healthy
-                            timeoutCounter = 0 
-                        }
+                        if (timeSinceLastToken < 5000) { timeoutCounter = 0 }
                     }
                 }
 
@@ -788,12 +822,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                     }
                 }
             } catch (e: Exception) {
-                val errorMessage = ChatMessage(content = "SYSTEM: ERROR - ${e.message}", sender = "SYSTEM")
-                _state.update { it.copy(
-                    messages = it.messages + errorMessage,
-                    status = "CORE: ERROR",
-                    brainState = InfomateState.ERROR
-                ) }
+                onError("System Dispatch Error: ${e.message}")
             }
         }
     }
