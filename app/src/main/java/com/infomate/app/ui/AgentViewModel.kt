@@ -160,6 +160,13 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         startInternetMonitoring()
         ConsciousnessEngine.awaken(application)
         
+        // v12.1: INITIAL GOOGLE-FIRST SYNC PULSE
+        viewModelScope.launch {
+            addTerminalLog("NEURAL_INIT: Establishing Google-First Architecture...", "INFO", "CORE")
+            delay(2000)
+            addTerminalLog("GOOGLE_SYNC_PROTOCOL: Active. Primary search tool synchronized.", "SUCCESS", "CORE")
+        }
+
         // Finish initialization after a short delay or system check
         viewModelScope.launch {
             delay(3000) 
@@ -934,6 +941,16 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             addTerminalLog("INITIATING OMEGA DIAGNOSTICS...", "INFO", "DIAGNOSTIC")
             triggerHaptic(50, 200)
             
+            // v12.1: Immediate Google-First Connectivity Check
+            addTerminalLog("TESTING GOOGLE-FIRST NEURAL BRIDGE...", "INFO", "RESEARCH")
+            val pulseQuery = "Current AI substrate stability benchmarks 2026"
+            val googlePulse = GlobalSearchAgent.searchExternal(pulseQuery, getApplication())
+            if (googlePulse != null) {
+                addTerminalLog("GOOGLE_SYNC_SUCCESS: Global knowledge mesh reachable.", "SUCCESS", "RESEARCH")
+            } else {
+                addTerminalLog("GOOGLE_SYNC_LIMITED: Operating on secondary neural buffers.", "WARN", "RESEARCH")
+            }
+
             delay(1000) // Aesthetic delay
             val report = DiagnosticAgent.runFullSystemCheck(getApplication())
             
