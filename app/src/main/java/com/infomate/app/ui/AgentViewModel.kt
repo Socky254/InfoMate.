@@ -279,6 +279,33 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
     private var lastTokenTime = 0L
 
+    private var lastRequestStartTime = 0L
+
+    private fun logSystemTelemetry(status: String, entity: String = "CORE") {
+        viewModelScope.launch {
+            val latency = if (lastRequestStartTime > 0) (System.currentTimeMillis() - lastRequestStartTime).toInt() else 0
+            val telemetryData = mapOf(
+                "sync_status" to status,
+                "latency_ms" to latency,
+                "battery_level" to getBatteryLevel(),
+                "compute_mode" to if (isLowPowerMode()) "LOW_POWER" else "HIGH_PRECISION",
+                "active_entity" to entity
+            )
+            SupabaseClient.insert("system_telemetry", telemetryData)
+            
+            // v10.6: Update simulation logs and waveform with real telemetry
+            addSimulationLog("TELEMETRY_RECORDED: status=$status latency=${latency}ms entity=$entity")
+            updateTelemetryMetricsFromRealValue(if (status == "SUCCESS") 0.8f else 0.2f)
+        }
+    }
+
+    private fun updateTelemetryMetricsFromRealValue(value: Float) {
+        val newMetrics = _state.value.telemetryHistory.toMutableList()
+        newMetrics.removeAt(0)
+        newMetrics.add(value)
+        _state.update { it.copy(telemetryHistory = newMetrics) }
+    }
+
     override fun onToken(text: String) {
         if (text.isEmpty()) return
         lastTokenTime = System.currentTimeMillis()
@@ -333,6 +360,8 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             
             _state.update { it.copy(status = "CORE: ACTIVE", brainState = InfomateState.IDLE) }
             
+            logSystemTelemetry("SUCCESS")
+            
             // Speak remaining tokens if any
             val remaining = currentSentence.toString().trim()
             if (remaining.isNotEmpty()) {
@@ -349,6 +378,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         // try to trigger a fallback instead of showing a raw error.
         if (_state.value.brainState == InfomateState.THINKING) {
             Log.w("INFOMATE_ERROR", "Neural link error: $error. Attempting emergency fallback...")
+            logSystemTelemetry("SYNC_ERROR")
             triggerEmergencyFallback(_state.value.input)
             return
         }
@@ -373,6 +403,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             // Try EdgeBrain as the ultimate fail-safe
             val edgeResponse = EdgeBrain.processLocally(query, getApplication())
             if (!edgeResponse.isNullOrBlank()) {
+                logSystemTelemetry("EDGE_FALLBACK", "EDGE")
                 onToken(edgeResponse)
                 onComplete(edgeResponse)
                 return@launch
@@ -979,6 +1010,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         ) }
         
         triggerHaptic(30, 100)
+        lastRequestStartTime = System.currentTimeMillis()
 
         viewModelScope.launch {
             // 1. GATHER DATA FROM ALL SOURCES IN PARALLEL (INTERNAL HOUSE)
