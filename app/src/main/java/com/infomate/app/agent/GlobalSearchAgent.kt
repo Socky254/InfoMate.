@@ -39,9 +39,9 @@ object GlobalSearchAgent {
 
         Log.d("GlobalSearch", "Dispatched to ${activeNodes.length()} neural nodes.")
 
-        // 2. Try Primary Global Search Proxy
+        // 2. Try Primary Global Search Proxy (v12.0: Google-First Priority)
         val payload = mapOf(
-            "engine" to "multi",
+            "engine" to "google",
             "query" to query,
             "nodes_count" to activeNodes.length()
         )

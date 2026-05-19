@@ -31,6 +31,10 @@ enum class DashboardTab {
     CHAT, DASHBOARD, VITALS, STREAM, SIMULATION, TERMINAL, PROCESS_MONITOR
 }
 
+enum class PinTarget {
+    DASHBOARD, TERMINAL
+}
+
 data class UIState(
     val selectedTab: DashboardTab = DashboardTab.CHAT,
     val input: String = "",
@@ -51,6 +55,7 @@ data class UIState(
     val showManualKnowledgeDialog: Boolean = false,
     val showMasterDashboard: Boolean = false,
     val showPinEntry: Boolean = false,
+    val pinTarget: PinTarget = PinTarget.DASHBOARD,
     val masterPin: String = "kiprutoArtK194!!",
     val isConnected: Boolean = false,
     val showGrowthDashboard: Boolean = false,

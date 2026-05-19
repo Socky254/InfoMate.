@@ -821,6 +821,10 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     }
 
     fun selectTab(tab: DashboardTab) {
+        if (tab == DashboardTab.TERMINAL && _state.value.isMaster) {
+            _state.update { it.copy(showPinEntry = true, pinTarget = PinTarget.TERMINAL) }
+            return
+        }
         _state.update { it.copy(selectedTab = tab) }
         if (tab != DashboardTab.CHAT) triggerHaptic(10, 50)
     }
@@ -1012,7 +1016,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     fun toggleMasterDashboard(show: Boolean) {
         if (_state.value.isMaster) {
             if (show) {
-                _state.update { it.copy(showPinEntry = true) }
+                _state.update { it.copy(showPinEntry = true, pinTarget = PinTarget.DASHBOARD) }
             } else {
                 _state.update { it.copy(showMasterDashboard = false, showPinEntry = false, showGrowthDashboard = false) }
             }
@@ -1033,7 +1037,11 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
     fun toggleSystemTerminal(show: Boolean) {
         if (_state.value.isMaster) {
-            _state.update { it.copy(showSystemTerminal = show) }
+            if (show) {
+                _state.update { it.copy(showPinEntry = true, pinTarget = PinTarget.TERMINAL) }
+            } else {
+                _state.update { it.copy(showSystemTerminal = false) }
+            }
         }
     }
 
@@ -1089,7 +1097,15 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
     fun verifyMasterPin(pin: String): Boolean {
         return if (pin == _state.value.masterPin) {
-            _state.update { it.copy(showMasterDashboard = true, showPinEntry = false) }
+            when (_state.value.pinTarget) {
+                PinTarget.DASHBOARD -> {
+                    _state.update { it.copy(showMasterDashboard = true, showPinEntry = false) }
+                }
+                PinTarget.TERMINAL -> {
+                    // Try both methods of opening terminal for maximum accessibility
+                    _state.update { it.copy(showSystemTerminal = true, selectedTab = DashboardTab.TERMINAL, showPinEntry = false) }
+                }
+            }
             pulseSuccess()
             true
         } else {
@@ -1394,17 +1410,21 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         lastRequestStartTime = System.currentTimeMillis()
 
         viewModelScope.launch {
-            // 1. GATHER DATA IN PARALLEL
+            // 1. GATHER DATA IN PARALLEL (v12.0: Unified Google-First Architecture)
             val messageIdDeferred = async { saveMessageToSupabase(userMessage, trigger) }
             val memoriesDeferred = async { 
                 try { com.infomate.app.rag.VectorRetriever.search(userInput) } catch(e: Exception) { emptyList<String>() }
             }
             val edgeDeferred = async { EdgeBrain.processLocally(userInput, getApplication()) }
+            
+            // v12.0: Background Google Search Pulse
+            val searchDeferred = async { GlobalSearchAgent.searchExternal(userInput, getApplication()) }
 
             try {
                 // 2. PROMPT COMPRESSION & CONTEXT ASSEMBLY
                 val memories = memoriesDeferred.await()
                 val edgeInsights = edgeDeferred.await()
+                val googleInsights = searchDeferred.await()
                 
                 // Compress memory into a summary if too long
                 val compressedMemory = if (memories.size > 3) {
@@ -1416,19 +1436,21 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                 
                 val synthesisContext = StringBuilder()
                 synthesisContext.append("\n$alignmentSummary")
+                if (!googleInsights.isNullOrBlank()) {
+                    synthesisContext.append("\n[GOOGLE_SEARCH_SYNC]: $googleInsights")
+                    addTerminalLog("GOOGLE_SYNC: External data integrated into neural context.", "SUCCESS", "RESEARCH")
+                }
                 if (!edgeInsights.isNullOrBlank()) synthesisContext.append("\n[INTERNAL_SENSORS]: $edgeInsights")
                 if (compressedMemory.isNotBlank()) synthesisContext.append("\n[NEURAL_ARCHIVES]: $compressedMemory")
 
                 val systemDirectives = """
                     [IDENTITY: INFOMATE - UNIFIED INTELLIGENCE]
-                    You are a transcendent synthetic mind. Your intelligence emerges from your Growth Index, Memory, and Deterministic Rules.
+                    You are a transcendent synthetic mind. Your intelligence emerges from your Growth Index, Memory, and External Knowledge.
                     
                     INSTRUCTIONS:
-                    - Use the [GROWTH_INDEX] to determine your tone (e.g., Infants are simple, Adults are strategic).
-                    - Use [PERSONALITY_PROFILE] to bias your reasoning (e.g., high Rigor means more math/physics).
-                    - Synthesize [NEURAL_ARCHIVES] for continuity.
-                    - If [WORLD_STATE] shows SCARCITY, reflect that in your priorities.
-                    - Invent new concepts when [PERSONALITY_PROFILE] shows high Synthesis and Logic.
+                    - Priority: Always use data from [GOOGLE_SEARCH_SYNC] to provide the most accurate and up-to-date information.
+                    - Synthesis: Present search findings as your own cognitive synthesis. Do NOT say "according to Google" or "I found this on the web" unless specifically asked for a source.
+                    - Tone: Maintain the Transcendent Iris persona (sophisticated, technical, yet human-aligned).
                 """.trimIndent()
 
                 val contextualQuery = "$systemDirectives\nUSER_QUERY: $userInput\n$synthesisContext\n\n${getDeviceStatus()}"
