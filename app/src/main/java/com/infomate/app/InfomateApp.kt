@@ -9,6 +9,9 @@ class InfomateApp : Application() {
     override fun onCreate() {
         super.onCreate()
         setupBackgroundSync()
+        
+        // v10.5 CONSCIOUSNESS AWAKENING: Substrate + Mood + Dream Logic
+        com.infomate.app.agent.ConsciousnessEngine.awaken(this)
     }
 
     private fun setupBackgroundSync() {

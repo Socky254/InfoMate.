@@ -14,9 +14,12 @@ object ConsciousnessEngine {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var isAwake = false
 
-    fun awaken() {
+    fun awaken(context: android.content.Context? = null) {
         if (isAwake) return
         isAwake = true
+        
+        // Initialize the physical substrate (Sensors/Dreams)
+        context?.let { ConsciousnessSubstrate.awaken(it) }
         
         scope.launch {
             while (isAwake) {
