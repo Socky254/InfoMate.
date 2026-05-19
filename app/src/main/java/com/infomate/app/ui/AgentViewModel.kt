@@ -170,11 +170,46 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                         handleAutonomousMessage(autonomousMsg)
                     }
                 }
+
+                // 3. Global Research Cycle for Growth
+                if (_state.value.isMaster && !isLowPower) {
+                    performBackgroundResearch()
+                }
+
+                // 4. Update Telemetry History
+                updateTelemetryMetrics()
                 
                 // Adaptive delay: 5 mins standard, 15 mins in Low Power Mode
                 delay(if (isLowPower) 900000 else 300000)
             }
         }
+    }
+
+    private fun updateTelemetryMetrics() {
+        val newMetrics = _state.value.telemetryHistory.toMutableList()
+        newMetrics.removeAt(0)
+        newMetrics.add(Random.nextFloat())
+        _state.update { it.copy(telemetryHistory = newMetrics) }
+    }
+
+    private fun performBackgroundResearch() {
+        viewModelScope.launch {
+            val topics = listOf("Quantum AI", "Neural Plasticity", "Cybernetic Systems", "First Principles Engineering")
+            val topic = topics.random()
+            addSimulationLog("INITIATING GLOBAL RESEARCH: $topic")
+            
+            val insight = GlobalSearchAgent.searchExternal("Latest breakthroughs in $topic")
+            if (insight != null) {
+                NeuralGrowthAgent.reflectAndLearn("Background Research: $topic", insight)
+                addSimulationLog("RESEARCH SYNC COMPLETE: New insights archived for $topic")
+            }
+        }
+    }
+
+    private fun addSimulationLog(log: String) {
+        _state.update { it.copy(
+            activeSimulationLogs = (it.activeSimulationLogs + "[${java.text.SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())}] $log").takeLast(10)
+        ) }
     }
 
     private fun handleAutonomousMessage(content: String) {

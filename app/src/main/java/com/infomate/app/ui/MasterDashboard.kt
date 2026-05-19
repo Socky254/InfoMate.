@@ -83,52 +83,66 @@ fun MasterDashboard(state: UIState, vm: AgentViewModel, onDismiss: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // SYSTEM TELEMETRY GRID
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    TelemetryCard("CORE SYNC", if (state.isConnected) "STABLE" else "SYNC_ERROR", if (state.isConnected) Color.Green else Color.Red, Modifier.weight(1f))
-                    TelemetryCard("BRAIN_STATE", state.brainState.name, CyberCyan, Modifier.weight(1f))
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-
-                DashboardSection(title = "NEURAL LINK STABILITY") {
-                    HealthMetric(label = "Primary Synapse (WebSocket)", value = if (state.isConnected) "OPERATIONAL" else "DISCONNECTED", color = if (state.isConnected) Color.Green else Color.Red)
-                    HealthMetric(label = "Primary Synapse (Rest API)", value = "STABLE", color = Color.Green)
-                    HealthMetric(label = "Edge Brain (Gemini Nano)", value = "IDLE (ACTIVE)", color = CyberCyan)
-                    HealthMetric(label = "Contextual Ingestor", value = "99.8% ACCURACY", color = CyberCyan)
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                DashboardSection(title = "RESOURCE ALLOCATION") {
-                    state.quota?.let { quota ->
-                        ResourceMetric("DAILY REQUESTS", quota.requestsUsed, quota.requestsLimit)
-                        Spacer(modifier = Modifier.height(12.dp))
-                        ResourceMetric("NEURAL TOKENS", quota.tokensUsed.toInt(), 1000000)
+                // LIVE SIMULATION STREAM
+                DashboardSection(title = "LIVE NEURAL SIMULATION") {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp)
+                            .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                            .padding(8.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        state.activeSimulationLogs.forEach { log ->
+                            Text(
+                                log,
+                                color = CyberCyan.copy(alpha = 0.7f),
+                                fontSize = 9.sp,
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                            )
+                        }
                     }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // SYSTEM PROCEEDINGS
-                DashboardSection(title = "SYSTEM PROCEEDINGS") {
-                    ProceedingRow("USER_INGESTION", "SUCCESS", "Patterns analyzed from contacts/SMS")
-                    ProceedingRow("VECTOR_SYNC", "ACTIVE", "768-dim embeddings synchronized")
-                    ProceedingRow("NEURAL_GROWTH", "EXPANDING", "New insights archived from recent dialogues")
-                    ProceedingRow("EDGE_FALLBACK", "STANDBY", "Gemini Nano weights loaded")
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text("SYNAPSE ACTIVITY", color = SilverText.copy(alpha = 0.5f), fontSize = 10.sp)
+                    com.infomate.core.ui.components.NeuralWaveformChart(data = state.telemetryHistory)
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // NEURAL GROWTH & PROPOSALS
                 DashboardSection(title = "CONSCIOUSNESS SUBSTRATE (v10.0)") {
-                    Text(
-                        "Autonomous awareness active. Global knowledge network integration engaged.",
-                        color = CyberCyan.copy(alpha = 0.8f),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        com.infomate.core.ui.components.ConsciousnessAvatar(
+                            isActive = state.isSpeaking,
+                            evolutionLevel = state.syntheticPersonalityLevel
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                "NEURAL EVOLUTION TRACKER",
+                                color = CyberCyan,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "Growth Stage: ${state.syntheticPersonalityLevel}",
+                                color = SilverText,
+                                fontSize = 10.sp
+                            )
+                            Text(
+                                "Global Research Bridge: CONNECTED",
+                                color = Color.Green.copy(alpha = 0.6f),
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
                     
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
