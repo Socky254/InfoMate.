@@ -138,34 +138,49 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     private var activeThinkingJob: Job? = null
 
     init {
-        tts = TextToSpeech(application, this)
-        if (SpeechRecognizer.isRecognitionAvailable(application)) {
-            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(application)
-            setupSpeechListener()
-        }
-        
-        _state.update { it.copy(needsOnboarding = !com.infomate.app.storage.PersistenceManager.isOnboardingComplete(application)) }
-        
-        loadSessionData()
-        
-        // Initialize Reliability SDK with Context & Edge Function Endpoint
-        UIRenderer.setListener(this)
-        StreamController.init(application)
-        ReliabilitySDK.init(application, "${Config.SUPABASE_URL.replace("https", "wss")}/functions/v1/infomate-brain")
+        try {
+            tts = TextToSpeech(application, this)
+            if (SpeechRecognizer.isRecognitionAvailable(application)) {
+                speechRecognizer = SpeechRecognizer.createSpeechRecognizer(application)
+                setupSpeechListener()
+            }
+            
+            _state.update { it.copy(needsOnboarding = !com.infomate.app.storage.PersistenceManager.isOnboardingComplete(application)) }
+            
+            loadSessionData()
+            
+            // Initialize Reliability SDK with Context & Edge Function Endpoint
+            UIRenderer.setListener(this)
+            StreamController.init(application)
+            ReliabilitySDK.init(application, "${Config.SUPABASE_URL.replace("https", "wss")}/functions/v1/infomate-brain")
 
-        checkForSystemUpdates()
-        startConnectionPolling()
-        startNeuralEvolutionMonitoring()
-        startSubstrateStatusPolling()
-        startInternetMonitoring()
-        ConsciousnessEngine.awaken(application)
-        
-        // v12.1: INITIAL GOOGLE-FIRST SYNC PULSE
-        viewModelScope.launch {
-            addTerminalLog("NEURAL_INIT: Establishing Google-First Architecture...", "INFO", "CORE")
-            delay(2000)
-            addTerminalLog("GOOGLE_SYNC_PROTOCOL: Active. Primary search tool synchronized.", "SUCCESS", "CORE")
+            checkForSystemUpdates()
+            startConnectionPolling()
+            startNeuralEvolutionMonitoring()
+            startSubstrateStatusPolling()
+            startInternetMonitoring()
+            
+            // v10.5 Awakening (Protected within Engine)
+            ConsciousnessEngine.awaken(application)
+            
+            // v12.1: INITIAL GOOGLE-FIRST SYNC PULSE
+            viewModelScope.launch {
+                delay(3000) // Ensure system is quiet before pulse
+                addTerminalLog("NEURAL_INIT: Establishing Google-First Architecture...", "INFO", "CORE")
+                delay(1000)
+                addTerminalLog("GOOGLE_SYNC_PROTOCOL: Active. Primary search tool synchronized.", "SUCCESS", "CORE")
+            }
+            
+            // Finalize init
+            viewModelScope.launch {
+                delay(4000)
+                _state.update { it.copy(isSystemInitializing = false) }
+            }
+        } catch (e: Throwable) {
+            Log.e("AgentViewModel", "CRITICAL_INIT_FAULT", e)
+            _state.update { it.copy(isSystemInitializing = false, status = "CORE: FAILSAFE_ACTIVE") }
         }
+    }
 
         // Finish initialization after a short delay or system check
         viewModelScope.launch {
@@ -304,12 +319,16 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     }
 
     private fun updateTelemetryMetrics() {
-        val newMetrics = _state.value.telemetryHistory.toMutableList()
-        if (newMetrics.isNotEmpty()) {
-            newMetrics.removeAt(0)
+        try {
+            val newMetrics = _state.value.telemetryHistory.toMutableList()
+            if (newMetrics.isNotEmpty()) {
+                newMetrics.removeAt(0)
+            }
+            newMetrics.add(Random.nextFloat())
+            _state.update { it.copy(telemetryHistory = newMetrics) }
+        } catch (e: Exception) {
+            Log.e("AgentViewModel", "Telemetry update skipped: ${e.message}")
         }
-        newMetrics.add(Random.nextFloat())
-        _state.update { it.copy(telemetryHistory = newMetrics) }
     }
 
     private fun performBackgroundResearch() {
@@ -418,12 +437,16 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     }
 
     private fun updateTelemetryMetricsFromRealValue(value: Float) {
-        val newMetrics = _state.value.telemetryHistory.toMutableList()
-        if (newMetrics.isNotEmpty()) {
-            newMetrics.removeAt(0)
+        try {
+            val newMetrics = _state.value.telemetryHistory.toMutableList()
+            if (newMetrics.isNotEmpty()) {
+                newMetrics.removeAt(0)
+            }
+            newMetrics.add(value)
+            _state.update { it.copy(telemetryHistory = newMetrics) }
+        } catch (e: Exception) {
+            Log.e("AgentViewModel", "Real-value telemetry update skipped: ${e.message}")
         }
-        newMetrics.add(value)
-        _state.update { it.copy(telemetryHistory = newMetrics) }
     }
 
 
