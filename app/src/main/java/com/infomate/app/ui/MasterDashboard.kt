@@ -271,15 +271,17 @@ fun AnalysisTableSection(state: UIState) {
 
 @Composable
 fun AnalysisRow(event: String, source: String, status: String) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
-            .border(bottom = 0.5.dp, color = Color.White.copy(alpha = 0.05f))
     ) {
-        Text(event, color = SilverText, modifier = Modifier.weight(1f), fontSize = 10.sp)
-        Text(source, color = SilverText.copy(alpha = 0.6f), modifier = Modifier.weight(1f), fontSize = 10.sp)
-        Text(status, color = CyberCyan.copy(alpha = 0.8f), modifier = Modifier.weight(0.8f), fontSize = 10.sp, textAlign = TextAlign.End, fontWeight = FontWeight.Bold)
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Text(event, color = SilverText, modifier = Modifier.weight(1f), fontSize = 10.sp)
+            Text(source, color = SilverText.copy(alpha = 0.6f), modifier = Modifier.weight(1f), fontSize = 10.sp)
+            Text(status, color = CyberCyan.copy(alpha = 0.8f), modifier = Modifier.weight(0.8f), fontSize = 10.sp, textAlign = TextAlign.End, fontWeight = FontWeight.Bold)
+        }
+        HorizontalDivider(modifier = Modifier.padding(top = 4.dp), thickness = 0.5.dp, color = Color.White.copy(alpha = 0.05f))
     }
 }
 

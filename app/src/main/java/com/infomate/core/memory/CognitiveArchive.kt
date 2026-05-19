@@ -2,18 +2,6 @@ package com.infomate.core.memory
 
 import android.content.Context
 import android.util.Log
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import java.io.File
-
-data class KnowledgeNode(
-    val id: String,
-    val concept: String,
-    val connections: List<String>,
-    val timestamp: Long = System.currentTimeMillis(),
-    val valence: Float = 0.5f // Importance/Weight
-)
-
 import com.infomate.core.data.database.CognitiveDao
 import com.infomate.core.data.database.CognitiveNodeEntity
 import com.infomate.core.data.database.InfomateDatabase
@@ -49,6 +37,10 @@ class CognitiveArchive(private val context: Context) {
         } else {
             nodes.map { it.concept }
         }
+    }
+
+    suspend fun getRecentNodes(): List<CognitiveNodeEntity> = withContext(Dispatchers.IO) {
+        dao.getRecentNodes()
     }
 
     suspend fun getNodesFromDarkness(threshold: Float): List<String> = withContext(Dispatchers.IO) {

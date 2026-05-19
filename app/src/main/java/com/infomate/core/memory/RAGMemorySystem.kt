@@ -1,7 +1,7 @@
 package com.infomate.core.memory
 
 import android.util.Log
-import kotlin.math.ln
+import kotlinx.coroutines.runBlocking
 
 /**
  * Advanced RAG Memory System for INFOMATE.
@@ -9,9 +9,9 @@ import kotlin.math.ln
  */
 class RAGMemorySystem(private val archive: CognitiveArchive) {
 
-    fun retrieveRelevantContext(query: String, config: com.infomate.core.brain.SystemConfig): String {
+    fun retrieveRelevantContext(query: String, config: com.infomate.core.brain.SystemConfig): String = runBlocking {
         val keywords = query.lowercase().split(" ").filter { it.length > 3 }
-        val allNodes = archive.getRecentTopicsDetailed()
+        val allNodes = archive.getRecentNodes()
         
         Log.i("RAGMemory", "Retrieving context for: '$query' [Mode: ${config.contextRetrieval}]")
 
@@ -23,8 +23,8 @@ class RAGMemorySystem(private val archive: CognitiveArchive) {
             val ageInHours = (System.currentTimeMillis() - node.timestamp) / (1000 * 60 * 60)
             val recency = 1.0f / (1.0f + ageInHours.toFloat())
             
-            // 3. Importance (Valence)
-            val importance = node.valence
+            // 3. Importance
+            val importance = node.importance
 
             // Total Rank Calculation
             val totalScore = (relevance * 0.5f) + (recency * 0.2f) + (importance * 0.3f)
@@ -33,14 +33,14 @@ class RAGMemorySystem(private val archive: CognitiveArchive) {
          .sortedByDescending { it.second }
          .take(5) // Top-K results
 
-        if (scoredNodes.isEmpty()) return "[SYSTEM_INFO]: No high-confidence historical links found."
+        if (scoredNodes.isEmpty()) return@runBlocking "[SYSTEM_INFO]: No high-confidence historical links found."
 
         val contextBuilder = StringBuilder("[RANKED HISTORICAL CONTEXT (Top-${scoredNodes.size})]\n")
         scoredNodes.forEachIndexed { index, (node, score) ->
-            contextBuilder.append("${index + 1}. CONCEPT: ${node.concept} [Score: ${"%.2f".format(score)}] -> Connections: ${node.connections.joinToString(", ")}\n")
+            contextBuilder.append("${index + 1}. CONCEPT: ${node.concept} [Score: ${"%.2f".format(score)}] -> Connections: ${node.connections}\n")
         }
         
-        return contextBuilder.toString()
+        return@runBlocking contextBuilder.toString()
     }
     
     fun compressContext(context: String): String {
