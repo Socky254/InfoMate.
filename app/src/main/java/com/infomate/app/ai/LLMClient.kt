@@ -48,11 +48,12 @@ object LLMClient {
                 val errorCode = json.optString("error_code", "")
                 Log.e("INFOMATE_ERROR", "API reported error: $errorCode - $errorMsg")
                 
-                return when (errorCode) {
-                    "RETRY_EXHAUSTED" -> "INFOMATE: $errorMsg"
-                    "SAFETY_BLOCK" -> "INFOMATE: Neural safeguard triggered. The directive contains restricted concepts."
+                val errorResponse = when (errorCode) {
+                    "RETRY_EXHAUSTED" -> "Neural link stabilized, but API rate limits reached. Cooling down for 30s."
+                    "SAFETY_BLOCK" -> "Neural safeguard triggered. The directive contains restricted concepts."
                     else -> if (errorMsg.isNotBlank()) "SYSTEM_ERROR: $errorMsg" else json.optString("output", "")
                 }
+                return validateOutput(errorResponse)
             }
 
             // 4. MULTI-STRATEGY CONTENT EXTRACTION

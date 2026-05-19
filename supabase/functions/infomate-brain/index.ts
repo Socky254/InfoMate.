@@ -30,7 +30,9 @@ serve(async (req) => {
     })
 
     const data = await response.json()
-    const output = data.candidates?.[0]?.content?.parts?.[0]?.text || "ERROR: No intelligence output detected."
+    console.log("Raw Gemini Response:", JSON.stringify(data))
+
+    const output = data.candidates?.[0]?.content?.parts?.[0]?.text || data.choices?.[0]?.message?.content || "ERROR: No intelligence output detected."
 
     return new Response(JSON.stringify({ output: output }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
