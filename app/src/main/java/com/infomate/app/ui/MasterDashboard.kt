@@ -24,16 +24,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.infomate.core.ui.theme.*
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+
 @Composable
 fun MasterDashboard(vm: AgentViewModel) {
     val state by vm.state.collectAsState()
+    val scrollState = rememberScrollState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Obsidian)
             .statusBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .verticalScroll(scrollState)
+            .padding(horizontal = 16.dp, vertical = 16.dp)
     ) {
         // Premium "Alive" Indicator Header
         AliveStatusHeader(state.isSubstrateAwake)
@@ -45,17 +50,16 @@ fun MasterDashboard(vm: AgentViewModel) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Metrics Grid
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.height(180.dp)
-        ) {
-            item { PremiumMetricCard("STABILITY", "${(state.stabilityScore * 100).toInt()}%", Icons.Default.Security, MatrixGreen) }
-            item { PremiumMetricCard("ENTROPY", "${(state.entropyLevel * 100).toInt()}%", Icons.Default.Waves, ErrorRed) }
-            item { PremiumMetricCard("MEMORY_NODES", state.memoryCount.toString(), Icons.Default.Storage, CyberCyan) }
-            item { PremiumMetricCard("SOCIAL_SCORE", state.socialScore.toString(), Icons.Default.Groups, NeonBlue) }
+        // Metrics Grid (Replaced LazyVerticalGrid for better fitting)
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(modifier = Modifier.weight(1f)) { PremiumMetricCard("STABILITY", "${(state.stabilityScore * 100).toInt()}%", Icons.Default.Security, MatrixGreen) }
+                Box(modifier = Modifier.weight(1f)) { PremiumMetricCard("ENTROPY", "${(state.entropyLevel * 100).toInt()}%", Icons.Default.Waves, ErrorRed) }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(modifier = Modifier.weight(1f)) { PremiumMetricCard("MEMORY_NODES", state.memoryCount.toString(), Icons.Default.Storage, CyberCyan) }
+                Box(modifier = Modifier.weight(1f)) { PremiumMetricCard("SOCIAL_SCORE", state.socialScore.toString(), Icons.Default.Groups, NeonBlue) }
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -74,6 +78,8 @@ fun MasterDashboard(vm: AgentViewModel) {
 
         // Master Controls
         ActionRow(vm)
+
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 

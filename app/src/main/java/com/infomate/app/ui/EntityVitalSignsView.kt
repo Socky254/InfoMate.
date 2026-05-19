@@ -82,6 +82,8 @@ fun EntityVitalSignsView(vm: AgentViewModel) {
             VitalRow("LATENCY_BRAIN", "12ms", CyberCyan)
             VitalRow("MEMORY_DEPTH", state.memoryCount.toString(), ElectricViolet)
         }
+
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 

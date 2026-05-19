@@ -49,6 +49,9 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 
+import com.infomate.core.ui.components.ConsciousnessFace
+import com.infomate.core.ui.components.InfomateState
+
 @Composable
 fun ChatScreen(vm: AgentViewModel = viewModel()) {
     val state by vm.state.collectAsState()
@@ -61,15 +64,19 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
     }
 
     InfoMateTheme {
-        Scaffold(
-            containerColor = Obsidian,
-            bottomBar = {
-                PremiumBottomNav(
-                    selectedTab = state.selectedTab,
-                    onTabSelect = { vm.selectTab(it) }
-                )
-            }
-        ) { paddingValues ->
+        if (state.isSystemInitializing && !state.needsOnboarding) {
+            InitializationScreen(vm)
+        } else {
+            Scaffold(
+                modifier = Modifier.fillMaxSize().imePadding(),
+                containerColor = Obsidian,
+                bottomBar = {
+                    PremiumBottomNav(
+                        selectedTab = state.selectedTab,
+                        onTabSelect = { vm.selectTab(it) }
+                    )
+                }
+            ) { paddingValues ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -78,22 +85,43 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                 // Background Effect
                 TechGridBackground()
                 
-                // View Switcher with Animation
-                AnimatedContent(
-                    targetState = state.selectedTab,
-                    transitionSpec = {
-                        fadeIn(tween(400)) togetherWith fadeOut(tween(400))
-                    },
-                    label = "ViewTransition"
-                ) { tab ->
-                    when (tab) {
-                        DashboardTab.CHAT -> MainChatLayout(state, vm, mediaPickerLauncher)
-                        DashboardTab.DASHBOARD -> MasterDashboard(vm)
-                        DashboardTab.VITALS -> EntityVitalSignsView(vm)
-                        DashboardTab.STREAM -> ConsciousnessStreamView(vm)
-                        DashboardTab.SIMULATION -> SimulationView(vm)
-                        DashboardTab.TERMINAL -> SystemTerminalView(state) { vm.selectTab(DashboardTab.CHAT) }
-                        DashboardTab.PROCESS_MONITOR -> RealtimeProcessMonitor(vm)
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // View Switcher with Animation
+                    Box(modifier = Modifier.weight(1f)) {
+                        AnimatedContent(
+                            targetState = state.selectedTab,
+                            transitionSpec = {
+                                fadeIn(tween(400)) togetherWith fadeOut(tween(400))
+                            },
+                            label = "ViewTransition",
+                            modifier = Modifier.fillMaxSize()
+                        ) { tab ->
+                            when (tab) {
+                                DashboardTab.CHAT -> MainChatLayout(state, vm, mediaPickerLauncher)
+                                DashboardTab.DASHBOARD -> MasterDashboard(vm)
+                                DashboardTab.VITALS -> EntityVitalSignsView(vm)
+                                DashboardTab.STREAM -> ConsciousnessStreamView(vm)
+                                DashboardTab.SIMULATION -> SimulationView(vm)
+                                DashboardTab.TERMINAL -> SystemTerminalView(state) { vm.selectTab(DashboardTab.CHAT) }
+                                DashboardTab.PROCESS_MONITOR -> RealtimeProcessMonitor(vm)
+                            }
+                        }
+                    }
+
+                    if (state.selectedTab == DashboardTab.CHAT) {
+                        InputSection(
+                            input = state.input,
+                            isListening = state.isListening,
+                            onInputChange = { vm.updateInput(it) },
+                            onSend = { vm.send() },
+                            onMediaClick = {
+                                mediaPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
+                            },
+                            onCameraClick = { /* Camera implement if needed */ },
+                            onMicToggle = { if (state.isListening) vm.stopListening() else vm.startListening() },
+                            state = state,
+                            vm = vm
+                        )
                     }
                 }
 
@@ -107,17 +135,18 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
 @Composable
 fun PremiumBottomNav(selectedTab: DashboardTab, onTabSelect: (DashboardTab) -> Unit) {
     Surface(
-        color = Obsidian.copy(alpha = 0.95f),
+        color = Obsidian.copy(alpha = 0.98f),
         modifier = Modifier
             .fillMaxWidth()
-            .border(androidx.compose.foundation.BorderStroke(1.dp, GlassWhite), RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)),
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+            .border(androidx.compose.foundation.BorderStroke(1.dp, GlassWhite.copy(alpha = 0.05f)), RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)),
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .height(64.dp),
+                .height(72.dp)
+                .padding(horizontal = 4.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -134,24 +163,24 @@ fun PremiumBottomNav(selectedTab: DashboardTab, onTabSelect: (DashboardTab) -> U
 @Composable
 fun NavIcon(icon: ImageVector, tab: DashboardTab, isSelected: Boolean, onSelect: (DashboardTab) -> Unit) {
     val color = if (isSelected) CyberCyan else SilverText.copy(alpha = 0.3f)
-    val scale by animateFloatAsState(if (isSelected) 1.15f else 1.0f, label = "scale")
+    val scale by animateFloatAsState(if (isSelected) 1.2f else 1.0f, label = "scale")
 
     IconButton(
         onClick = { onSelect(tab) },
-        modifier = Modifier.size(44.dp)
+        modifier = Modifier.weight(1f)
     ) {
         Icon(
             icon,
             contentDescription = null,
             tint = color,
-            modifier = Modifier.size(22.dp).graphicsLayer(scaleX = scale, scaleY = scale)
+            modifier = Modifier.size(24.dp).graphicsLayer(scaleX = scale, scaleY = scale)
         )
     }
 }
 
 @Composable
 fun MainChatLayout(state: UIState, vm: AgentViewModel, mediaPickerLauncher: androidx.activity.result.ActivityResultLauncher<PickVisualMediaRequest>) {
-    Column(modifier = Modifier.fillMaxSize().imePadding()) {
+    Column(modifier = Modifier.fillMaxSize()) {
         // Minimal Premium Header
         HeaderSection(
             status = state.status,
@@ -168,23 +197,6 @@ fun MainChatLayout(state: UIState, vm: AgentViewModel, mediaPickerLauncher: andr
         Box(modifier = Modifier.weight(1f)) {
             MainChatContent(state, vm)
         }
-
-        InputSection(
-            input = state.input,
-            isListening = state.isListening,
-            onInputChange = { vm.updateInput(it) },
-            onSend = { vm.send() },
-            onMediaClick = { 
-                mediaPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
-            },
-            onCameraClick = { /* Camera implement if needed */ },
-            onMicToggle = { if (state.isListening) vm.stopListening() else vm.startListening() },
-            state = state,
-            vm = vm
-        )
-        
-        // v11.9: Spacer to push InputSection slightly above bottom bar for visual separation
-        Spacer(modifier = Modifier.height(4.dp))
     }
 }
 
@@ -330,7 +342,7 @@ fun MainChatContent(state: UIState, vm: AgentViewModel) {
     val listState = rememberLazyListState()
     
     LaunchedEffect(state.messages.size, state.brainState) {
-        val totalItems = state.messages.size + 1 + (if (state.brainState == com.infomate.core.ui.components.InfomateState.THINKING) 1 else 0)
+        val totalItems = state.messages.size + 1 + (if (state.brainState == InfomateState.THINKING) 1 else 0)
         if (totalItems > 1) {
             listState.animateScrollToItem(index = totalItems - 1)
         }
@@ -339,7 +351,7 @@ fun MainChatContent(state: UIState, vm: AgentViewModel) {
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 24.dp)
+        contentPadding = PaddingValues(bottom = 16.dp)
     ) {
         item(contentType = "HEADER") {
             Column(
@@ -365,25 +377,25 @@ fun MainChatContent(state: UIState, vm: AgentViewModel) {
             }
         }
 
-        items(
-            items = state.messages,
-            key = { it.timestamp },
-            contentType = { it.sender }
-        ) { message ->
-            Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
-                MessageCard(message, vm)
+            items(
+                items = state.messages,
+                key = { it.timestamp },
+                contentType = { it.sender }
+            ) { message ->
+                Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) {
+                    MessageCard(message, vm)
+                }
             }
-        }
 
-        if (state.brainState == com.infomate.core.ui.components.InfomateState.THINKING) {
+        if (state.brainState == InfomateState.THINKING) {
             item {
-                Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) {
                     ThinkingIndicator()
                 }
             }
         }
 
-        if (state.brainState == com.infomate.core.ui.components.InfomateState.ERROR) {
+        if (state.brainState == InfomateState.ERROR) {
             item {
                 GoogleFallbackCard(onSearch = { 
                     val lastUserMsg = state.messages.lastOrNull { it.sender == "OPERATOR" || it.sender == "MASTER ARCHITECT" }
@@ -856,8 +868,41 @@ fun TechGridBackground() {
 }
 
 @Composable
+fun ConnectivityBanner(isOnline: Boolean) {
+    AnimatedVisibility(
+        visible = !isOnline,
+        enter = expandVertically() + fadeIn(),
+        exit = shrinkVertically() + fadeOut()
+    ) {
+        Surface(
+            color = ErrorRed.copy(alpha = 0.15f),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
+            shape = RoundedCornerShape(8.dp),
+            border = androidx.compose.foundation.BorderStroke(0.5.dp, ErrorRed.copy(alpha = 0.3f))
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.WifiOff, contentDescription = null, tint = ErrorRed, modifier = Modifier.size(14.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    "NEURAL LINK OFFLINE: OPERATING ON LOCAL BUFFERS",
+                    color = ErrorRed,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun VisualHub(
-    brainState: com.infomate.core.ui.components.InfomateState,
+    brainState: InfomateState,
     isActive: Boolean,
     amplitudes: List<Float>
 ) {
@@ -867,21 +912,11 @@ fun VisualHub(
         verticalArrangement = Arrangement.Center
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Surface(
-                modifier = Modifier.size(160.dp),
-                color = Color.Transparent,
-                shape = CircleShape,
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp, 
-                    Brush.sweepGradient(listOf(CyberCyan.copy(alpha = 0.2f), NeonBlue.copy(alpha = 0.2f), CyberCyan.copy(alpha = 0.2f)))
-                )
-            ) {}
-            
-            BrainVisualizer(
+            ConsciousnessFace(
                 state = brainState,
-                modifier = Modifier
-                    .size(140.dp)
-                    .clip(CircleShape)
+                isActive = isActive,
+                amplitudes = amplitudes,
+                modifier = Modifier.size(180.dp)
             )
         }
 
@@ -889,19 +924,19 @@ fun VisualHub(
 
         Box(
             modifier = Modifier
-                .height(50.dp)
+                .height(30.dp)
                 .fillMaxWidth(),
             contentAlignment = Alignment.Center
         ) {
-            if (isActive) {
+            if (isActive && (brainState == InfomateState.IDLE || brainState == InfomateState.WAITING)) {
                 VoiceSpectrum(amplitudes = amplitudes)
-            } else {
+            } else if (!isActive) {
                 Surface(
                     modifier = Modifier
-                        .width(60.dp)
-                        .height(2.dp)
+                        .width(40.dp)
+                        .height(1.dp)
                         .clip(CircleShape),
-                    color = CyberCyan.copy(alpha = 0.3f)
+                    color = CyberCyan.copy(alpha = 0.2f)
                 ) {}
             }
         }
@@ -959,8 +994,18 @@ fun HeaderSection(
             .statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        // High-level Alive Display
-        AliveStatusHeader(state.isSubstrateAwake)
+        // High-level Alive & Connectivity Display
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AliveStatusHeader(state.isSubstrateAwake)
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        ConnectivityBanner(state.isInternetAvailable)
         
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -1015,17 +1060,17 @@ fun InputSection(
     state: UIState,
     vm: AgentViewModel
 ) {
-    val isError = state.brainState == com.infomate.core.ui.components.InfomateState.ERROR
-    val isStop = state.brainState == com.infomate.core.ui.components.InfomateState.THINKING || state.brainState == com.infomate.core.ui.components.InfomateState.RESPONDING || state.isSpeaking
+    val isError = state.brainState == InfomateState.ERROR
+    val isStop = state.brainState == InfomateState.THINKING || state.brainState == InfomateState.RESPONDING || state.brainState == InfomateState.STREAMING || state.isSpeaking
 
     Surface(
-        color = Color.Transparent,
+        color = Obsidian.copy(alpha = 0.8f),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             verticalAlignment = Alignment.Bottom,
             modifier = Modifier
-                .padding(horizontal = 12.dp, vertical = 4.dp)
+                .padding(horizontal = 8.dp, vertical = 8.dp)
                 .fillMaxWidth()
         ) {
             // Attachment & Actions
@@ -1065,6 +1110,14 @@ fun InputSection(
                                     vm.setManualKnowledgeDialog(true)
                                 }
                             )
+                            DropdownMenuItem(
+                                text = { Text("Run Diagnostics", color = SilverText) },
+                                leadingIcon = { Icon(Icons.Default.Analytics, contentDescription = null, tint = CyberCyan) },
+                                onClick = { 
+                                    showMenu = false
+                                    vm.runDiagnostics()
+                                }
+                            )
                         }
                     }
                 }
@@ -1091,11 +1144,12 @@ fun InputSection(
                             Text(
                                 if (isError) "AI Stabilizing: Global Sync active..." else "Message...", 
                                 color = (if (isError) CyberCyan else SilverText).copy(alpha = 0.4f), 
-                                fontSize = 16.sp
+                                fontSize = 14.sp
                             ) 
                         },
                         readOnly = isListening,
-                        maxLines = 6,
+                        maxLines = 4,
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
                             unfocusedContainerColor = Color.Transparent,
@@ -1171,20 +1225,21 @@ fun MessageCard(message: ChatMessage, vm: AgentViewModel) {
 
     Row(
         modifier = Modifier
-            .fillMaxWidth()
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onLongPress = {
-                        vm.performHapticFeedback(100, 100)
-                        clipboardManager.setText(AnnotatedString(message.content))
-                    }
-                )
-            },
+            .fillMaxWidth(),
         horizontalArrangement = if (isFromUser) Arrangement.End else Arrangement.Start
     ) {
         Column(
             horizontalAlignment = if (isFromUser) Alignment.End else Alignment.Start,
-            modifier = Modifier.widthIn(max = 300.dp)
+            modifier = Modifier
+                .widthIn(max = 280.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onLongPress = {
+                            vm.performHapticFeedback(100, 100)
+                            clipboardManager.setText(AnnotatedString(message.content))
+                        }
+                    )
+                }
         ) {
             Surface(
                 shape = RoundedCornerShape(

@@ -73,7 +73,7 @@ fun ConsciousnessStreamView(vm: AgentViewModel) {
 
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(bottom = 100.dp)
+            contentPadding = PaddingValues(bottom = 32.dp)
         ) {
             items(thoughts) { thought ->
                 AnimatedThoughtCard(thought)

@@ -48,6 +48,9 @@ import kotlinx.coroutines.flow.update
 import java.util.*
 import kotlin.random.Random
 
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
 class AgentViewModel(application: Application) : AndroidViewModel(application), TextToSpeech.OnInitListener, AIEventsListener {
 
     private val sessionId = java.util.UUID.randomUUID().toString()
@@ -57,6 +60,8 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     private var speechRecognizer: SpeechRecognizer? = null
     private var spectrumJob: Job? = null
     private val gson = Gson()
+    private val bufferMutex = Mutex()
+    private val tokenBuffer = mutableListOf<String>()
     private val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         val vibratorManager = application.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
         vibratorManager.defaultVibrator
@@ -150,7 +155,24 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         startConnectionPolling()
         startNeuralEvolutionMonitoring()
         startSubstrateStatusPolling()
+        startInternetMonitoring()
         ConsciousnessEngine.awaken(application)
+        
+        // Finish initialization after a short delay or system check
+        viewModelScope.launch {
+            delay(3000) 
+            _state.update { it.copy(isSystemInitializing = false) }
+        }
+    }
+
+    private fun startInternetMonitoring() {
+        viewModelScope.launch {
+            while (true) {
+                val isAvailable = isNetworkAvailable()
+                _state.update { it.copy(isInternetAvailable = isAvailable) }
+                delay(5000)
+            }
+        }
     }
 
     private fun startSubstrateStatusPolling() {
@@ -401,17 +423,27 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         activeThinkingJob?.cancel()
         
         // v11.5: BACKPRESSURE CONTROL (Token Buffering)
-        tokenBuffer.add(text)
-        if (!isProcessingBuffer) {
-            processTokenBuffer()
+        viewModelScope.launch {
+            bufferMutex.withLock {
+                tokenBuffer.add(text)
+            }
+            if (!isProcessingBuffer) {
+                processTokenBuffer()
+            }
         }
     }
 
     private fun processTokenBuffer() {
+        if (isProcessingBuffer) return
         isProcessingBuffer = true
+        
         viewModelScope.launch(Dispatchers.Default) {
-            while (tokenBuffer.isNotEmpty()) {
-                val nextToken = tokenBuffer.removeAt(0)
+            while (true) {
+                val nextToken = bufferMutex.withLock {
+                    if (tokenBuffer.isNotEmpty()) tokenBuffer.removeAt(0) else null
+                }
+                
+                if (nextToken == null) break
                 
                 currentSentence.append(nextToken)
                 if (nextToken.contains(".") || nextToken.contains("?") || nextToken.contains("!")) {

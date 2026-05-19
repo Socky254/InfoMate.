@@ -72,6 +72,8 @@ data class UIState(
     val growthPriorityLevel: Float = 0.5f, // 0.0 to 1.0 (Low to Maximum)
     val isSubstrateAwake: Boolean = false,
     val substrateLastPulse: Long = 0L,
+    val isInternetAvailable: Boolean = true,
+    val isSystemInitializing: Boolean = true,
     // v10.9 Entity Analysis Data
     val personalityTraits: Map<String, Float> = emptyMap(),
     val energyLevel: Float = 1.0f,

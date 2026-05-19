@@ -20,6 +20,11 @@ class WsClientManager(private val url: String) {
     fun connect() {
         if (isConnected) return
         
+        // Ensure old client is closed before starting a new one
+        try {
+            ws?.close()
+        } catch (e: Exception) {}
+
         try {
             Log.d("WsClientManager", "Connecting to Neural Core: $url")
             ws = object : WebSocketClient(URI(url)) {

@@ -96,7 +96,7 @@ fun RealtimeProcessMonitor(vm: AgentViewModel) {
                 }
 
                 item {
-                    Spacer(modifier = Modifier.height(80.dp)) // Space for bottom nav
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
             }
         }
@@ -109,7 +109,7 @@ fun ProcessMonitorHeader(activeCount: Int, onRefresh: () -> Unit) {
         color = Color.Black.copy(alpha = 0.4f),
         modifier = Modifier
             .fillMaxWidth()
-            .border(androidx.compose.foundation.BorderStroke(1.dp, GlassWhite), RoundedCornerShape(0.dp))
+            .border(androidx.compose.foundation.BorderStroke(1.dp, GlassWhite.copy(alpha = 0.1f)), RoundedCornerShape(0.dp))
     ) {
         Row(
             modifier = Modifier

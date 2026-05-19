@@ -38,6 +38,7 @@ fun PermissionOnboardingScreen(onAuthorize: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(Obsidian)
+            .systemBarsPadding()
             .padding(24.dp)
     ) {
         Column(
