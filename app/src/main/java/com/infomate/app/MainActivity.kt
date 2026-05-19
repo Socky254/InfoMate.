@@ -3,6 +3,7 @@ package com.infomate.app
 import android.Manifest
 import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,6 +25,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // v10.2: Persistent UI Overlay & Lock Screen Access
+        configurePersistentAvailability()
+
         // 10.0 INVINCIBLE EDGE: Initialize Gemini Nano
         com.infomate.app.agent.EdgeBrain.init(this)
 
@@ -42,6 +46,23 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun configurePersistentAvailability() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        } else {
+            @Suppress("DEPRECATION")
+            window.addFlags(
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+                WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+            )
+        }
+        
+        // Ensure the screen stays on during active neural sync
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+
     private fun requestInitialPermissions() {
         val permissions = mutableListOf(
             Manifest.permission.CAMERA,
@@ -51,7 +72,8 @@ class MainActivity : ComponentActivity() {
             Manifest.permission.READ_CONTACTS,
             Manifest.permission.READ_CALENDAR,
             Manifest.permission.READ_CALL_LOG,
-            Manifest.permission.READ_SMS
+            Manifest.permission.READ_SMS,
+            Manifest.permission.SYSTEM_ALERT_WINDOW
         )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

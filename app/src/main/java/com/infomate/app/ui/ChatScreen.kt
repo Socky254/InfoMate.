@@ -199,6 +199,15 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                             }
                         }
                     }
+
+                    if (state.brainState == com.infomate.core.ui.components.InfomateState.ERROR) {
+                        item {
+                            GoogleFallbackCard(onSearch = { 
+                                val lastUserMsg = state.messages.lastOrNull { it.sender == "OPERATOR" || it.sender == "MASTER ARCHITECT" }
+                                vm.searchGoogle(lastUserMsg?.content ?: state.input)
+                            })
+                        }
+                    }
                 }
             }
 
@@ -520,6 +529,57 @@ fun ManualKnowledgeDialog(onDismiss: () -> Unit, onSave: (String, String) -> Uni
         shape = RoundedCornerShape(24.dp),
         containerColor = Obsidian
     )
+}
+
+@Composable
+fun GoogleFallbackCard(onSearch: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        color = CyberCyan.copy(alpha = 0.05f),
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            0.5.dp, 
+            Brush.linearGradient(listOf(CyberCyan.copy(alpha = 0.4f), Color.Transparent))
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Hub, contentDescription = null, tint = CyberCyan, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    "NEURAL SYNC REDIRECTED",
+                    color = CyberCyan,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "The primary neural core is currently stabilizing. Socrates, I can redirect this query to the global archives and synthesize the findings for you.",
+                color = SilverText.copy(alpha = 0.7f),
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                lineHeight = 18.sp
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = onSearch,
+                colors = ButtonDefaults.buttonColors(containerColor = CyberCyan),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Obsidian, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("INITIATE GLOBAL SYNTHESIS", color = Obsidian, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            }
+        }
+    }
 }
 
 @Composable
@@ -971,6 +1031,8 @@ fun InputSection(
     state: UIState,
     vm: AgentViewModel
 ) {
+    val isError = state.brainState == com.infomate.core.ui.components.InfomateState.ERROR
+
     Surface(
         color = Obsidian,
         modifier = Modifier.navigationBarsPadding()
@@ -982,8 +1044,13 @@ fun InputSection(
                 .fillMaxWidth()
         ) {
             Surface(
-                color = if (isListening) CyberCyan.copy(alpha = 0.1f) else SilverText.copy(alpha = 0.08f),
+                color = when {
+                    isError -> CyberCyan.copy(alpha = 0.05f)
+                    isListening -> CyberCyan.copy(alpha = 0.1f)
+                    else -> SilverText.copy(alpha = 0.08f)
+                },
                 shape = RoundedCornerShape(28.dp),
+                border = if (isError) androidx.compose.foundation.BorderStroke(0.5.dp, CyberCyan.copy(alpha = 0.3f)) else null,
                 modifier = Modifier.weight(1f)
             ) {
                 Row(
@@ -994,31 +1061,39 @@ fun InputSection(
                         var showMenu by remember { mutableStateOf(false) }
                         
                         Box {
-                            IconButton(onClick = { showMenu = true }) {
-                                Icon(Icons.Filled.Add, contentDescription = "Attach", tint = SilverText.copy(alpha = 0.6f))
+                            IconButton(onClick = { 
+                                if (isError) vm.searchGoogle(input) else showMenu = true 
+                            }) {
+                                Icon(
+                                    imageVector = if (isError) Icons.Default.AutoAwesome else Icons.Filled.Add, 
+                                    contentDescription = "Action", 
+                                    tint = if (isError) CyberCyan else SilverText.copy(alpha = 0.6f)
+                                )
                             }
                             
-                            DropdownMenu(
-                                expanded = showMenu,
-                                onDismissRequest = { showMenu = false },
-                                modifier = Modifier.background(Obsidian).border(0.5.dp, CyberCyan.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("Image/Video", color = SilverText) },
-                                    leadingIcon = { Icon(Icons.Filled.Image, contentDescription = null, tint = CyberCyan) },
-                                    onClick = { 
-                                        showMenu = false
-                                        onMediaClick() 
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Manual Knowledge", color = SilverText) },
-                                    leadingIcon = { Icon(Icons.Filled.PostAdd, contentDescription = null, tint = CyberCyan) },
-                                    onClick = { 
-                                        showMenu = false
-                                        vm.setManualKnowledgeDialog(true)
-                                    }
-                                )
+                            if (!isError) {
+                                DropdownMenu(
+                                    expanded = showMenu,
+                                    onDismissRequest = { showMenu = false },
+                                    modifier = Modifier.background(Obsidian).border(0.5.dp, CyberCyan.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Image/Video", color = SilverText) },
+                                        leadingIcon = { Icon(Icons.Filled.Image, contentDescription = null, tint = CyberCyan) },
+                                        onClick = { 
+                                            showMenu = false
+                                            onMediaClick() 
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Manual Knowledge", color = SilverText) },
+                                        leadingIcon = { Icon(Icons.Filled.PostAdd, contentDescription = null, tint = CyberCyan) },
+                                        onClick = { 
+                                            showMenu = false
+                                            vm.setManualKnowledgeDialog(true)
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -1027,26 +1102,44 @@ fun InputSection(
                         value = if (isListening) "Listening to neural input..." else input,
                         onValueChange = { if (!isListening) onInputChange(it) },
                         modifier = Modifier.weight(1f),
-                        placeholder = { Text("Directive...", color = SilverText.copy(alpha = 0.4f), fontSize = 16.sp) },
+                        placeholder = { 
+                            Text(
+                                if (isError) "AI Stabilizing: Global Sync active..." else "Directive...", 
+                                color = (if (isError) CyberCyan else SilverText).copy(alpha = 0.4f), 
+                                fontSize = 16.sp
+                            ) 
+                        },
                         readOnly = isListening,
                         trailingIcon = {
-                            if (input.isNotEmpty() && !isListening) {
-                                IconButton(onClick = { onInputChange("") }) {
-                                    Icon(Icons.Default.Close, contentDescription = "Clear", tint = SilverText.copy(alpha = 0.4f), modifier = Modifier.size(16.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (input.isNotEmpty() && !isListening) {
+                                    if (!isError) {
+                                        IconButton(onClick = { vm.searchGoogle(input) }) {
+                                            Icon(
+                                                imageVector = Icons.Default.TravelExplore, 
+                                                contentDescription = "Global Search", 
+                                                tint = CyberCyan.copy(alpha = 0.6f), 
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                    }
+                                    IconButton(onClick = { onInputChange("") }) {
+                                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = SilverText.copy(alpha = 0.4f), modifier = Modifier.size(16.dp))
+                                    }
                                 }
                             }
                         },
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
                             unfocusedContainerColor = Color.Transparent,
-                            focusedTextColor = if (isListening) CyberCyan else SilverText,
-                            unfocusedTextColor = if (isListening) CyberCyan else SilverText,
+                            focusedTextColor = if (isError) CyberCyan else if (isListening) CyberCyan else SilverText,
+                            unfocusedTextColor = if (isError) CyberCyan else if (isListening) CyberCyan else SilverText,
                             focusedIndicatorColor = Color.Transparent,
                             unfocusedIndicatorColor = Color.Transparent
                         )
                     )
 
-                    if (input.isEmpty() && !isListening) {
+                    if (input.isEmpty() && !isListening && !isError) {
                         IconButton(onClick = onCameraClick) {
                             Icon(Icons.Filled.CameraAlt, contentDescription = "Camera", tint = SilverText.copy(alpha = 0.6f))
                         }
@@ -1059,7 +1152,8 @@ fun InputSection(
             val isSend = input.isNotBlank() && !isListening
             val isStop = state.brainState == com.infomate.core.ui.components.InfomateState.THINKING || state.brainState == com.infomate.core.ui.components.InfomateState.RESPONDING || state.isSpeaking
             
-            val icon = if (isStop) Icons.Default.Stop 
+            val icon = if (isError) Icons.Default.AutoAwesome
+                      else if (isStop) Icons.Default.Stop 
                       else if (isSend) Icons.AutoMirrored.Filled.Send
                       else if (isListening) Icons.Filled.Stop 
                       else Icons.Filled.Mic
@@ -1077,7 +1171,8 @@ fun InputSection(
 
             IconButton(
                 onClick = {
-                    if (isStop) vm.stopAI()
+                    if (isError) vm.searchGoogle(input)
+                    else if (isStop) vm.stopAI()
                     else if (isSend) onSend() 
                     else onMicToggle()
                 },
@@ -1089,8 +1184,11 @@ fun InputSection(
                     }
                     .background(
                         brush = Brush.linearGradient(
-                            if (isListening || isStop) listOf(Color.Red, Color(0xFFFF5252))
-                            else listOf(CyberCyan, NeonBlue)
+                            when {
+                                isError -> listOf(CyberCyan, NeonBlue)
+                                isListening || isStop -> listOf(Color.Red, Color(0xFFFF5252))
+                                else -> listOf(CyberCyan, NeonBlue)
+                            }
                         ),
                         shape = CircleShape
                     )

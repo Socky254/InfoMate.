@@ -43,7 +43,45 @@ object GlobalSearchAgent {
         }
 
         // 3. Fallback: Secondary Model Proxy
-        return callInterNeuralProxy(query)
+        val proxyResult = callInterNeuralProxy(query)
+        if (proxyResult != null) return proxyResult
+
+        // 4. v10.1: Emergency Background Search (No Key Required)
+        return performEmergencyWebSearch(query)
+    }
+
+    private suspend fun performEmergencyWebSearch(query: String): String? {
+        Log.i("GlobalSearch", "Performing emergency background search for: $query")
+        
+        return try {
+            val url = "https://api.duckduckgo.com/?q=${java.net.URLEncoder.encode(query, "UTF-8")}&format=json&no_html=1&skip_disambig=1"
+            val request = okhttp3.Request.Builder().url(url).build()
+            val client = okhttp3.OkHttpClient()
+            
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return null
+                val body = response.body?.string() ?: return null
+                val json = JSONObject(body)
+                
+                val abstract = json.optString("AbstractText")
+                val source = json.optString("AbstractSource")
+                
+                if (abstract.isNotBlank()) {
+                    "[NEURAL_DATA_EXTRACTED from $source]: $abstract"
+                } else {
+                    // Try related topics if abstract is empty
+                    val related = json.optJSONArray("RelatedTopics")
+                    if (related != null && related.length() > 0) {
+                        val firstObj = related.optJSONObject(0)
+                        val text = firstObj?.optString("Text")
+                        if (!text.isNullOrBlank()) "[NEURAL_DATA_SNIPPET]: $text" else null
+                    } else null
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("GlobalSearch", "Emergency search failed: ${e.message}")
+            null
+        }
     }
 
     suspend fun fetchNodePerformance(): List<Map<String, Any>> {
@@ -58,11 +96,18 @@ object GlobalSearchAgent {
         Log.i("GlobalSearch", "Calling Inter-Neural Proxy (Secondary AI)")
         
         val payload = mapOf(
-            "model" to "claude-3-haiku", // Example secondary model
+            "model" to "claude-3-haiku",
             "prompt" to query
         )
         
         val response = SupabaseClient.callFunction("inter-neural-proxy", payload)
+        
+        // v10.9: Detect and ignore missing edge function errors
+        if (response != null && (response.contains("not found", true) || response.contains("404"))) {
+            Log.e("GlobalSearch", "Inter-Neural Proxy not deployed on Supabase.")
+            return null
+        }
+
         return if (!response.isNullOrBlank()) {
             "[EXTERNAL_SOURCE: INTER_NEURAL_PROXY]\n$response"
         } else null

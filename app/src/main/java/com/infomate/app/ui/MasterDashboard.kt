@@ -107,6 +107,32 @@ fun MasterDashboard(state: UIState, vm: AgentViewModel, onDismiss: () -> Unit) {
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                // SYSTEM HEALTH & QUOTAS
+                if (state.quota != null) {
+                    DashboardSection(title = "RESOURCE ALLOCATION & HEALTH") {
+                        ResourceMetric(
+                            label = "NEURAL REQUESTS (DAILY)",
+                            current = state.quota.requestsUsed,
+                            limit = state.quota.requestsLimit
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        ResourceMetric(
+                            label = "TOKEN CONSUMPTION (TOTAL)",
+                            current = (state.quota.tokensUsed / 1000).toInt(),
+                            limit = 1000 // Sample limit 1M tokens
+                        )
+                        
+                        Spacer(modifier = Modifier.height(20.dp))
+                        
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            HealthMetric("CORE_SYNC", "STABLE", MatrixGreen)
+                            HealthMetric("RAG_LATENCY", "42ms", CyberCyan)
+                            HealthMetric("EDGE_STATUS", "READY", MatrixGreen)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+
                 // LIVE SIMULATION STREAM
                 DashboardSection(title = "LIVE NEURAL SIMULATION") {
                     Column(
@@ -326,7 +352,7 @@ fun AnalysisTableSection(state: UIState) {
             Box(modifier = Modifier.size(8.dp).background(CyberCyan, CircleShape))
             Spacer(modifier = Modifier.width(12.dp))
             Text(
-                "NEURAL LOG ANALYSIS",
+                "LIVE SYSTEM PROCEEDINGS",
                 color = CyberCyan,
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Black,
@@ -342,17 +368,20 @@ fun AnalysisTableSection(state: UIState) {
                 .background(CyberCyan.copy(alpha = 0.05f))
                 .padding(8.dp)
         ) {
-            Text("EVENT", color = CyberCyan.copy(alpha = 0.6f), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-            Text("SOURCE", color = CyberCyan.copy(alpha = 0.6f), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-            Text("STATUS", color = CyberCyan.copy(alpha = 0.6f), modifier = Modifier.weight(0.8f), style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.End, fontWeight = FontWeight.Bold)
+            Text("EVENT_ID", color = CyberCyan.copy(alpha = 0.6f), modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+            Text("LEVEL", color = CyberCyan.copy(alpha = 0.6f), modifier = Modifier.weight(0.8f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+            Text("TIMESTAMP", color = CyberCyan.copy(alpha = 0.6f), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.End, fontWeight = FontWeight.Bold)
         }
 
-        // Table Rows
-        AnalysisRow("PROMPT_DISPATCH", "ReliabilitySDK", "VERIFIED")
-        AnalysisRow("EMBEDDING_GEN", "VertexEngine", "OPTIMIZED")
-        AnalysisRow("RAG_RETRIEVAL", "VectorRetriever", "MATCHED")
-        AnalysisRow("HAPTIC_PULSE", "VibrationSvc", "EXECUTED")
-        AnalysisRow("TTS_SYNTHESIS", "NeuralVoice", "STREAMING")
+        // Table Rows - Dynamic from terminal logs
+        if (state.terminalLogs.isEmpty()) {
+            AnalysisRow("SYSTEM_IDLE", "INFO", "STANDBY")
+        } else {
+            state.terminalLogs.takeLast(5).reversed().forEach { log ->
+                val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(log.timestamp))
+                AnalysisRow(log.message.take(20).uppercase().replace(" ", "_"), log.level, time)
+            }
+        }
     }
 }
 

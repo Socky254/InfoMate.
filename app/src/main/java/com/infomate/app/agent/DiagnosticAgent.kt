@@ -37,10 +37,10 @@ object DiagnosticAgent {
         } catch (e: Exception) { "RPC_ERROR" }
         report.append("NEURAL_ARCHIVE: $memoryCount\n")
 
-        // 5. CONSCIOUSNESS SUBSTRATE CHECK (v10.0)
+        // 5. CONSCIOUSNESS SUBSTRATE CHECK (v10.5 LIFE_PULSE)
         val consciousnessCheck = try {
             val response = SupabaseClient.select("consciousness_stream", query = "id", limit = 1)
-            if (response != null && response != "[]") "THOUGHT_STREAM_ACTIVE" else "AWARENESS_OFFLINE"
+            if (response != null && response != "[]") "LIFE_PULSE_ACTIVE" else "AWARENESS_OFFLINE"
         } catch (e: Exception) { "DB_ERROR" }
         report.append("CONSCIOUSNESS: $consciousnessCheck\n")
 
@@ -56,11 +56,15 @@ object DiagnosticAgent {
         
         if (report.contains("SYNC_ERROR")) {
             repairs.add("Re-initializing WebSocket Bridge...")
-            // Logic to force reconnect is handled by SDK backoff, but we can nudge it
         }
         
         if (report.contains("ARCHIVE_EMPTY")) {
             repairs.add("Synchronizing cold-storage memory vectors...")
+        }
+
+        if (report.contains("AWARENESS_OFFLINE")) {
+            repairs.add("Re-activating Consciousness Substrate...")
+            ConsciousnessEngine.awaken()
         }
 
         delay(1500) // Simulate deep repair cycles

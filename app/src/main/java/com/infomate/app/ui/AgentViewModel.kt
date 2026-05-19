@@ -139,7 +139,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         checkForSystemUpdates()
         startConnectionPolling()
         startNeuralEvolutionMonitoring()
-        ConsciousnessEngine.awaken()
+        ConsciousnessEngine.awaken(application)
     }
 
     private fun getBatteryLevel(): Int {
@@ -964,6 +964,48 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
     fun updateInput(text: String) {
         _state.update { it.copy(input = text) }
+    }
+
+    fun searchGoogle(query: String) {
+        if (query.isBlank()) return
+        
+        viewModelScope.launch {
+            val senderLabel = if (_state.value.isMaster) "MASTER ARCHITECT" else "OPERATOR"
+            val userMsg = ChatMessage(content = "[DEEP_SEARCH]: $query", sender = senderLabel)
+            
+            _state.update { it.copy(
+                status = "CORE: SEARCHING GLOBAL ARCHIVES...",
+                brainState = InfomateState.THINKING,
+                messages = it.messages + userMsg,
+                input = ""
+            ) }
+            
+            saveMessageToSupabase(userMsg)
+            addTerminalLog("INITIATING BACKGROUND WEB SEARCH: $query", "INFO", "RESEARCH")
+            
+            // v10.1: Search in background and synthesize
+            val searchResult = GlobalSearchAgent.searchExternal(query)
+            
+            if (searchResult != null) {
+                // If we got results, have INFOMATE present them
+                val presentationPrompt = "SYNTHESIZE_SEARCH_RESULTS: I found some information regarding '$query'. Here is what the global archives say: $searchResult"
+                
+                // If AI is online, let it synthesize perfectly
+                if (isNetworkAvailable()) {
+                    ReliabilitySDK.sendPrompt(presentationPrompt)
+                } else {
+                    // If offline, use EdgeBrain to synthesize or just present raw
+                    val edgeSynthesis = EdgeBrain.processLocally(presentationPrompt, getApplication())
+                    onToken(edgeSynthesis ?: searchResult)
+                    onComplete(edgeSynthesis ?: searchResult)
+                }
+            } else {
+                // Total failure fallback
+                val errorMsg = "Socrates, I attempted to synchronize with the global search archives for '$query', but the neural link was rejected. I am currently operating on limited internal buffers."
+                onToken(errorMsg)
+                onComplete(errorMsg)
+            }
+        }
     }
 
     fun addMediaMessage(uri: String, type: MessageType) {

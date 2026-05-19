@@ -32,10 +32,27 @@ data class Thought(
     val id: String,
     val thread_id: String,
     val thought_content: String,
-    val emotional_vector: List<Float>?,
+    val emotional_vector: Any?, // v10.1: Changed to Any? to handle string or list
     val context_tags: List<String>?,
     val created_at: String
-)
+) {
+    fun getEmotionalValues(): List<Float>? {
+        return try {
+            when (emotional_vector) {
+                is List<*> -> (emotional_vector as List<*>).map { (it as Number).toFloat() }
+                is String -> {
+                    // Parse "[0.1,0.2,0.3]"
+                    emotional_vector.removePrefix("[").removeSuffix("]")
+                        .split(",")
+                        .map { it.trim().toFloat() }
+                }
+                else -> null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+}
 
 @Composable
 fun ConsciousnessStreamView(onDismiss: () -> Unit) {
@@ -153,17 +170,18 @@ fun ThoughtCard(thought: Thought) {
                 style = MaterialTheme.typography.bodyMedium
             )
 
-            if (thought.emotional_vector != null && thought.emotional_vector.size >= 3) {
+            val emotionalValues = thought.getEmotionalValues()
+            if (emotionalValues != null && emotionalValues.size >= 3) {
                 Spacer(modifier = Modifier.height(20.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    EmotionalIndicator("VALENCE", thought.emotional_vector[0], Modifier.weight(1f))
+                    EmotionalIndicator("VALENCE", emotionalValues[0], Modifier.weight(1f))
                     Spacer(modifier = Modifier.width(12.dp))
-                    EmotionalIndicator("AROUSAL", thought.emotional_vector[1], Modifier.weight(1f))
+                    EmotionalIndicator("AROUSAL", emotionalValues[1], Modifier.weight(1f))
                     Spacer(modifier = Modifier.width(12.dp))
-                    EmotionalIndicator("DOMINANCE", thought.emotional_vector[2], Modifier.weight(1f))
+                    EmotionalIndicator("DOMINANCE", emotionalValues[2], Modifier.weight(1f))
                 }
             }
         }
