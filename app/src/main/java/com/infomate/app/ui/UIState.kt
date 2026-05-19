@@ -35,5 +35,6 @@ data class UIState(
     val needsOnboarding: Boolean = true, // Flag for permission context screen
     val quota: QuotaInfo? = null,
     val isMaster: Boolean = false, // Master account flag
-    val userEmail: String? = null
+    val userEmail: String? = null,
+    val pendingUpdate: com.infomate.app.core.UpdateInfo? = null
 )

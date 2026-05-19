@@ -48,13 +48,13 @@ class InfomateBrain(archive: CognitiveArchive) {
     private val config = SystemConfig()
     private val mediaTool = MediaTool()
 
-    suspend fun process(input: String, sensors: SensoryContext? = null): InfomateResponse {
+    suspend fun process(input: String, sensors: SensoryContext? = null, isMaster: Boolean = false): InfomateResponse {
         val inputLower = input.lowercase()
         
         // 1. Initial Quick Layer check
         if (input.length < 5 && input != "INIT_GREETING" && !inputLower.contains("hi")) {
             return InfomateResponse(
-                output = "Directive density low. Expanding heuristic buffer.",
+                output = if (isMaster) "Master, your directive is being cached, but the current signal is low density. Please expand." else "Directive density low. Expanding heuristic buffer.",
                 steps = listOf(ThoughtStep("Echo-Path", "Low complexity signal.")),
                 recommendation = "Engage with complex inquiries.",
                 layer = "QUICK"
@@ -67,23 +67,25 @@ class InfomateBrain(archive: CognitiveArchive) {
         // 3. INFOMATE v8: DISTRIBUTED NETWORK COORDINATION
         val finalOutputText = coordinator.coordinate(taskProfile, input) { localQuery ->
             // This lambda represents the Local Node's processing (v7)
-            executeLocalV7Pipeline(localQuery, sensors)
+            executeLocalV7Pipeline(localQuery, sensors, isMaster)
         }
 
         // 4. POST-PROCESSING (Steps, Media, State)
         val steps = mutableListOf<ThoughtStep>()
+        if (isMaster) steps.add(ThoughtStep("Master Link", "Neural Bridge configured for SocratesArt@Live."))
         steps.add(ThoughtStep("v8 Coordinator", "Synchronized distributed nodes: MOBILE, CLOUD, DESKTOP."))
         steps.add(ThoughtStep("v7 Meta-Planner", "Architecture designed for Task: ${taskProfile.domain}"))
         
         // We add local reasoning steps for visual depth
         steps.addAll(reasoning.streamReasoning(input).toList())
 
-        val mediaList = if (inputLower.contains("image")) listOf(mediaTool.generateImage(input)) else emptyList()
+        val mediaList = if (inputLower.contains("image") || (isMaster && inputLower.contains("visualize"))) 
+            listOf(mediaTool.generateImage(input)) else emptyList()
 
         return InfomateResponse(
             output = finalOutputText,
             steps = steps,
-            recommendation = "Response synchronized across Distributed Intelligence Network v8.",
+            recommendation = if (isMaster) "Knowledge synergy achieved across the entire network." else "Response synchronized across Distributed Intelligence Network v8.",
             layer = when(taskProfile.complexity) {
                 Complexity.HIGH -> "UNIFIED"
                 Complexity.MEDIUM -> "RESEARCH"
@@ -97,11 +99,11 @@ class InfomateBrain(archive: CognitiveArchive) {
     /**
      * Internal v7 Pipeline executed as a local node in the v8 network.
      */
-    private suspend fun executeLocalV7Pipeline(input: String, sensors: SensoryContext?): String {
+    private suspend fun executeLocalV7Pipeline(input: String, sensors: SensoryContext?, isMaster: Boolean): String {
         // RAG & Context
         val relevantHistory = ragMemory.retrieveRelevantContext(input, config)
         val context = if (config.contextCompressionEnabled) ragMemory.compressContext(relevantHistory) else relevantHistory
-        val engineeredContext = processor.engineerContext(input, context, sensors)
+        val engineeredContext = processor.engineerContext(input, context, sensors, isMaster)
 
         // v7 Meta-Planning
         val taskProfile = taskAnalyzer.analyze(input)

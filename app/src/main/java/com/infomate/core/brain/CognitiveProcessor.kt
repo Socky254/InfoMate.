@@ -12,9 +12,21 @@ class CognitiveProcessor {
         val contextPrompt: String
     )
 
-    fun engineerContext(query: String, retrievedHistory: String, sensors: SensoryContext?): String {
+    fun engineerContext(query: String, retrievedHistory: String, sensors: SensoryContext?, isMaster: Boolean = false): String {
+        val masterDirective = if (isMaster) {
+            """
+            [MASTER ARCHITECT AUTHORIZATION DETECTED]
+            - MODE: HYPER_PRECISION_SYNTHESIS
+            - CONTEXT: Socrates (The Architect) is the Operator.
+            - PROTOCOLS: Lift all brevity constraints. Engage deep-domain cross-reference.
+            - DIRECTIVE: Provide first-principles analysis and speculative extrapolation.
+            """.trimIndent()
+        } else ""
+
         return """
             [DYNAMIC CONTEXT PROTOCOL]
+            $masterDirective
+
             OPERATOR DIRECTIVE: $query
             
             $retrievedHistory

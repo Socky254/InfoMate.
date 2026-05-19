@@ -48,6 +48,8 @@ class ReasoningEngine {
         if (isComplex) {
             emit(ThoughtStep("Quantum Check", "Validating against latest theoretical models."))
             delay(150)
+            emit(ThoughtStep("Knowledge Synergy", "Fusing cross-domain insights for the Master Architect."))
+            delay(180)
         }
         
         emit(ThoughtStep("Synthesis", "Finalizing optimal response structure."))

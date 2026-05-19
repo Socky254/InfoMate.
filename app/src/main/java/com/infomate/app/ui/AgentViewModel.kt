@@ -110,6 +110,29 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         UIRenderer.setListener(this)
         StreamController.init(application)
         ReliabilitySDK.init(application, "${Config.SUPABASE_URL.replace("https", "wss")}/realtime/v1/websocket?apikey=${Config.SUPABASE_KEY}")
+
+        checkForSystemUpdates()
+    }
+
+    private fun checkForSystemUpdates() {
+        viewModelScope.launch {
+            // In production use BuildConfig.VERSION_CODE
+            val currentVersion = 1 
+            val update = com.infomate.app.core.SystemUpdater.checkForUpdates(currentVersion)
+            if (update != null) {
+                _state.update { it.copy(pendingUpdate = update) }
+            }
+        }
+    }
+
+    fun startUpdate() {
+        val update = _state.value.pendingUpdate ?: return
+        com.infomate.app.core.SystemUpdater.downloadAndInstall(getApplication(), update)
+        _state.update { it.copy(pendingUpdate = null) }
+    }
+
+    fun dismissUpdate() {
+        _state.update { it.copy(pendingUpdate = null) }
     }
 
     override fun onToken(text: String) {

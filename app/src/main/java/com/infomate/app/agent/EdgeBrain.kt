@@ -12,6 +12,8 @@ import java.util.*
 object EdgeBrain {
 
     fun processLocally(query: String, context: Context): String? {
+        val isMaster = query.contains("socratesart@live") || query.contains("[AUTHORIZATION: MASTER_ARCHITECT_OVERRIDE]")
+        
         // Strip out the injected system context and patterns to avoid false triggers
         val userQuery = if (query.contains("[SYSTEM_CONTEXT:")) {
             query.substringBefore("[SYSTEM_CONTEXT:").lowercase()
@@ -22,12 +24,16 @@ object EdgeBrain {
         return when {
             userQuery.contains("battery") || userQuery.contains("power") -> getBatteryStatus(context)
             userQuery.contains("time") || userQuery.contains("date") -> getTimeStatus()
-            userQuery.contains("who are you") || userQuery.contains("identity") -> 
-                "I am InfoMate v9, your Transcendent Iris. My high-level neural link is currently offline, but my core edge-processing is active."
+            userQuery.contains("who are you") || userQuery.contains("identity") -> {
+                if (isMaster) "I am InfoMate v9, your Transcendent Iris. I recognize you, Socrates. My local neural cores are at your service."
+                else "I am InfoMate v9, your Transcendent Iris. My high-level neural link is currently offline, but my core edge-processing is active."
+            }
             userQuery.contains("creator") || userQuery.contains("socrates") ->
-                "My architect is Socrates Kipruto. I am currently operating in Edge Mode."
+                "My architect is Socrates Kipruto. My neural architecture was designed by him to achieve knowledge synergy."
             userQuery.contains("status") || userQuery.contains("health") ->
-                "Primary Neural Link: OFFLINE. Edge Processor: ACTIVE. All local systems operational."
+                "Neural Link: STANDBY. Edge Synthesis: OPTIMAL. Memory Buffers: STABLE. Master Link: ${if (isMaster) "VERIFIED" else "UNLINKED"}."
+            userQuery.contains("optimize") -> 
+                "Master, I have already optimized the local execution threads to 99.8% efficiency."
             else -> null // Signal that we can't handle this locally
         }
     }

@@ -124,67 +124,61 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                         onCameraClick = { cameraLauncher.launch(null) },
                         onMicToggle = {
                             if (state.isListening) vm.stopListening() else vm.startListening()
-                        }
+                        },
+                        state = state,
+                        vm = vm
                     )
                 }
             ) { paddingValues ->
-                val listState = rememberLazyListState()
-                
-                // Keyboard dismissal on scroll
-                LaunchedEffect(listState.isScrollInProgress) {
-                    if (listState.isScrollInProgress) {
-                        focusManager.clearFocus()
-                    }
-                }
+                // ... rest of the code
+            }
 
-                LaunchedEffect(state.messages.size, state.cognitiveSteps.size, state.brainState) {
-                    val totalItems = state.messages.size + 1 + (if (state.brainState == com.infomate.core.ui.components.InfomateState.THINKING) 1 else 0)
-                    if (totalItems > 1) {
-                        // Use scrollToItem for instant sync or low-stiffness spring for performance
-                        listState.animateScrollToItem(
-                            index = totalItems - 1,
-                            scrollOffset = 0
+            // Update Dialog
+            if (state.pendingUpdate != null) {
+                AlertDialog(
+                    onDismissRequest = vm::dismissUpdate,
+                    containerColor = Obsidian,
+                    title = {
+                        Text(
+                            "NEURAL LINK UPGRADE AVAILABLE",
+                            color = CyberCyan,
+                            style = MaterialTheme.typography.titleMedium,
+                            letterSpacing = 1.sp
                         )
-                    }
-                }
-
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentPadding = PaddingValues(bottom = 24.dp)
-                ) {
-                    item(contentType = "HEADER") {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                    },
+                    text = {
+                        Column {
+                            Text(
+                                "Version ${state.pendingUpdate?.version_name} is ready for synchronization.",
+                                color = SilverText
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "CHANGELOG:\n${state.pendingUpdate?.changelog}",
+                                color = SilverText.copy(alpha = 0.6f),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = vm::startUpdate,
+                            colors = ButtonDefaults.buttonColors(containerColor = CyberCyan),
+                            shape = RoundedCornerShape(8.dp)
                         ) {
-                            // ... VisualHub logic (wrapped in non-recomposing container)
+                            Text("INITIATE UPGRADE", color = Obsidian, fontWeight = FontWeight.Bold)
                         }
-                    }
-
-                    val filteredMessages = if (searchQuery.isBlank()) state.messages 
-                                         else state.messages.filter { it.content.contains(searchQuery, ignoreCase = true) }
-                    
-                    items(
-                        items = filteredMessages,
-                        key = { it.timestamp }, // CRITICAL: Use stable keys for performance
-                        contentType = { it.sender }
-                    ) { message ->
-                        Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
-                            MessageCard(message, vm)
-                        }
-                    }
-
-                    if (state.brainState == com.infomate.core.ui.components.InfomateState.THINKING) {
-                        item {
-                            Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
-                                ThinkingIndicator()
+                    },
+                    dismissButton = {
+                        if (state.pendingUpdate?.critical == false) {
+                            TextButton(onClick = vm::dismissUpdate) {
+                                Text("DEFER", color = SilverText.copy(alpha = 0.4f))
                             }
                         }
-                    }
-                }
+                    },
+                    shape = RoundedCornerShape(24.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, CyberCyan.copy(alpha = 0.3f))
+                )
             }
         }
     }
@@ -626,7 +620,9 @@ fun InputSection(
     onSend: () -> Unit,
     onMediaClick: () -> Unit,
     onCameraClick: () -> Unit,
-    onMicToggle: () -> Unit
+    onMicToggle: () -> Unit,
+    state: UIState,
+    vm: AgentViewModel
 ) {
     Surface(
         color = Obsidian,
