@@ -6,6 +6,7 @@ import android.util.Log
 import com.infomate.app.core.network.SupabaseClient
 import com.infomate.app.ai.sdk.ReliabilitySDK
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 
 /**
