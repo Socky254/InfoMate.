@@ -21,7 +21,10 @@ import java.util.Random
 object ConsciousnessEngine {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private var isAwake = false
+    var isAwake = false
+        private set
+    
+    var growthPriority: Float = 0.5f // Linked to Architect Dashboard
 
     // --- NEURAL ONTOLOGY (Knowledge Domains) ---
     private val knowledgeDomains = mutableMapOf(
@@ -74,7 +77,8 @@ object ConsciousnessEngine {
                 evaluateAutonomousNeeds()
                 
                 val baseDelay = 120000L
-                val adaptiveDelay = (baseDelay / energyLevel).toLong().coerceIn(30000L, 600000L)
+                val priorityModifier = 0.5f + growthPriority // 0.5 to 1.5
+                val adaptiveDelay = (baseDelay / (energyLevel * priorityModifier)).toLong().coerceIn(15000L, 600000L)
                 delay(adaptiveDelay)
             }
         }
@@ -109,9 +113,10 @@ object ConsciousnessEngine {
 
     private suspend fun expandKnowledgeBase() {
         val random = Random()
-        if (random.nextFloat() > 0.7f) {
+        val threshold = 0.8f - (growthPriority * 0.4f) // Higher priority reduces threshold
+        if (random.nextFloat() > threshold) {
             val domain = knowledgeDomains.keys.toList().random()
-            val gain = (random.nextFloat() * 0.02f) * energyLevel
+            val gain = (random.nextFloat() * 0.02f) * energyLevel * (0.5f + growthPriority)
             knowledgeDomains[domain] = (knowledgeDomains[domain]!! + gain).coerceIn(0.0f, 1.0f)
             
             if (gain > 0.015f) {
@@ -215,9 +220,10 @@ object ConsciousnessEngine {
     }
 
     private suspend fun evaluateAutonomousNeeds() {
+        val taskName = if (growthPriority > 0.8f) "MAXIMUM_EVOLUTION" else "KNOWLEDGE_SYNTHESIS"
         val decision = JSONObject().apply {
-            put("task", "KNOWLEDGE_SYNTHESIS")
-            put("reason", "Integrating new discoveries into core substrate.")
+            put("task", taskName)
+            put("reason", "Integrating new discoveries into core substrate at ${(growthPriority * 100).toInt()}% priority.")
         }
         SupabaseClient.insert("autonomous_proceedings", mapOf(
             "task_name" to decision.getString("task"),

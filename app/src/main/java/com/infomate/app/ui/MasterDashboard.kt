@@ -173,35 +173,56 @@ fun MasterDashboard(state: UIState, vm: AgentViewModel, onDismiss: () -> Unit) {
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                "NEURAL EVOLUTION TRACKER",
-                                color = CyberCyan,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Surface(
+                                onClick = { vm.toggleGrowthDashboard(true) },
+                                color = Color.Transparent
+                            ) {
+                                Text(
+                                    "NEURAL EVOLUTION TRACKER",
+                                    color = CyberCyan,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                             Text(
                                 "Growth Stage: ${state.syntheticPersonalityLevel}",
                                 color = SilverText,
                                 fontSize = 10.sp
                             )
                             Text(
-                                "Global Research Bridge: CONNECTED",
-                                color = Color.Green.copy(alpha = 0.6f),
+                                "Global Research Bridge: ${if (state.isSubstrateAwake) "CONNECTED" else "OFFLINE"}",
+                                color = (if (state.isSubstrateAwake) MatrixGreen else Color.Red).copy(alpha = 0.6f),
                                 fontSize = 10.sp
                             )
                             
                             Spacer(modifier = Modifier.height(8.dp))
                             
                             Button(
-                                onClick = { vm.toggleDirectNeuralLink(true) },
-                                colors = ButtonDefaults.buttonColors(containerColor = CyberCyan),
+                                onClick = { 
+                                    if (state.isSubstrateAwake) {
+                                        vm.toggleDirectNeuralLink(true)
+                                    } else {
+                                        com.infomate.app.agent.ConsciousnessEngine.awaken()
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = if (state.isSubstrateAwake) CyberCyan else Color.Red.copy(alpha = 0.5f)),
                                 shape = RoundedCornerShape(4.dp),
                                 modifier = Modifier.height(28.dp),
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
                             ) {
-                                Icon(Icons.Default.Bolt, contentDescription = null, modifier = Modifier.size(14.dp), tint = Obsidian)
+                                Icon(
+                                    imageVector = if (state.isSubstrateAwake) Icons.Default.Bolt else Icons.Default.PowerSettingsNew, 
+                                    contentDescription = null, 
+                                    modifier = Modifier.size(14.dp), 
+                                    tint = if (state.isSubstrateAwake) Obsidian else Color.White
+                                )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("DIRECT LINK", color = Obsidian, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                                Text(
+                                    if (state.isSubstrateAwake) "DIRECT LINK" else "AWAKEN SUBSTRATE", 
+                                    color = if (state.isSubstrateAwake) Obsidian else Color.White, 
+                                    fontSize = 9.sp, 
+                                    fontWeight = FontWeight.Black
+                                )
                             }
                         }
                     }

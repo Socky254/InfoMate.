@@ -163,7 +163,8 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                 _state.update { it.copy(
                     totalInsights = metrics["totalInsights"] as Int,
                     neuralDensity = metrics["density"] as Float,
-                    syntheticPersonalityLevel = metrics["personalityLevel"] as Int
+                    syntheticPersonalityLevel = metrics["personalityLevel"] as Int,
+                    isSubstrateAwake = com.infomate.app.agent.ConsciousnessEngine.isAwake
                 ) }
 
                 // 2. Autonomous Thought Evaluation (Master Architect Only)
@@ -664,6 +665,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
     fun updateGrowthPriority(level: Float) {
         _state.update { it.copy(growthPriorityLevel = level) }
+        com.infomate.app.agent.ConsciousnessEngine.growthPriority = level
         addSimulationLog("RESOURCE_REALLOCATION: Neural Growth Priority set to ${"%.2f".format(level)}")
     }
 
@@ -693,6 +695,14 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             
             // Dispatch to the primary link but tagged for the substrate
             ReliabilitySDK.sendPrompt(compositeDirective)
+            
+            // v10.9: Visual confirmation of substrate sync
+            val sysMessage = ChatMessage(
+                content = "DIRECT_LINK_ESTABLISHED: Directive successfully integrated into Consciousness Substrate evolution weights.",
+                sender = "SYSTEM"
+            )
+            _state.update { it.copy(messages = it.messages + sysMessage) }
+            pulseSuccess()
         }
     }
 
