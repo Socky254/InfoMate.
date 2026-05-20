@@ -80,9 +80,11 @@ object StreamController {
         SessionManager.partialResponse.append(token)
         SessionManager.lastSequence++
         
-        // 3.6 Crash Safe State Persistence
-        appContext?.let {
-            PersistenceManager.savePartialResponse(it, SessionManager.partialResponse.toString())
+        // 3.6 Throttled Crash Safe State Persistence (Save every 25 tokens or on large increments)
+        if (SessionManager.lastSequence % 25 == 0) {
+            appContext?.let {
+                PersistenceManager.savePartialResponse(it, SessionManager.partialResponse.toString())
+            }
         }
     }
 

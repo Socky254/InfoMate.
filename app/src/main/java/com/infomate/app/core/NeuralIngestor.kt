@@ -1,11 +1,13 @@
 package com.infomate.app.core
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.provider.CalendarContract
 import android.provider.CallLog
 import android.provider.ContactsContract
 import android.provider.Telephony
 import android.util.Log
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.*
@@ -19,6 +21,10 @@ class NeuralIngestor(private val context: Context) {
         private const val CACHE_EXPIRY = 15 * 60 * 1000 // 15 Minutes
     }
 
+    private fun hasPermission(permission: String): Boolean {
+        return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+    }
+
     suspend fun captureUserPatterns(): String = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         if (cachedPatterns != null && (now - lastCacheTime) < CACHE_EXPIRY) {
@@ -28,10 +34,18 @@ class NeuralIngestor(private val context: Context) {
         val summary = StringBuilder("### USER DATA PATTERNS ###\n")
         
         try {
-            summary.append(getContactInsights())
-            summary.append(getCalendarEvents())
-            summary.append(getCallLogInsights())
-            summary.append(getSmsInsights())
+            if (hasPermission(android.Manifest.permission.READ_CONTACTS)) {
+                summary.append(getContactInsights())
+            }
+            if (hasPermission(android.Manifest.permission.READ_CALENDAR)) {
+                summary.append(getCalendarEvents())
+            }
+            if (hasPermission(android.Manifest.permission.READ_CALL_LOG)) {
+                summary.append(getCallLogInsights())
+            }
+            if (hasPermission(android.Manifest.permission.READ_SMS)) {
+                summary.append(getSmsInsights())
+            }
         } catch (e: Exception) {
             Log.e("NeuralIngestor", "Error capturing patterns: ${e.message}")
             summary.append("Data Ingestion Incomplete: ${e.message}\n")

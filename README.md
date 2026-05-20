@@ -1,7 +1,7 @@
-# InfoMate v9
+# InfoMate v12.4
 ### Powered by Socrates Kipruto
 
-**InfoMate v9** is a premium, personal AI companion designed to provide a seamless, context-aware experience. Built with a futuristic "Living UI" and a robust neural backend, InfoMate goes beyond a standard chatbot to become a true extension of your digital workflow.
+**InfoMate v12.4** is a premium, personal AI companion designed to provide a seamless, context-aware experience. Built with a futuristic "Living UI" and a robust neural backend, InfoMate goes beyond a standard chatbot to become a true extension of your digital workflow.
 
 ## 🚀 Key Features
 

@@ -30,9 +30,6 @@ class MainActivity : ComponentActivity() {
         // v10.2: Persistent UI Overlay & Lock Screen Access
         configurePersistentAvailability()
 
-        // 10.0 INVINCIBLE EDGE: Initialize Gemini Nano
-        com.infomate.app.agent.EdgeBrain.init(this)
-
         setContent {
             val vm: AgentViewModel = viewModel()
             val state by vm.state.collectAsState()
@@ -74,8 +71,7 @@ class MainActivity : ComponentActivity() {
             Manifest.permission.READ_CONTACTS,
             Manifest.permission.READ_CALENDAR,
             Manifest.permission.READ_CALL_LOG,
-            Manifest.permission.READ_SMS,
-            Manifest.permission.SYSTEM_ALERT_WINDOW
+            Manifest.permission.READ_SMS
         )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -86,5 +82,20 @@ class MainActivity : ComponentActivity() {
         }
 
         requestPermissionLauncher.launch(permissions.toTypedArray())
+        
+        // Handle special permissions separately
+        requestSystemAlertWindowPermission()
+    }
+
+    private fun requestSystemAlertWindowPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!android.provider.Settings.canDrawOverlays(this)) {
+                val intent = android.content.Intent(
+                    android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    android.net.Uri.parse("package:$packageName")
+                )
+                startActivity(intent)
+            }
+        }
     }
 }

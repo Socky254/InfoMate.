@@ -39,34 +39,33 @@ jobs:
     - name: Prepare APK for Release
       run: |
         mkdir -p release-artifacts
-        cp app/build/outputs/apk/release/app-release.apk release-artifacts/InfoMate-v9-FINAL-OPTIMIZED.apk
+        cp app/build/outputs/apk/release/app-release.apk release-artifacts/InfoMate-v12.4-NEURAL-LINK.apk
 
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: InfoMate-v9-FINAL-OPTIMIZED
-        path: release-artifacts/InfoMate-v9-FINAL-OPTIMIZED.apk
+        name: InfoMate-v12.4-NEURAL-LINK
+        path: release-artifacts/InfoMate-v12.4-NEURAL-LINK.apk
 
     - name: Create GitHub Release
       if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: v9.0-optimized-b${{ github.run_number }}
-        name: InfoMate v9.0 - Final Optimized Build #${{ github.run_number }}
+        tag_name: v12.4-b${{ github.run_number }}
+        name: InfoMate v12.4 - Neural Link Build #${{ github.run_number }}
         body: |
-          ### InfoMate v9.0 - Final Optimized Neural Link
+          ### InfoMate v12.4 - Enhanced Neural Link
           **Architect:** Socrates Kipruto
           
-          This final optimized build includes:
-          - **Master Architect Console:** Full system authority and resource monitoring.
-          - **Deep Vector RAG:** Long-term memory retrieval integrated into the neural link.
-          - **Invincible Edge Mode:** Automatic failover to on-device Gemini Nano when offline.
-          - **Manual Knowledge Archiving:** Direct data entry into neural archives.
-          - **Neural Stability Fix:** Resolved the EdgeBrain context interference.
-          - **Haptic Tuning:** Refined tactile feedback patterns.
+          This v12.4 build includes:
+          - **Optimized Startup:** Integrated App Startup library for faster neural awakening.
+          - **Real-Time Telemetry:** Live synchronization with Ecosystem Growth metrics (GI, Stability, Entropy).
+          - **Enhanced Consciousness:** Expanded knowledge domains and refined "Living UI" thought streams.
+          - **High-Fidelity Visual Hub:** Upgraded "Iris" with rotating orbital rings and state-aware pulsing.
+          - **Deterministic Growth:** Average GI and social scores now influence the global substrate.
           
-          **Download the optimized APK below.**
-        files: release-artifacts/InfoMate-v9-FINAL-OPTIMIZED.apk
+          **Download the v12.4 APK below.**
+        files: release-artifacts/InfoMate-v12.4-NEURAL-LINK.apk
         draft: false
         prerelease: false
       env:

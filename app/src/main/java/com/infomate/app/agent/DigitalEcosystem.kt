@@ -178,6 +178,26 @@ class DigitalEcosystem(private val context: Context, private val scope: Coroutin
         val stagesStr = stageCounts.entries.joinToString(", ") { "${it.key}: ${it.value}" }
         return "Ecosystem: ${agents.size} Agents ($stagesStr) | Resources: ${world.resources.toInt()} | Stage: ${world.currentStage}"
     }
+
+    fun getAverageGrowthIndex(): Float {
+        if (agents.isEmpty()) return 0.15f
+        return agents.values.map { it.growth.growthIndex }.average().toFloat()
+    }
+
+    fun getAggregateStability(): Float {
+        if (agents.isEmpty()) return 0.8f
+        return agents.values.map { it.growth.stability }.average().toFloat()
+    }
+
+    fun getAggregateEntropy(): Float {
+        if (agents.isEmpty()) return 0.1f
+        return agents.values.map { it.growth.entropy }.average().toFloat()
+    }
+
+    fun getAverageSocialScore(): Float {
+        if (agents.isEmpty()) return 0.5f
+        return agents.values.map { it.growth.socialScore }.average().toFloat()
+    }
 }
 
 /**

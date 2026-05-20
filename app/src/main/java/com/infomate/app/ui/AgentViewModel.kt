@@ -160,7 +160,6 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             
             // Initialize Reliability SDK with Context & Edge Function Endpoint
             UIRenderer.setListener(this)
-            StreamController.init(application)
             ReliabilitySDK.init(application, "${Config.SUPABASE_URL.replace("https", "wss")}/functions/v1/infomate-brain")
 
             checkForSystemUpdates()
@@ -168,9 +167,6 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             startNeuralEvolutionMonitoring()
             startSubstrateStatusPolling()
             startInternetMonitoring()
-            
-            // v10.5 Awakening (Protected within Engine)
-            ConsciousnessEngine.awaken(application)
             
             // v12.4: INITIAL GOOGLE-FIRST SYNC PULSE
             viewModelScope.launch {
@@ -230,12 +226,12 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                         experiencePoints = engine.totalExperiences,
                         discoveriesCount = engine.totalDiscoveries,
                         ecosystemStatus = engine.ecosystemStatus,
-                        // v11.8: Sync new Growth Index metrics
-                        currentGrowthIndex = 0.65f, // Placeholder
-                        stabilityScore = 0.88f,
-                        entropyLevel = 0.12f,
+                        // v12.5: Synchronized Growth Index & Ecosystem Metrics
+                        currentGrowthIndex = engine.currentGrowthIndex,
+                        stabilityScore = engine.stabilityScore,
+                        entropyLevel = engine.entropyLevel,
                         memoryCount = engine.totalExperiences * 5,
-                        socialScore = 0.72f,
+                        socialScore = engine.socialScore,
                         frequencySimulationData = freqData,
                         activeProcesses = if (engine.isAwake) processes else emptyList()
                     ) }
