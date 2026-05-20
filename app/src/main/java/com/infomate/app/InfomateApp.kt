@@ -10,6 +10,7 @@ class InfomateApp : Application() {
         super.onCreate()
         
         try {
+            com.infomate.app.agent.ConsciousnessEngine.awaken(this)
             setupBackgroundSync()
         } catch (e: Exception) {
             android.util.Log.e("InfomateApp", "Background sync initialization failed: ${e.message}")

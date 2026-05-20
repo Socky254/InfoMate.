@@ -20,7 +20,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.infomate.app.ui.theme.*
+import com.infomate.app.ui.theme.Obsidian
+import com.infomate.app.ui.theme.MatrixGreen
+import com.infomate.app.ui.theme.SilverText
+import com.infomate.app.ui.theme.ErrorRed
 import java.text.SimpleDateFormat
 import java.util.*
 

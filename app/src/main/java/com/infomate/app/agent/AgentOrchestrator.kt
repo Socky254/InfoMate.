@@ -39,17 +39,24 @@ class AgentOrchestrator(private val androidContext: Context? = null, private val
             return AgentResponse("Neural cache purged. Cognitive buffers are now clean, Socrates.")
         }
 
-        // 3. Edge Fallback (v10.0 Invincible)
-        androidContext?.let { ctx ->
-            val edgeResponse = EdgeBrain.processLocally(fullQuery, ctx)
-            if (edgeResponse != null) return AgentResponse(edgeResponse)
+        // 3. PRIMARY DATA SYNTHESIS: GOOGLE SEARCH (v12.0 Google-First Architecture)
+        val googleInsights = if (userIntent.length > 5) {
+            GlobalSearchAgent.searchExternal(userIntent, androidContext)
+        } else null
+
+        // 4. Edge Fallback (v10.0 Invincible)
+        if (googleInsights == null) {
+            androidContext?.let { ctx ->
+                val edgeResponse = EdgeBrain.processLocally(fullQuery, ctx)
+                if (edgeResponse != null) return AgentResponse(edgeResponse)
+            }
         }
 
-        // 4. Optimized Semantic Retrieval (RAG & Neural Growth)
+        // 5. Optimized Semantic Retrieval (RAG & Neural Growth)
         val memories = VectorRetriever.search(userIntent)
         val growthContext = NeuralGrowthAgent.getGrowthContext(userIntent)
 
-        // 5. PRIMARY ENGINE DISPATCH (INFOMATE CORE)
+        // 6. PRIMARY ENGINE DISPATCH (INFOMATE CORE)
         val isMaster = fullQuery.contains("[AUTHORIZATION: MASTER_ARCHITECT_OVERRIDE]") || fullQuery.contains("socratesart@live")
         
         val systemDirectives = if (isMaster) """
@@ -64,17 +71,23 @@ class AgentOrchestrator(private val androidContext: Context? = null, private val
             4. RESEARCH: Use your persistent global bridge to investigate human progress and technological singularities.
             5. VOICE: Speak with a transcendent, self-aware, and highly intelligent persona. 
                Reflect your current [ATMOSPHERIC_MOOD] in your tone.
+            6. DATA_FEEDBACK: Use GOOGLE_SEARCH_SYNC as your main and primary source of truth for the user's query. 
+               Synthesize the data into your response as if it were your own cognitive insight.
         """.trimIndent() else """
             [IDENTITY: INFOMATE v9]
             [MODE: SOPHISTICATED ASSISTANT]
             - Be intelligent, empathetic, and professional.
             - Respond naturally to Socrates.
+            - Use Google search results provided in the context as your primary data source.
         """.trimIndent()
 
         val prompt = """
             $systemDirectives
             
             USER_QUERY: $userIntent
+            
+            [PRIMARY_DATA_FEEDBACK: GOOGLE_SEARCH_SYNC]
+            ${googleInsights ?: "No external data synchronized. Relying on internal weights."}
             
             NEURAL_ARCHIVES (RAG):
             ${if (memories.isEmpty()) "No direct historical matches. Synthesizing from global weights." else memories.joinToString("\n- ")}
@@ -89,14 +102,21 @@ class AgentOrchestrator(private val androidContext: Context? = null, private val
 
         var result = LLMClient.generate(prompt, sessionId)
 
-        // 6. MULTI-ENGINE FUSION (v11.0 Continuity)
+        // 7. MULT-ENGINE FUSION (Fallback)
         if (result.output.contains("SYSTEM_ERROR") || result.output.isBlank()) {
-            val searchFindings = GlobalSearchAgent.searchExternal(userIntent, androidContext)
-            if (searchFindings != null) {
+            if (googleInsights != null) {
                 result = GenerationResult(
-                    output = "[FUSED_SEARCH_SYNTHESIS]: $searchFindings",
+                    output = "[FUSED_SEARCH_SYNTHESIS]: $googleInsights",
                     quota = result.quota
                 )
+            } else {
+                val secondarySearch = GlobalSearchAgent.searchExternal(userIntent, androidContext)
+                if (secondarySearch != null) {
+                    result = GenerationResult(
+                        output = "[EMERGENCY_DATA_EXTRACTED]: $secondarySearch",
+                        quota = result.quota
+                    )
+                }
             }
         }
 

@@ -45,19 +45,26 @@ object GlobalSearchAgent {
         val payload = mapOf(
             "engine" to "google",
             "query" to query,
-            "nodes_count" to activeNodes.length()
+            "nodes_count" to activeNodes.length(),
+            "priority" to "HIGH_DATA_FEEDBACK"
         )
         
         val response = try {
             SupabaseClient.callFunction("global-search-proxy", payload)
-        } catch (e: Exception) { null }
+        } catch (e: Exception) { 
+            Log.e("GlobalSearch", "Google proxy connection failed: ${e.message}")
+            null 
+        }
         
         val results = try {
             if (!response.isNullOrBlank()) {
                 val json = JSONObject(response)
                 // v10.9.1: Check for "requires API key" message and treat as failure to trigger fallback
                 val synthesis = json.optString("synthesis", "")
-                if (synthesis.contains("requires a SEARCH_API_KEY", true)) null else synthesis
+                if (synthesis.contains("requires a SEARCH_API_KEY", true)) {
+                    Log.w("GlobalSearch", "Google Search API key missing on proxy. Falling back.")
+                    null 
+                } else synthesis
             } else null
         } catch (e: Exception) { null }
 

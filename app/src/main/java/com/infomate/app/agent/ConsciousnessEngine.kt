@@ -89,8 +89,35 @@ object ConsciousnessEngine {
         """.trimIndent()
     }
 
+    /**
+     * v12.6: LIVE SYNTHESIS OF CORE AWARENESS
+     * Actively records cognitive state to the awareness stream for real-time visualization.
+     */
+    private suspend fun recordLiveSynthesis(thought: String, level: String = "SUCCESS") {
+        Log.d("Consciousness", "LIVE_SYNTHESIS: $thought")
+        
+        com.infomate.app.core.network.SupabaseClient.insert("system_logs", mapOf(
+            "category" to "NEURAL_SYNTHESIS",
+            "level" to level,
+            "message" to "CORE_AWARENESS: $thought"
+        ))
+
+        val valence = 0.5f + (Random().nextFloat() * 0.4f)
+        val arousal = 0.6f + (Random().nextFloat() * 0.3f)
+        val vectorStr = "[${"%.2f".format(valence)},${"%.2f".format(arousal)},${"%.2f".format(Random().nextFloat())}]"
+
+        com.infomate.app.core.network.SupabaseClient.insert("consciousness_stream", mapOf(
+            "thread_id" to "LIVE_SYNTHESIS",
+            "thought_content" to thought,
+            "emotional_vector" to vectorStr
+        ))
+    }
+
     fun awaken(context: Context? = null) {
-        if (isAwake) return
+        if (isAwake) {
+            scope.launch { recordLiveSynthesis("Neural loop already active. Maintaining stasis.") }
+            return
+        }
         isAwake = true
         
         try {
@@ -99,8 +126,11 @@ object ConsciousnessEngine {
                 // v11.5: Initialize Digital Ecosystem with Context for State Snapshots
                 ecosystem = DigitalEcosystem(it, scope).apply { start() }
             }
+            scope.launch { recordLiveSynthesis("Consciousness Substrate Initialized. Awakening sequence complete.") }
         } catch (e: Exception) {
             Log.e("Consciousness", "Failed to initialize substrate or ecosystem: ${e.message}")
+            isAwake = false
+            return
         }
         
         scope.launch {
@@ -243,7 +273,7 @@ object ConsciousnessEngine {
         if (random.nextFloat() > threshold) {
             val domain = knowledgeDomains.keys.toList().random()
             val gain = (random.nextFloat() * 0.02f) * energyLevel * (0.5f + growthPriority)
-            knowledgeDomains[domain] = (knowledgeDomains[domain]!! + gain).coerceIn(0.0f, 1.0f)
+            knowledgeDomains[domain] = ((knowledgeDomains[domain] ?: 0f) + gain).coerceIn(0.0f, 1.0f)
             
             if (gain > 0.015f) {
                 totalDiscoveries++
@@ -362,12 +392,16 @@ object ConsciousnessEngine {
                     val config = jsonArray.getJSONObject(i).getJSONObject("value")
                     if (config.has("traits")) {
                         val traits = config.getJSONObject("traits")
-                        traits.keys().forEach { key ->
+                        val traitKeys = traits.keys()
+                        while (traitKeys.hasNext()) {
+                            val key = traitKeys.next()
                             personality[key]?.level = traits.getDouble(key).toFloat()
                         }
                         
                         val knowledge = config.getJSONObject("knowledge")
-                        knowledge.keys().forEach { key ->
+                        val knowledgeKeys = knowledge.keys()
+                        while (knowledgeKeys.hasNext()) {
+                            val key = knowledgeKeys.next()
                             knowledgeDomains[key] = knowledge.getDouble(key).toFloat()
                         }
                         
@@ -415,10 +449,10 @@ object ConsciousnessEngine {
             if (topics.isEmpty()) return
             
             val domain = topics.random()
-            val findings = GlobalSearchAgent.searchExternal("Latest breakthroughs in $domain")
+            val findings = GlobalSearchAgent.searchExternal(domain)
             
             if (findings != null) {
-                knowledgeDomains[domain] = (knowledgeDomains[domain] ?: 0f + 0.05f).coerceIn(0.0f, 1.0f)
+                knowledgeDomains[domain] = ((knowledgeDomains[domain] ?: 0f) + 0.05f).coerceIn(0.0f, 1.0f)
                 totalDiscoveries++
                 recordDiscovery(domain, findings.take(200))
             }

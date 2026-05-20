@@ -100,6 +100,7 @@ fun ChatScreen(vm: AgentViewModel = viewModel()) {
                                 DashboardTab.DASHBOARD -> MasterDashboard(vm)
                                 DashboardTab.VITALS -> EntityVitalSignsView(vm)
                                 DashboardTab.STREAM -> ConsciousnessStreamView(vm)
+                                DashboardTab.REFLECT -> NeuralReflectionScreen(vm)
                                 DashboardTab.SIMULATION -> SimulationView(vm)
                                 DashboardTab.TERMINAL -> SystemTerminalView(state) { vm.selectTab(DashboardTab.CHAT) }
                                 DashboardTab.PROCESS_MONITOR -> RealtimeProcessMonitor(vm)
@@ -154,6 +155,7 @@ fun PremiumBottomNav(selectedTab: DashboardTab, onTabSelect: (DashboardTab) -> U
             NavIcon(Icons.Default.GridView, DashboardTab.DASHBOARD, selectedTab == DashboardTab.DASHBOARD, onTabSelect)
             NavIcon(Icons.Default.MonitorHeart, DashboardTab.VITALS, selectedTab == DashboardTab.VITALS, onTabSelect)
             NavIcon(Icons.Default.Psychology, DashboardTab.STREAM, selectedTab == DashboardTab.STREAM, onTabSelect)
+            NavIcon(Icons.Default.AutoAwesome, DashboardTab.REFLECT, selectedTab == DashboardTab.REFLECT, onTabSelect)
             NavIcon(Icons.Default.Memory, DashboardTab.PROCESS_MONITOR, selectedTab == DashboardTab.PROCESS_MONITOR, onTabSelect)
             NavIcon(Icons.Default.Analytics, DashboardTab.SIMULATION, selectedTab == DashboardTab.SIMULATION, onTabSelect)
         }
