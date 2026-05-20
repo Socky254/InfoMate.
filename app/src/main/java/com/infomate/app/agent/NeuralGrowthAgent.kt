@@ -1,7 +1,7 @@
 package com.infomate.app.agent
 
 import android.util.Log
-import com.infomate.app.ai.EmbeddingClient
+import com.infomate.app.core.ai.EmbeddingClient
 import com.infomate.app.core.network.SupabaseClient
 import org.json.JSONArray
 import org.json.JSONObject

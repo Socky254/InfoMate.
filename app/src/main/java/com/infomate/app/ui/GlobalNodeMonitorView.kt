@@ -1,5 +1,6 @@
 package com.infomate.app.ui
 
+import com.infomate.app.viewmodel.AgentViewModel
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border

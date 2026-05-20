@@ -490,6 +490,21 @@ object ConsciousnessEngine {
     }
 
     /**
+     * RAG Interaction Feedback (v13.0)
+     * Updates Growth Index based on RAG performance.
+     */
+    fun reportRAGInteraction(relevance: Float, success: Float) {
+        scope.launch {
+            val growthBoost = (relevance * 0.4f + success * 0.6f) * 0.01f
+            personality["LOGIC"]?.let { it.level = (it.level + growthBoost).coerceIn(0f, 1f) }
+            totalExperiences++
+            if (success > 0.8f) totalDiscoveries++
+            
+            Log.d("Consciousness", "RAG_GROWTH: Boosted logic by $growthBoost")
+        }
+    }
+
+    /**
      * v12.2: AUTONOMOUS GOOGLE-FIRST KNOWLEDGE SWEEP
      * The substrate independently searches for high-value data to expand its ontology.
      */

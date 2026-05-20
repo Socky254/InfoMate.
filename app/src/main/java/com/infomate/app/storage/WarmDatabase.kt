@@ -33,6 +33,15 @@ data class ResearchCache(
     val timestamp: Long = System.currentTimeMillis()
 )
 
+@Entity(tableName = "memory_table")
+data class MemoryEntry(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val input: String,
+    val response: String,
+    val importanceScore: Float = 0.5f,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
 @Dao
 interface WarmDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -52,9 +61,15 @@ interface WarmDao {
 
     @Query("SELECT * FROM research_cache WHERE `query` = :query LIMIT 1")
     suspend fun getCachedResearch(query: String): ResearchCache?
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertMemory(entry: MemoryEntry)
+
+    @Query("SELECT * FROM memory_table ORDER BY timestamp DESC LIMIT :limit")
+    suspend fun getRecentMemories(limit: Int): List<MemoryEntry>
 }
 
-@Database(entities = [AgentSnapshot::class, WorldSnapshot::class, ResearchCache::class], version = 3, exportSchema = false)
+@Database(entities = [AgentSnapshot::class, WorldSnapshot::class, ResearchCache::class, MemoryEntry::class], version = 4, exportSchema = false)
 abstract class WarmDatabase : RoomDatabase() {
     abstract fun warmDao(): WarmDao
 

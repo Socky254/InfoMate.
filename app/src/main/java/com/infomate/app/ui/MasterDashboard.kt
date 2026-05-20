@@ -1,11 +1,10 @@
 package com.infomate.app.ui
 
+import com.infomate.app.viewmodel.AgentViewModel
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -50,7 +49,7 @@ fun MasterDashboard(vm: AgentViewModel) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Metrics Grid (Replaced LazyVerticalGrid for better fitting)
+        // Metrics Grid
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(modifier = Modifier.weight(1f)) { PremiumMetricCard("STABILITY", "${(state.stabilityScore * 100).toInt()}%", Icons.Default.Security, MatrixGreen) }
@@ -61,6 +60,11 @@ fun MasterDashboard(vm: AgentViewModel) {
                 Box(modifier = Modifier.weight(1f)) { PremiumMetricCard("SOCIAL_SCORE", state.socialScore.toString(), Icons.Default.Groups, NeonBlue) }
             }
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // v13.5: Advanced Knowledge Acquisition HUD
+        KnowledgeAcquisitionHUD(state)
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -80,6 +84,38 @@ fun MasterDashboard(vm: AgentViewModel) {
         ActionRow(vm)
 
         Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+@Composable
+fun KnowledgeAcquisitionHUD(state: UIState) {
+    Surface(
+        color = Color.Black.copy(alpha = 0.4f),
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MatrixGreen.copy(alpha = 0.2f)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.AutoGraph, contentDescription = null, tint = MatrixGreen, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("ADVANCED_KNOWLEDGE_ACQUISITION", color = MatrixGreen, fontSize = 11.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                KnowledgeMetric("FACTS", state.totalExperiences / 2, MatrixGreen)
+                KnowledgeMetric("SKILLS", state.totalExperiences / 5, CyberCyan)
+                KnowledgeMetric("HYPOTHESES", state.totalExperiences / 10, NeonBlue)
+            }
+        }
+    }
+}
+
+@Composable
+fun KnowledgeMetric(label: String, value: Int, color: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value.toString(), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace)
+        Text(label, color = color.copy(alpha = 0.7f), fontSize = 9.sp, fontFamily = FontFamily.Monospace)
     }
 }
 

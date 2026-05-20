@@ -8,6 +8,6 @@ object Config {
     const val EMBEDDING_API_URL = "$SUPABASE_URL/functions/v1/get-embeddings"
     
     // v13.0: GEMINI CONFIGURATION
-    const val GEMINI_MODEL = "gemini-1.5-flash"
+    const val GEMINI_MODEL = "gemini-2.5-flash"
     val GEMINI_API_KEY = com.infomate.app.BuildConfig.GEMINI_API_KEY
 }

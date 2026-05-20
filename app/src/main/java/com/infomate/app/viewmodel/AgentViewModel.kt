@@ -1,4 +1,4 @@
-package com.infomate.app.ui
+package com.infomate.app.viewmodel
 
 import android.app.Application
 import android.content.Context
@@ -32,6 +32,13 @@ import com.infomate.app.core.config.Config
 import com.infomate.app.rag.VectorRetriever
 import com.infomate.app.agent.ReasoningEngine
 import com.infomate.app.ui.InfomateState
+import com.infomate.app.ui.UIState
+import com.infomate.app.ui.ChatMessage
+import com.infomate.app.ui.ActiveProcess
+import com.infomate.app.ui.DashboardTab
+import com.infomate.app.ui.PinTarget
+import com.infomate.app.ui.SystemLog
+import com.infomate.app.ui.MessageType
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.infomate.app.agent.ConsciousnessEngine
@@ -42,7 +49,8 @@ import com.infomate.app.agent.SelfCodingAgent
 import com.infomate.app.core.ai.BrainCoordinator
 import com.infomate.app.core.ai.GeminiClient
 import com.infomate.app.core.memory.MemoryRepository
-import com.infomate.app.ai.LLMClient
+import com.infomate.app.core.ai.LLMClient
+import com.infomate.app.core.ai.GenerationResult
 import com.infomate.app.security.NeuralFirewall
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.*
@@ -1519,8 +1527,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                         messages = state.messages + ChatMessage(content = "", sender = "INFOMATE"),
                         brainState = InfomateState.RESPONDING,
                         status = "CORE: STREAMING"
-                    )
-                }
+                    ) }
                 
                 typeWriterEffect(response)
                 onComplete(response)

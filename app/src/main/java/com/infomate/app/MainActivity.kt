@@ -11,7 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.infomate.app.ui.AgentViewModel
+import com.infomate.app.viewmodel.AgentViewModel
 import com.infomate.app.ui.ChatScreen
 import com.infomate.app.ui.PermissionOnboardingScreen
 

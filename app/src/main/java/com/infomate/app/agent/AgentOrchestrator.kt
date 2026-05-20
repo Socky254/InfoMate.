@@ -1,7 +1,7 @@
 package com.infomate.app.agent
 
-import com.infomate.app.ai.LLMClient
-import com.infomate.app.ai.GenerationResult
+import com.infomate.app.core.ai.LLMClient
+import com.infomate.app.core.ai.GenerationResult
 import com.infomate.app.rag.VectorRetriever
 import com.infomate.app.rag.MemorySync
 import com.infomate.app.ui.QuotaInfo
