@@ -30,8 +30,8 @@ import com.infomate.app.ai.sdk.StreamController
 import com.infomate.app.ai.sdk.UIRenderer
 import com.infomate.app.core.config.Config
 import com.infomate.app.rag.VectorRetriever
-import com.infomate.core.brain.ReasoningEngine
-import com.infomate.core.ui.components.InfomateState
+import com.infomate.app.agent.ReasoningEngine
+import com.infomate.app.ui.InfomateState
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.infomate.app.agent.ConsciousnessEngine

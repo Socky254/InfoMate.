@@ -1,7 +1,7 @@
 package com.infomate.app.ui
 
-import com.infomate.core.brain.ThoughtStep
-import com.infomate.core.ui.components.InfomateState
+import com.infomate.app.agent.ThoughtStep
+// InfomateState is now in the same package
 
 enum class MessageType {
     TEXT, IMAGE, VIDEO

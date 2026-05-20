@@ -78,7 +78,7 @@ object GlobalSearchAgent {
             WarmDatabase.getDatabase(context).warmDao().cacheResearch(ResearchCache(query, finalResult))
         }
 
-        return finalResult
+        finalResult
     }
 
     /**

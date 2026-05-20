@@ -1,13 +1,13 @@
-package com.infomate.core.ui.components
+package com.infomate.app.ui
 
 enum class InfomateState {
     IDLE, 
     THINKING, 
-    STREAMING, // Added for real-time AI response (Rule 6.2)
+    STREAMING, 
     EXECUTING, 
     RESPONDING, 
     WAITING, 
-    RECONNECTING, // Rule 6.2
+    RECONNECTING, 
     ERROR, 
     SAFE_MODE,
     AWAKENED,
