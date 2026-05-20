@@ -1,8 +1,5 @@
 package com.infomate.app.core.model
 
-import kotlinx.serialization.Serializable
-
-@Serializable
 data class MemoryItem(
     val id: String? = null,
     val user_id: String? = null,

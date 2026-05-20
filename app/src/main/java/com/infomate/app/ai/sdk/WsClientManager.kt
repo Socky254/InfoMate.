@@ -2,6 +2,7 @@ package com.infomate.app.ai.sdk
 
 import android.util.Log
 import com.infomate.app.core.config.Config
+import com.infomate.app.core.network.SupabaseClient
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
 import org.json.JSONObject

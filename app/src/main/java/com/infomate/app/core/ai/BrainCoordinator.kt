@@ -19,6 +19,8 @@ class BrainCoordinator(
     ),
     private val wsBrain: WebSocketBrain = WebSocketBrain()
 ) {
+    // Secondary constructor for backward compatibility
+    constructor(gemini: GeminiClient, memory: com.infomate.app.core.memory.MemoryRepository) : this()
 
     fun streamProcess(input: String, listener: WebSocketBrain.BrainListener) {
         wsBrain.connect(listener)

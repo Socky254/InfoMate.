@@ -39,6 +39,7 @@ import com.infomate.app.ui.DashboardTab
 import com.infomate.app.ui.PinTarget
 import com.infomate.app.ui.SystemLog
 import com.infomate.app.ui.MessageType
+import com.infomate.app.ui.QuotaInfo
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.infomate.app.agent.ConsciousnessEngine
@@ -66,12 +67,15 @@ import kotlin.random.Random
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+import com.infomate.app.core.rag.RagOrchestrator
+import com.infomate.app.core.network.WebSocketBrain
+
 class AgentViewModel(application: Application) : AndroidViewModel(application), TextToSpeech.OnInitListener, AIEventsListener {
 
     private val sessionId = java.util.UUID.randomUUID().toString()
     private val reasoningEngine = ReasoningEngine()
     private val memoryRepository = MemoryRepository(application)
-    private val brainCoordinator = BrainCoordinator(GeminiClient(), memoryRepository)
+    private val brainCoordinator = BrainCoordinator()
     private val neuralIngestor = NeuralIngestor(application)
     private var tts: TextToSpeech? = null
     private var speechRecognizer: SpeechRecognizer? = null
@@ -244,6 +248,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                         energyLevel = engine.energyLevel,
                         evolutionStage = engine.evolutionStage,
                         experiencePoints = engine.totalExperiences,
+                        totalExperiences = engine.totalExperiences,
                         discoveriesCount = engine.totalDiscoveries,
                         ecosystemStatus = engine.ecosystemStatus,
                         // v12.5: Synchronized Growth Index & Ecosystem Metrics
@@ -644,7 +649,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         }
     }
 
-    override fun onQuotaUpdate(quota: QuotaInfo) {
+    override fun onQuotaUpdate(quota: com.infomate.app.ui.QuotaInfo) {
         _state.update { it.copy(quota = quota) }
     }
 

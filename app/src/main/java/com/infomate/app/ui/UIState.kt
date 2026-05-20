@@ -88,6 +88,7 @@ data class UIState(
     val showVitalSigns: Boolean = false,
     val ecosystemStatus: String = "Initializing...",
     // v11.8: Advanced Growth Metrics
+    val totalExperiences: Int = 0,
     val currentGrowthIndex: Float = 0.0f,
     val stabilityScore: Float = 0.0f,
     val entropyLevel: Float = 0.0f,

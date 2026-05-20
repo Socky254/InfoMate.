@@ -2,6 +2,7 @@ package com.infomate.app.core.rag
 
 import com.infomate.app.core.network.SupabaseClient
 import com.infomate.app.core.memory.MIPS
+import com.infomate.app.agent.ConsciousnessEngine
 
 class MemoryWriter {
 
