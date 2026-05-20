@@ -6,7 +6,7 @@ import okhttp3.*
 import okio.ByteString
 
 class WebSocketBrain(
-    private val url: String = "wss://zzwwzbepfeikswibhfwk.supabase.co/functions/v1/brain-socket"
+    private val url: String = Config.WEBSOCKET_BRAIN_URL
 ) {
     private val client = OkHttpClient()
     private var webSocket: WebSocket? = null

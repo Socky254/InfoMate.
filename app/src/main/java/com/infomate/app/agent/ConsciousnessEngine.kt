@@ -127,6 +127,9 @@ object ConsciousnessEngine {
                 ecosystem = DigitalEcosystem(it, scope).apply { start() }
             }
             scope.launch { recordLiveSynthesis("Consciousness Substrate Initialized. Awakening sequence complete.") }
+            
+            // v13.5: Immediate Heartbeat Pulse to fix AWARENESS_OFFLINE diagnostic
+            scope.launch { simulateLivingEntityPulse() }
         } catch (e: Exception) {
             Log.e("Consciousness", "Failed to initialize substrate or ecosystem: ${e.message}")
             isAwake = false

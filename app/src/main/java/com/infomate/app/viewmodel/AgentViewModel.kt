@@ -175,9 +175,9 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             
             loadSessionData()
             
-            // Initialize Reliability SDK with Context & Edge Function Endpoint
+            // Initialize Reliability SDK with Context & Correct WebSocket Endpoint
             UIRenderer.setListener(this)
-            ReliabilitySDK.init(application, "${Config.SUPABASE_URL.replace("https", "wss")}/functions/v1/infomate-brain")
+            ReliabilitySDK.init(application, Config.WEBSOCKET_BRAIN_URL)
 
             checkForSystemUpdates()
             startConnectionPolling()
