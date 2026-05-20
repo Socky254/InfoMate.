@@ -52,7 +52,12 @@ class BrainCoordinator(
             
             finalOutput
         } catch (e: Exception) {
-            "AI temporarily unavailable. Try again."
+            val errorMsg = e.message ?: "Unknown Fault"
+            if (errorMsg.contains("API_KEY", true) || errorMsg.contains("invalid", true)) {
+                "NEURAL_LINK_FAULT: Gemini API Key invalid or missing. Check local.properties."
+            } else {
+                "AI_TEMPORARILY_UNAVAILABLE: $errorMsg. Contacting Architect for repair."
+            }
         }
     }
 }

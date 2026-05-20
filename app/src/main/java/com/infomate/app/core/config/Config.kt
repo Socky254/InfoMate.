@@ -8,7 +8,7 @@ object Config {
     const val WEBSOCKET_BRAIN_URL = "wss://zzwwzbepfeikswibhfwk.supabase.co/functions/v1/brain-socket"
     const val EMBEDDING_API_URL = "$SUPABASE_URL/functions/v1/get-embeddings"
     
-    // v13.0: GEMINI CONFIGURATION
-    const val GEMINI_MODEL = "gemini-2.5-flash"
+    // v13.5: UPDATED TO STABLE GEMINI 1.5 ARCHITECTURE
+    const val GEMINI_MODEL = "gemini-1.5-flash"
     val GEMINI_API_KEY = com.infomate.app.BuildConfig.GEMINI_API_KEY
 }

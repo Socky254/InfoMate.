@@ -17,12 +17,12 @@ class GeminiClient(apiKey: String = Config.GEMINI_API_KEY) {
     }
 
     private val flashLiteModel = GenerativeModel(
-        modelName = "gemini-2.5-flash-lite",
+        modelName = "gemini-1.5-flash", // v13.5: Using 1.5-flash as the lite baseline
         apiKey = apiKey
     )
 
     private val flashModel = GenerativeModel(
-        modelName = "gemini-2.5-flash",
+        modelName = "gemini-1.5-flash",
         apiKey = apiKey
     )
 
@@ -59,7 +59,7 @@ class GeminiClient(apiKey: String = Config.GEMINI_API_KEY) {
             callModel(proModel, prompt)
         } catch (e: Exception) {
             Log.e("GeminiClient", "Final Pro fallback failed", e)
-            "SYSTEM_ERROR: AI_TEMPORARILY_UNAVAILABLE"
+            "SYSTEM_ERROR: NEURAL_ENGINE_FAILURE: ${e.message}"
         }
     }
 }

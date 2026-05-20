@@ -834,6 +834,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         // Save preference to Supabase
         viewModelScope.launch {
             SupabaseClient.upsert("user_preferences", mapOf(
+                "user_email" to (_state.value.userEmail ?: "socratesart@live"),
                 "voice_gender" to if (newVoiceState) "MALE" else "FEMALE",
                 "last_updated" to System.currentTimeMillis()
             ))
@@ -1526,6 +1527,12 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                 // v13.0: DISPATCH TO BRAIN COORDINATOR (PHASE 3: PRIMARY SOURCE)
                 val response = brainCoordinator.process(userInput)
                 
+                // v13.5: SURGICAL ERROR DETECTION
+                if (response.startsWith("AI_TEMPORARILY_UNAVAILABLE") || response.startsWith("NEURAL_LINK_FAULT")) {
+                    onError(response)
+                    return@launch
+                }
+
                 // v13.0: Add INFOMATE message and trigger typewriter for persona feel
                 _state.update { state -> 
                     state.copy(

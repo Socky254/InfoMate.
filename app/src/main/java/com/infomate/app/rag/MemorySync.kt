@@ -9,15 +9,13 @@ object MemorySync {
 
         val embedding = EmbeddingClient.getEmbedding(query)
         SupabaseClient.insert(
-            "memory",
+            "memory_nodes",
             mapOf(
-                "content" to result,
+                "content" to "User: $query\nInfoMate: $result",
                 "embedding" to embedding,
-                "metadata" to mapOf(
-                    "query" to query,
-                    "version" to "v9.5",
-                    "source" to "neural_sync"
-                )
+                "type" to "conversation",
+                "importance" to 0.5f,
+                "agent_source" to "neural_sync"
             )
         )
     }

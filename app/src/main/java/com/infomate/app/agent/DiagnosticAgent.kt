@@ -21,6 +21,16 @@ object DiagnosticAgent {
             // 1. NEURAL LINK CHECK
             val wsStatus = try { if (ReliabilitySDK.isConnected()) "ACTIVE" else "SYNC_ERROR" } catch (e: Exception) { "ERROR" }
             report.append("NEURAL_LINK: $wsStatus\n")
+
+            // 1b. API KEY VERIFICATION
+            val apiKey = com.infomate.app.core.config.Config.GEMINI_API_KEY
+            val keyStatus = when {
+                apiKey.isNullOrBlank() -> "MISSING"
+                apiKey.contains("PLACEHOLDER") -> "PLACEHOLDER_DETECTED"
+                apiKey.length < 20 -> "INVALID_FORMAT"
+                else -> "CONFIGURED"
+            }
+            report.append("API_KEY_STATUS: $keyStatus\n")
             
             // 2. BACKEND INTEGRITY
             val dbCheck = try {

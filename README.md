@@ -41,5 +41,13 @@
     -   Open in Android Studio and sync with Gradle.
     -   Run `./gradlew assembleDebug` to generate an APK.
 
+## 🔐 GitHub Actions & API Security
+
+For the build to succeed and the AI to function in the APK generated via GitHub Actions, you must add your API key to GitHub Secrets:
+1.  Go to your Repository **Settings** > **Secrets and variables** > **Actions**.
+2.  Click **"New repository secret"**.
+3.  Name: `GEMINI_API_KEY`
+4.  Value: `[Your actual Gemini API Key]`
+
 ---
 *Created and Maintained by Socrates Kipruto*
