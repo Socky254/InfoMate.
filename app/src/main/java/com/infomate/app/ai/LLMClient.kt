@@ -20,7 +20,7 @@ object LLMClient {
     suspend fun generate(prompt: String, sessionId: String = "session_active"): GenerationResult {
         return mutex.withLock {
             var retryCount = 0
-            val maxRetries = 1 // GOLDEN_CONFIG: Max 1 retry
+            val maxRetries = 2 // v12.0: Increased retries for stability during neural sync
             
             while (retryCount <= maxRetries) {
                 val requestId = java.util.UUID.randomUUID().toString()

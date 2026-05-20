@@ -47,7 +47,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import java.util.*
+import java.util.Date
+import java.util.Locale
+import java.text.SimpleDateFormat
 import kotlin.random.Random
 
 import kotlinx.coroutines.sync.Mutex
@@ -358,7 +360,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
 
     private fun addSimulationLog(log: String) {
         _state.update { it.copy(
-            activeSimulationLogs = (it.activeSimulationLogs + "[${java.text.SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())}] $log").takeLast(10)
+            activeSimulationLogs = (it.activeSimulationLogs + "[${SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())}] $log").takeLast(10)
         ) }
     }
 
@@ -489,10 +491,10 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                         val lastMsg = newMessages.lastOrNull()
                         if (lastMsg != null && lastMsg.sender == "INFOMATE" && state.brainState == InfomateState.RESPONDING) {
                             val updatedContent = lastMsg.content + nextToken
-                            val sanitized = com.infomate.app.security.NeuralFirewall.sanitizeOutput(updatedContent, state.userEmail)
+                            val sanitized = NeuralFirewall.sanitizeOutput(updatedContent, state.userEmail)
                             newMessages[newMessages.size - 1] = lastMsg.copy(content = sanitized)
                         } else {
-                            val sanitized = com.infomate.app.security.NeuralFirewall.sanitizeOutput(nextToken, state.userEmail)
+                            val sanitized = NeuralFirewall.sanitizeOutput(nextToken, state.userEmail)
                             newMessages.add(ChatMessage(content = sanitized, sender = "INFOMATE"))
                         }
                         
@@ -1378,7 +1380,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
                 
                 // 2.3 CLIENT UI TIMEOUT (APK SIDE)
                 var timeoutCounter = 0
-                val maxTimeout = 75
+                val maxTimeout = 120
                 lastTokenTime = 0L
 
                 while (timeoutCounter < maxTimeout) {
@@ -1415,7 +1417,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         if (userInput.isBlank()) return
 
         // 0. NEURAL FIREWALL CHECK
-        if (!com.infomate.app.security.NeuralFirewall.validateDirective(userInput, _state.value.userEmail)) {
+        if (!NeuralFirewall.validateDirective(userInput, _state.value.userEmail)) {
             addTerminalLog("SECURITY_BLOCK: Unauthorized directive detected.", "ERROR", "SECURITY")
             triggerHaptic(200, 255)
             _state.update { it.copy(status = "CORE: ACCESS DENIED", input = "") }
@@ -1517,7 +1519,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         val query = input.lowercase().trim()
         return when {
             query == "status" || query == "system check" -> "All neural pathways operational. Ecosystem stability at 98%."
-            query == "time" -> "The current chronos is ${java.text.SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())}."
+            query == "time" -> "The current chronos is ${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())}."
             query.contains("battery") -> "Energy reserves at ${getBatteryLevel()}%."
             else -> null
         }
