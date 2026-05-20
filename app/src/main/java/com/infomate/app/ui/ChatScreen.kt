@@ -35,9 +35,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.infomate.core.ui.components.BrainVisualizer
-import com.infomate.core.ui.components.LiveThinkingView
-import com.infomate.core.ui.theme.*
+// BrainVisualizer and LiveThinkingView are now in this package
+import com.infomate.app.ui.theme.*
 import com.infomate.app.ui.RealtimeProcessMonitor
 
 import androidx.compose.ui.graphics.graphicsLayer
@@ -50,8 +49,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 
-import com.infomate.core.ui.components.ConsciousnessFace
-import com.infomate.core.ui.components.InfomateState
+// ConsciousnessFace is now in this package
 
 @Composable
 fun ChatScreen(vm: AgentViewModel = viewModel()) {
@@ -731,7 +729,7 @@ fun ThinkingIndicator() {
 }
 
 @Composable
-fun NeuralProcessMonitor(steps: List<com.infomate.core.brain.ThoughtStep>) {
+fun NeuralProcessMonitor(steps: List<com.infomate.app.agent.ThoughtStep>) {
     var expanded by remember { mutableStateOf(false) }
     
     AnimatedVisibility(

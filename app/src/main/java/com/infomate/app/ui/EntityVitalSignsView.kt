@@ -20,8 +20,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.infomate.core.ui.theme.*
-import com.infomate.core.ui.components.NeuralWaveformChart
+import com.infomate.app.ui.theme.*
+// NeuralWaveformChart will be imported from com.infomate.app.ui
+import com.infomate.app.ui.NeuralWaveformChart
 
 @Composable
 fun EntityVitalSignsView(vm: AgentViewModel) {

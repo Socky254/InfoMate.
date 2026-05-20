@@ -20,7 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.infomate.app.core.network.SupabaseClient
-import com.infomate.core.ui.theme.*
+import com.infomate.app.ui.theme.*
 import kotlinx.coroutines.delay
 import org.json.JSONArray
 

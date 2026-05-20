@@ -25,10 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.infomate.core.ui.theme.CyberCyan
-import com.infomate.core.ui.theme.NeonBlue
-import com.infomate.core.ui.theme.Obsidian
-import com.infomate.core.ui.theme.SilverText
+import com.infomate.app.ui.theme.*
 
 @Composable
 fun PermissionOnboardingScreen(onAuthorize: () -> Unit) {

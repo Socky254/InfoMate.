@@ -1357,7 +1357,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         
         _state.update { it.copy(
             status = "SCANNING GLOBAL ARCHIVES...",
-            brainState = com.infomate.core.ui.components.InfomateState.THINKING,
+            brainState = InfomateState.THINKING,
             input = "" 
         ) }
 
@@ -1551,7 +1551,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
         return null
     }
 
-    private suspend fun saveCognitiveLog(messageId: String, step: com.infomate.core.brain.ThoughtStep, index: Int) {
+    private suspend fun saveCognitiveLog(messageId: String, step: com.infomate.app.agent.ThoughtStep, index: Int) {
         SupabaseClient.insert("cognitive_logs", mapOf(
             "message_id" to messageId,
             "step_title" to step.title,
