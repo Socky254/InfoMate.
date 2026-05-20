@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -9,10 +11,12 @@ android {
     namespace = "com.infomate.app"
     compileSdk = 35
 
-    val localProperties = java.util.Properties()
+    val localProperties = Properties()
     val localPropertiesFile = rootProject.file("local.properties")
     if (localPropertiesFile.exists()) {
-        localProperties.load(localPropertiesFile.inputStream())
+        localPropertiesFile.inputStream().use { 
+            localProperties.load(it)
+        }
     }
 
     defaultConfig {
@@ -92,4 +96,4 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
-// InfoMate v9.0 Stable Build Config
+// InfoMate v13.5 Stable Build Config
