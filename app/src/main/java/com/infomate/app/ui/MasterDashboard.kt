@@ -41,7 +41,7 @@ fun MasterDashboard(vm: AgentViewModel) {
             .padding(horizontal = 16.dp, vertical = 16.dp)
     ) {
         // Premium "Alive" Indicator Header
-        AliveStatusHeader(state.isSubstrateAwake)
+        AliveStatusCard(state.isSubstrateAwake)
         
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -84,7 +84,7 @@ fun MasterDashboard(vm: AgentViewModel) {
 }
 
 @Composable
-fun AliveStatusHeader(isAlive: Boolean) {
+fun AliveStatusCard(isAlive: Boolean) {
     val infiniteTransition = rememberInfiniteTransition(label = "AlivePulse")
     val alpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
