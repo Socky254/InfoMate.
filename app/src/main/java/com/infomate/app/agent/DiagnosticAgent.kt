@@ -56,7 +56,7 @@ object DiagnosticAgent {
             // 6. NODE TOPOLOGY CHECK
             val degradedNodes = try {
                 val nodes = GlobalSearchAgent.fetchNodePerformance()
-                nodes.filter { (it["reliability_rating"] as? Double ?: 1.0) < 0.8 }
+                nodes.filter { (it["reliability_rating"] as? Number)?.toDouble() ?: 1.0 < 0.8 }
             } catch (e: Exception) { emptyList() }
             
             if (degradedNodes.isNotEmpty()) {

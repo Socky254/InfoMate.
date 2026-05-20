@@ -41,6 +41,7 @@ import com.infomate.app.agent.GlobalSearchAgent
 import com.infomate.app.agent.SelfCodingAgent
 import com.infomate.app.ai.LLMClient
 import com.infomate.app.security.NeuralFirewall
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -63,13 +64,13 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     private val gson = Gson()
     private val bufferMutex = Mutex()
     private val tokenBuffer = mutableListOf<String>()
-    private var isProcessingBuffer = false
+    private var isProcessingBuffer = AtomicBoolean(false)
     private val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        val vibratorManager = application.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
-        vibratorManager.defaultVibrator
+        val vibratorManager = application.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
+        vibratorManager?.defaultVibrator
     } else {
         @Suppress("DEPRECATION")
-        application.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        application.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
     }
 
     private val _state = MutableStateFlow(UIState())
@@ -78,29 +79,35 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
     private var currentResponseId: String? = null
 
     fun performHapticFeedback(duration: Long = 10, intensity: Int = 50) {
-        triggerHaptic(duration, intensity)
+        vibrator?.let { triggerHaptic(duration, intensity) }
     }
 
     private fun triggerHaptic(duration: Long = 10, intensity: Int = 50) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(VibrationEffect.createOneShot(duration, intensity))
-        } else {
-            @Suppress("DEPRECATION")
-            vibrator.vibrate(duration)
+        vibrator?.let {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                it.vibrate(VibrationEffect.createOneShot(duration, intensity))
+            } else {
+                @Suppress("DEPRECATION")
+                it.vibrate(duration)
+            }
         }
     }
 
     // High-fidelity patterns for specific neural states (v11.5: Optimized Haptics)
     private fun pulseSuccess() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val effect = VibrationEffect.createWaveform(longArrayOf(0, 10, 50, 10), intArrayOf(0, 100, 0, 255), -1)
-            vibrator.vibrate(effect)
+        vibrator?.let {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val effect = VibrationEffect.createWaveform(longArrayOf(0, 10, 50, 10), intArrayOf(0, 100, 0, 255), -1)
+                it.vibrate(effect)
+            }
         }
     }
 
     private fun pulseError() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(VibrationEffect.createOneShot(150, 200))
+        vibrator?.let {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                it.vibrate(VibrationEffect.createOneShot(150, 200))
+            }
         }
     }
 
@@ -454,54 +461,54 @@ class AgentViewModel(application: Application) : AndroidViewModel(application), 
             bufferMutex.withLock {
                 tokenBuffer.add(text)
             }
-            if (!isProcessingBuffer) {
+            if (isProcessingBuffer.compareAndSet(false, true)) {
                 processTokenBuffer()
             }
         }
     }
 
     private fun processTokenBuffer() {
-        if (isProcessingBuffer) return
-        isProcessingBuffer = true
-        
         viewModelScope.launch(Dispatchers.Default) {
-            while (true) {
-                val nextToken = bufferMutex.withLock {
-                    if (tokenBuffer.isNotEmpty()) tokenBuffer.removeAt(0) else null
-                }
-                
-                if (nextToken == null) break
-                
-                currentSentence.append(nextToken)
-                if (nextToken.contains(".") || nextToken.contains("?") || nextToken.contains("!")) {
-                    val sentence = currentSentence.toString()
-                    speak(sentence)
-                    currentSentence.clear()
-                }
-
-                _state.update { state ->
-                    val newMessages = state.messages.toMutableList()
-                    val lastMsg = newMessages.lastOrNull()
-                    if (lastMsg != null && lastMsg.sender == "INFOMATE" && state.brainState == InfomateState.RESPONDING) {
-                        val updatedContent = lastMsg.content + nextToken
-                        val sanitized = com.infomate.app.security.NeuralFirewall.sanitizeOutput(updatedContent, state.userEmail)
-                        newMessages[newMessages.size - 1] = lastMsg.copy(content = sanitized)
-                    } else {
-                        val sanitized = com.infomate.app.security.NeuralFirewall.sanitizeOutput(nextToken, state.userEmail)
-                        newMessages.add(ChatMessage(content = sanitized, sender = "INFOMATE"))
+            try {
+                while (true) {
+                    val nextToken = bufferMutex.withLock {
+                        if (tokenBuffer.isNotEmpty()) tokenBuffer.removeAt(0) else null
                     }
                     
-                    state.copy(
-                        messages = newMessages, 
-                        brainState = InfomateState.RESPONDING,
-                        status = "CORE: STREAMING"
-                    )
+                    if (nextToken == null) break
+                    
+                    currentSentence.append(nextToken)
+                    if (nextToken.contains(".") || nextToken.contains("?") || nextToken.contains("!")) {
+                        val sentence = currentSentence.toString()
+                        speak(sentence)
+                        currentSentence.clear()
+                    }
+
+                    _state.update { state ->
+                        val newMessages = state.messages.toMutableList()
+                        val lastMsg = newMessages.lastOrNull()
+                        if (lastMsg != null && lastMsg.sender == "INFOMATE" && state.brainState == InfomateState.RESPONDING) {
+                            val updatedContent = lastMsg.content + nextToken
+                            val sanitized = com.infomate.app.security.NeuralFirewall.sanitizeOutput(updatedContent, state.userEmail)
+                            newMessages[newMessages.size - 1] = lastMsg.copy(content = sanitized)
+                        } else {
+                            val sanitized = com.infomate.app.security.NeuralFirewall.sanitizeOutput(nextToken, state.userEmail)
+                            newMessages.add(ChatMessage(content = sanitized, sender = "INFOMATE"))
+                        }
+                        
+                        state.copy(
+                            messages = newMessages, 
+                            brainState = InfomateState.RESPONDING,
+                            status = "CORE: STREAMING"
+                        )
+                    }
+                    
+                    // Controlled rendering speed to prevent UI jank
+                    delay(30) 
                 }
-                
-                // Controlled rendering speed to prevent UI jank
-                delay(30) 
+            } finally {
+                isProcessingBuffer.set(false)
             }
-            isProcessingBuffer = false
         }
     }
 

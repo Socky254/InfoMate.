@@ -5,9 +5,11 @@ import android.util.Log
 import com.infomate.app.core.network.SupabaseClient
 import com.infomate.app.storage.WarmDatabase
 import com.infomate.app.storage.ResearchCache
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -17,7 +19,7 @@ import org.json.JSONObject
  */
 object GlobalSearchAgent {
 
-    suspend fun searchExternal(query: String, context: Context? = null): String? {
+    suspend fun searchExternal(query: String, context: Context? = null): String? = withContext(Dispatchers.IO) {
         Log.i("GlobalSearch", "Initiating node-based search for: $query")
         
         // v11.5: Semantic Research Caching
@@ -25,7 +27,7 @@ object GlobalSearchAgent {
             val cached = WarmDatabase.getDatabase(it).warmDao().getCachedResearch(query)
             if (cached != null && System.currentTimeMillis() - cached.timestamp < 86400000) { // 24h cache
                 Log.i("GlobalSearch", "Neural Cache Hit: $query")
-                return "[NEURAL_CACHE_SYNC]: ${cached.findings}"
+                return@withContext "[NEURAL_CACHE_SYNC]: ${cached.findings}"
             }
         }
 
@@ -129,17 +131,17 @@ object GlobalSearchAgent {
         comprehensiveReport.toString()
     }
 
-    private suspend fun performEmergencyWebSearch(query: String): String? {
+    private suspend fun performEmergencyWebSearch(query: String): String? = withContext(Dispatchers.IO) {
         Log.i("GlobalSearch", "Performing emergency background search for: $query")
         
-        return try {
+        try {
             val url = "https://api.duckduckgo.com/?q=${java.net.URLEncoder.encode(query, "UTF-8")}&format=json&no_html=1&skip_disambig=1"
             val request = okhttp3.Request.Builder().url(url).build()
             val client = okhttp3.OkHttpClient()
             
             client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return null
-                val body = response.body?.string() ?: return null
+                if (!response.isSuccessful) return@withContext null
+                val body = response.body?.string() ?: return@withContext null
                 val json = JSONObject(body)
                 
                 val abstract = json.optString("AbstractText")
